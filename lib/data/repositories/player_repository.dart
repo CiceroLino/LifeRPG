@@ -53,8 +53,8 @@ class PlayerRepository {
 
     await update(
       player.copyWith(
-        totalXP: newTotalXP,
-        level: newLevel,
+      totalXP: newTotalXP,
+      level: newLevel,
       ),
     );
   }

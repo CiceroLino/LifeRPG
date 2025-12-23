@@ -45,6 +45,8 @@ dependencies:
   path: ^1.9.1
   uuid: ^4.5.2
   sqflite_common_ffi: ^2.4.0+1
+  fl_chart: ^1.1.1
+  flutter_svg: ^2.2.3
 
 dev_dependencies:
   flutter_test:
@@ -67,6 +69,9 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  assets:
+    - assets/game-icons.net.svg/icons/ffffff/000000/1x1/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

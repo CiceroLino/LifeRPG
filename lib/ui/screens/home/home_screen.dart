@@ -9,6 +9,7 @@ import '../../../core/constants/app_strings.dart';
 import '../../widgets/common/xp_bar.dart';
 import '../../widgets/common/level_badge.dart';
 import '../../widgets/mission/mission_card_real.dart';
+import '../missions/mission_form_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -93,10 +94,13 @@ class _HomeScreenState extends State<HomeScreen> {
           },
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAddMissionDialog(),
-        icon: const Icon(Icons.add),
-        label: const Text('Nova Missão'),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const MissionFormScreen()),
+          );
+        },
+        child: const Icon(Icons.add),
       ),
     );
   }
@@ -172,67 +176,5 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       }
     }
-  }
-
-  void _showAddMissionDialog() {
-    final titleController = TextEditingController();
-    final descController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Nova Missão'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: titleController,
-              decoration: const InputDecoration(
-                labelText: 'Título',
-                border: OutlineInputBorder(),
-              ),
-              autofocus: true,
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: descController,
-              decoration: const InputDecoration(
-                labelText: 'Descrição (opcional)',
-                border: OutlineInputBorder(),
-              ),
-              maxLines: 3,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (titleController.text.trim().isEmpty) return;
-
-              final mission = Mission(
-                title: titleController.text.trim(),
-                description: descController.text.trim(),
-                xpReward: 50,
-                rewardPoints: 10,
-              );
-
-              await context.read<MissionProvider>().addMission(mission);
-              
-              if (mounted) {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Missão criada!')),
-                );
-              }
-            },
-            child: const Text('Criar'),
-          ),
-        ],
-      ),
-    );
   }
 }

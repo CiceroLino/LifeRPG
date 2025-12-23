@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../data/models/mission.dart';
 import '../../../providers/mission_provider.dart';
 import '../../widgets/mission/mission_card_real.dart';
+import 'mission_form_screen.dart';
 
 class MissionsListScreen extends StatefulWidget {
   const MissionsListScreen({super.key});
@@ -60,10 +61,13 @@ class _MissionsListScreenState extends State<MissionsListScreen> {
           },
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showAddMissionDialog,
-        icon: const Icon(Icons.add),
-        label: const Text('Nova Missão'),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const MissionFormScreen()),
+          );
+        },
+        child: const Icon(Icons.add),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       bottomNavigationBar: Padding(

@@ -59,15 +59,15 @@ class MissionCard extends StatelessWidget {
                         ),
                         const SizedBox(height: 4),
                         if (mission.description.isNotEmpty)
-                          Text(
-                            mission.description,
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey[600],
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
+                        Text(
+                          mission.description,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey[600],
                           ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ],
                     ),
                   ),
