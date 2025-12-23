@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../data/models/mission.dart';
+import '../../../core/theme/app_theme.dart';
 
-class MissionCard extends StatelessWidget {
+class MissionCardReal extends StatelessWidget {
   final Mission mission;
   final VoidCallback? onTap;
   final VoidCallback? onComplete;
 
-  const MissionCard({
+  const MissionCardReal({
     super.key,
     required this.mission,
     this.onTap,
@@ -27,10 +27,8 @@ class MissionCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header
               Row(
                 children: [
-                  // Ícone
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
@@ -44,8 +42,6 @@ class MissionCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  
-                  // Título
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -57,8 +53,8 @@ class MissionCard extends StatelessWidget {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        if (mission.description.isNotEmpty)
+                        if (mission.description.isNotEmpty) ...[
+                          const SizedBox(height: 4),
                           Text(
                             mission.description,
                             style: TextStyle(
@@ -68,11 +64,10 @@ class MissionCard extends StatelessWidget {
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
+                        ],
                       ],
                     ),
                   ),
-                  
-                  // Botão completar
                   IconButton(
                     onPressed: onComplete,
                     icon: const Icon(Icons.check_circle_outline),
@@ -81,15 +76,12 @@ class MissionCard extends StatelessWidget {
                   ),
                 ],
               ),
-              
               const SizedBox(height: 12),
-              
-              // Atributos
               Row(
                 children: [
                   _AttributeChip(
                     icon: Icons.fitness_center,
-                    label: 'Dif ${ mission.difficulty}',
+                    label: 'Dif ${mission.difficulty}',
                     color: Colors.orange,
                   ),
                   const SizedBox(width: 8),
@@ -106,17 +98,6 @@ class MissionCard extends StatelessWidget {
                   ),
                 ],
               ),
-              if (mission.skillIds.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                Text(
-                  '${mission.skillIds.length} skills vinculadas',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.primaryPurple.withOpacity(0.8),
-                  ),
-                ),
-              ],
             ],
           ),
         ),

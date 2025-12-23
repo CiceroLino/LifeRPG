@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
-import '../../../core/constants/mock_data.dart';
+import 'package:provider/provider.dart';
+import '../../../data/models/player.dart';
+import '../../../providers/mission_provider.dart';
+import '../../../providers/player_provider.dart';
+import '../../../providers/skill_provider.dart';
+import '../../../data/models/mission.dart';
 import '../../../core/constants/app_strings.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../widgets/common/xp_bar.dart';
 import '../../widgets/common/level_badge.dart';
-import '../../widgets/mission/mission_card.dart';
+import '../../widgets/mission/mission_card_real.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -16,95 +20,102 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
-    final playerData = MockData.playerData;
-    final missions = MockData.missions;
-
     return Scaffold(
       appBar: AppBar(
         title: const Text(AppStrings.appName),
         actions: [
           IconButton(
             icon: const Icon(Icons.settings),
-            onPressed: () {
-              // TODO: Navegar para settings
-            },
+            onPressed: () {},
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        children: [
-          // Player Info Card
-          _buildPlayerCard(playerData),
-          
-          const SizedBox(height: 24),
-          
-          // Missions Header
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      body: RefreshIndicator(
+        onRefresh: () async {
+          await context.read<MissionProvider>().loadMissions();
+          await context.read<PlayerProvider>().loadPlayer();
+        },
+        child: Consumer2<PlayerProvider, MissionProvider>(
+          builder: (context, playerProvider, missionProvider, _) {
+            if (playerProvider.isLoading || missionProvider.isLoading) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            final player = playerProvider.player;
+            final missions = missionProvider.activeMissions;
+
+            return ListView(
+              padding: const EdgeInsets.symmetric(vertical: 16),
               children: [
-                const Text(
-                  'Missões Ativas',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+                // Player Card
+                if (player != null) _buildPlayerCard(player, playerProvider),
+                
+                const SizedBox(height: 24),
+                
+                // Missions Header
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Missões Ativas (${missions.length})',
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                TextButton(
-                  onPressed: () {
-                    // TODO: Ver todas
-                  },
-                  child: const Text('Ver todas'),
-                ),
+                
+                const SizedBox(height: 8),
+                
+                // Missions List
+                if (missions.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.all(32),
+                    child: Center(
+                      child: Text(
+                        'Nenhuma missão ativa.\nToque em + para criar uma!',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 16, color: Colors.grey),
+                      ),
+                    ),
+                  )
+                else
+                  ...missions.map((mission) => MissionCardReal(
+                        mission: mission,
+                        onComplete: () => _completeMission(mission),
+                      )),
               ],
-            ),
-          ),
-          
-          const SizedBox(height: 8),
-          
-          // Missions List
-          ...missions.map((mission) => MissionCard(
-                mission: mission,
-                onTap: () {
-                  _showMissionDetails(mission);
-                },
-                onComplete: () {
-                  _completeMission(mission);
-                },
-              )),
-        ],
+            );
+          },
+        ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          _showAddMissionDialog();
-        },
+        onPressed: () => _showAddMissionDialog(),
         icon: const Icon(Icons.add),
         label: const Text('Nova Missão'),
       ),
     );
   }
 
-  Widget _buildPlayerCard(Map<String, dynamic> playerData) {
+  Widget _buildPlayerCard(Player player, PlayerProvider provider) {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Row(
           children: [
-            // Level Badge
-            LevelBadge(level: playerData['level']),
-            
+            LevelBadge(level: player.level),
             const SizedBox(width: 16),
-            
-            // Player Info
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    playerData['name'],
+                    player.name,
                     style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -112,16 +123,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 8),
                   XPBar(
-                    currentXP: playerData['currentXP'],
-                    xpNeeded: playerData['xpForNextLevel'],
+                    currentXP: provider.xpInCurrentLevel,
+                    xpNeeded: provider.xpForNextLevel,
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Total: ${playerData['totalXP']} XP',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
-                    ),
+                    'Total: ${player.totalXP} XP | ${player.rewardPoints} pts',
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                   ),
                 ],
               ),
@@ -132,161 +140,69 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _showMissionDetails(MockMission mission) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.7,
-        decoration: BoxDecoration(
-          color: Theme.of(context).scaffoldBackgroundColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Handle
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-            
-            // Título
-            Text(
-              mission.title,
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            
-            // Descrição
-            Text(
-              mission.description,
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey[600],
-              ),
-            ),
-            const SizedBox(height: 24),
-            
-            // Info
-            _buildInfoRow('XP Reward', '${mission.xpReward} XP'),
-            _buildInfoRow('Dificuldade', '${mission.difficulty}/5'),
-            _buildInfoRow('Urgência', '${mission.urgency}/5'),
-            
-            const SizedBox(height: 24),
-            
-            // Skills
-            const Text(
-              'Skills',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              children: mission.skills
-                  .map((skill) => Chip(label: Text(skill)))
-                  .toList(),
-            ),
-            
-            const Spacer(),
-            
-            // Botões
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Fechar'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      _completeMission(mission);
-                    },
-                    child: const Text('Completar'),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInfoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[600],
-            ),
-          ),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _completeMission(MockMission mission) {
-    showDialog(
+  Future<void> _completeMission(Mission mission) async {
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('🎉 Missão Completada!'),
-        content: Text('Você ganhou ${mission.xpReward} XP!'),
+        title: const Text('Completar Missão?'),
+        content: Text('Você ganhará ${mission.xpReward} XP!'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Completar'),
           ),
         ],
       ),
     );
+
+    if (confirmed == true && mounted) {
+      await context.read<MissionProvider>().completeMission(mission.id!);
+      await context.read<PlayerProvider>().loadPlayer();
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('🎉 +${mission.xpReward} XP!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    }
   }
 
   void _showAddMissionDialog() {
     final titleController = TextEditingController();
+    final descController = TextEditingController();
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Nova Missão'),
-        content: TextField(
-          controller: titleController,
-          decoration: const InputDecoration(
-            labelText: 'Título da missão',
-            border: OutlineInputBorder(),
-          ),
-          autofocus: true,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: titleController,
+              decoration: const InputDecoration(
+                labelText: 'Título',
+                border: OutlineInputBorder(),
+              ),
+              autofocus: true,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: descController,
+              decoration: const InputDecoration(
+                labelText: 'Descrição (opcional)',
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 3,
+            ),
+          ],
         ),
         actions: [
           TextButton(
@@ -294,14 +210,26 @@ class _HomeScreenState extends State<HomeScreen> {
             child: const Text('Cancelar'),
           ),
           ElevatedButton(
-            onPressed: () {
-              // TODO: Adicionar missão
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Missão adicionada! (mock)')),
+            onPressed: () async {
+              if (titleController.text.trim().isEmpty) return;
+
+              final mission = Mission(
+                title: titleController.text.trim(),
+                description: descController.text.trim(),
+                xpReward: 50,
+                rewardPoints: 10,
               );
+
+              await context.read<MissionProvider>().addMission(mission);
+              
+              if (mounted) {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Missão criada!')),
+                );
+              }
             },
-            child: const Text('Adicionar'),
+            child: const Text('Criar'),
           ),
         ],
       ),
