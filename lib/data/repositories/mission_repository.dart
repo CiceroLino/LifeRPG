@@ -5,20 +5,17 @@ import '../models/mission.dart';
 class MissionRepository {
   final DatabaseHelper _dbHelper = DatabaseHelper();
 
-  // CREATE
   Future<int> insert(Mission mission) async {
     final db = await _dbHelper.database;
     return await db.insert('missions', mission.toMap());
   }
 
-  // READ - Todas
   Future<List<Mission>> getAll() async {
     final db = await _dbHelper.database;
     final maps = await db.query('missions', orderBy: 'created_at DESC');
     return List.generate(maps.length, (i) => Mission.fromMap(maps[i]));
   }
 
-  // READ - Por Status
   Future<List<Mission>> getByStatus(String status) async {
     final db = await _dbHelper.database;
     final maps = await db.query(
@@ -30,7 +27,6 @@ class MissionRepository {
     return List.generate(maps.length, (i) => Mission.fromMap(maps[i]));
   }
 
-  // READ - Por ID
   Future<Mission?> getById(int id) async {
     final db = await _dbHelper.database;
     final maps = await db.query(
@@ -42,7 +38,6 @@ class MissionRepository {
     return Mission.fromMap(maps.first);
   }
 
-  // READ - Com Skills
   Future<Mission> getWithSkills(int missionId) async {
     final mission = await getById(missionId);
     if (mission == null) throw Exception('Mission not found');
@@ -56,7 +51,6 @@ class MissionRepository {
     return mission.copyWith(skillIds: skillIds);
   }
 
-  // UPDATE
   Future<int> update(Mission mission) async {
     final db = await _dbHelper.database;
     return await db.update(
@@ -67,7 +61,6 @@ class MissionRepository {
     );
   }
 
-  // UPDATE - Completar
   Future<void> complete(int id) async {
     final db = await _dbHelper.database;
     await db.update(
@@ -82,20 +75,16 @@ class MissionRepository {
     );
   }
 
-  // DELETE
   Future<int> delete(int id) async {
     final db = await _dbHelper.database;
     return await db.delete('missions', where: 'id = ?', whereArgs: [id]);
   }
 
-  // LINK SKILLS
   Future<void> linkSkills(int missionId, List<int> skillIds) async {
     final db = await _dbHelper.database;
 
-    // Remover links antigos
     await db.delete('mission_skills', where: 'mission_id = ?', whereArgs: [missionId]);
 
-    // Adicionar novos links
     for (final skillId in skillIds) {
       await db.insert('mission_skills', {
         'mission_id': missionId,
@@ -104,7 +93,6 @@ class MissionRepository {
     }
   }
 
-  // COUNT
   Future<int> countByStatus(String status) async {
     final db = await _dbHelper.database;
     final result = await db.rawQuery(

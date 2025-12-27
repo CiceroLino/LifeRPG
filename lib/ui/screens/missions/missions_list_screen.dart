@@ -3,8 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../../data/models/mission.dart';
 import '../../../providers/mission_provider.dart';
-import '../../widgets/mission/mission_card_real.dart';
-import 'mission_form_screen.dart';
+import '../../widgets/mission/mission_card.dart';
 
 class MissionsListScreen extends StatefulWidget {
   const MissionsListScreen({super.key});
@@ -18,85 +17,89 @@ class _MissionsListScreenState extends State<MissionsListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Missões'),
-      ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          await context.read<MissionProvider>().loadMissions();
-        },
-        child: Consumer<MissionProvider>(
-          builder: (context, provider, _) {
-            if (provider.isLoading) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            final missions = _filtered(provider.missions);
+    return RefreshIndicator(
+      onRefresh: () async {
+        await context.read<MissionProvider>().loadMissions();
+      },
+      child: Consumer<MissionProvider>(
+        builder: (context, provider, _) {
+          if (provider.isLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final missions = _filtered(provider.missions);
 
-            if (missions.isEmpty) {
-              return const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(32),
-                  child: Text(
-                    'Nenhuma missão encontrada.\nUse o botão + para criar.',
-                    textAlign: TextAlign.center,
-                  ),
+          if (missions.isEmpty) {
+            return const Center(
+              child: Padding(
+                padding: EdgeInsets.all(32),
+                child: Text(
+                  'Nenhuma missão encontrada.\nUse o botão + para criar.',
+                  textAlign: TextAlign.center,
                 ),
-              );
-            }
-
-            return ListView.builder(
-              padding: const EdgeInsets.only(bottom: 88),
-              itemCount: missions.length,
-              itemBuilder: (context, index) {
-                final mission = missions[index];
-                return MissionCardReal(
-                  mission: mission,
-                  onComplete: mission.id != null
-                      ? () => _completeMission(mission)
-                      : null,
-                );
-              },
+              ),
             );
-          },
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const MissionFormScreen()),
+          }
+
+          return Column(
+            children: [
+              // Filtros
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                color: Theme.of(context).scaffoldBackgroundColor,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _FilterChip(
+                      label: 'Todas',
+                      selected: _filter == 'all',
+                      onTap: () => setState(() => _filter = 'all'),
+                    ),
+                    _FilterChip(
+                      label: 'Ativas',
+                      selected: _filter == 'active',
+                      onTap: () => setState(() => _filter = 'active'),
+                    ),
+                    _FilterChip(
+                      label: 'Completas',
+                      selected: _filter == 'completed',
+                      onTap: () => setState(() => _filter = 'completed'),
+                    ),
+                    _FilterChip(
+                      label: 'Arquivadas',
+                      selected: _filter == 'archived',
+                      onTap: () => setState(() => _filter = 'archived'),
+                    ),
+                  ],
+                ),
+              ),
+              // Lista de missões
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.only(bottom: 88),
+                  itemCount: missions.length,
+                  itemBuilder: (context, index) {
+                    final mission = missions[index];
+                    return MissionCard(
+                      mission: mission,
+                      onTap: () {
+                        // Abre detalhes ou completa a missão
+                        if (mission.id != null) {
+                          _completeMission(mission);
+                        }
+                      },
+                      onAddSubtask: () {
+                        // TODO: Implementar adicionar subtask
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
           );
         },
-        child: const Icon(Icons.add),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            _FilterChip(
-              label: 'Todas',
-              selected: _filter == 'all',
-              onTap: () => setState(() => _filter = 'all'),
-            ),
-            _FilterChip(
-              label: 'Ativas',
-              selected: _filter == 'active',
-              onTap: () => setState(() => _filter = 'active'),
-            ),
-            _FilterChip(
-              label: 'Completas',
-              selected: _filter == 'completed',
-              onTap: () => setState(() => _filter = 'completed'),
-            ),
-            _FilterChip(
-              label: 'Arquivadas',
-              selected: _filter == 'archived',
-              onTap: () => setState(() => _filter = 'archived'),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -197,4 +200,3 @@ class _FilterChip extends StatelessWidget {
     );
   }
 }
-

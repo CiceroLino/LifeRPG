@@ -9,7 +9,6 @@ class PlayerRepository {
     final db = await _dbHelper.database;
     final maps = await db.query('player', where: 'id = 1');
     if (maps.isEmpty) {
-      // Criar player se não existir
       final now = DateTime.now().toIso8601String();
       await db.insert('player', {
         'id': 1,
@@ -26,7 +25,6 @@ class PlayerRepository {
     }
     final player = Player.fromMap(maps.first);
 
-    // Garantir consistência de level baseado no XP total armazenado.
     final calculatedLevel = XPCalculator.calculateLevel(player.totalXP);
     if (calculatedLevel != player.level) {
       final updated = player.copyWith(level: calculatedLevel);

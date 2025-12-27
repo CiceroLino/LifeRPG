@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/mission.dart';
-import '../../../data/models/skill.dart';
 import '../../../providers/mission_provider.dart';
 import '../../../providers/skill_provider.dart';
 
@@ -58,9 +57,7 @@ class _MissionFormScreenState extends State<MissionFormScreen> {
     final missions = context.watch<MissionProvider>().missions;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Nova Missão'),
-      ),
+      appBar: AppBar(title: const Text('Nova Missão')),
       floatingActionButton: FloatingActionButton(
         onPressed: _save,
         child: const Icon(Icons.check),
@@ -118,7 +115,9 @@ class _MissionFormScreenState extends State<MissionFormScreen> {
                         selected: _selectedSkills.contains(skill.id),
                         onSelected: (sel) => setState(() {
                           if (skill.id == null) return;
-                          sel ? _selectedSkills.add(skill.id!) : _selectedSkills.remove(skill.id!);
+                          sel
+                              ? _selectedSkills.add(skill.id!)
+                              : _selectedSkills.remove(skill.id!);
                         }),
                       ),
                     )
@@ -127,17 +126,15 @@ class _MissionFormScreenState extends State<MissionFormScreen> {
             const SizedBox(height: 16),
             _Section(title: 'Relacionamento'),
             DropdownButtonFormField<int>(
-              value: _parentMissionId,
+              initialValue: _parentMissionId,
               decoration: const InputDecoration(labelText: 'Parent Mission'),
               items: [
                 const DropdownMenuItem(value: null, child: Text('Nenhuma')),
                 ...missions
                     .where((m) => m.id != null)
                     .map(
-                      (m) => DropdownMenuItem(
-                        value: m.id,
-                        child: Text(m.title),
-                      ),
+                      (m) =>
+                          DropdownMenuItem(value: m.id, child: Text(m.title)),
                     ),
               ],
               onChanged: (v) => setState(() => _parentMissionId = v),
@@ -161,11 +158,14 @@ class _MissionFormScreenState extends State<MissionFormScreen> {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              value: _recurrence,
+              initialValue: _recurrence,
               decoration: const InputDecoration(labelText: 'Repetition'),
               items: const [
                 DropdownMenuItem(value: 'once', child: Text('Once')),
-                DropdownMenuItem(value: 'continuous', child: Text('Continuous')),
+                DropdownMenuItem(
+                  value: 'continuous',
+                  child: Text('Continuous'),
+                ),
                 DropdownMenuItem(value: 'daily', child: Text('Daily')),
                 DropdownMenuItem(value: 'weekly', child: Text('Weekly')),
                 DropdownMenuItem(value: 'monthly', child: Text('Monthly')),
@@ -192,36 +192,27 @@ class _MissionFormScreenState extends State<MissionFormScreen> {
             ),
             const SizedBox(height: 16),
             _Section(title: 'Icon'),
-            SizedBox(
-              height: 80,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemBuilder: (context, index) {
-                  final asset = _iconOptions[index];
-                  final selected = asset == _iconAsset;
-                  return GestureDetector(
-                    onTap: () => setState(() => _iconAsset = asset),
-                    child: Container(
-                      width: 64,
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                          color: selected ? AppTheme.primary : AppTheme.border,
-                          width: selected ? 2 : 1,
-                        ),
-                        borderRadius: BorderRadius.circular(8),
-                        color: AppTheme.surface,
-                      ),
-                      padding: const EdgeInsets.all(8),
-                      child: SvgPicture.asset(
-                        asset,
-                        colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
-                      ),
-                    ),
-                  );
-                },
-                separatorBuilder: (_, __) => const SizedBox(width: 8),
-                itemCount: _iconOptions.length,
+            OutlinedButton.icon(
+              onPressed: _pickIcon,
+              icon: SvgPicture.asset(
+                _iconAsset,
+                width: 20,
+                height: 20,
+                colorFilter: const ColorFilter.mode(
+                  Colors.white,
+                  BlendMode.srcIn,
+                ),
+                placeholderBuilder: (_) => const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: Center(
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ),
+                errorBuilder: (_, __, ___) =>
+                    const Icon(Icons.image_not_supported, size: 18),
               ),
+              label: const Text('Escolher ícone'),
             ),
             const SizedBox(height: 16),
             SwitchListTile.adaptive(
@@ -287,6 +278,64 @@ class _MissionFormScreenState extends State<MissionFormScreen> {
     await context.read<MissionProvider>().addMission(mission);
     if (mounted) Navigator.pop(context);
   }
+
+  Future<void> _pickIcon() async {
+    final selected = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      backgroundColor: AppTheme.surface,
+      builder: (context) {
+        return SizedBox(
+          height: 360,
+          child: GridView.builder(
+            padding: const EdgeInsets.all(12),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 4,
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+            ),
+            itemCount: _iconOptions.length,
+            itemBuilder: (context, index) {
+              final asset = _iconOptions[index];
+              final isSelected = asset == _iconAsset;
+              return GestureDetector(
+                onTap: () => Navigator.pop(context, asset),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: AppTheme.background,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: isSelected ? AppTheme.primary : AppTheme.border,
+                      width: isSelected ? 2 : 1,
+                    ),
+                  ),
+                  padding: const EdgeInsets.all(10),
+                  child: SvgPicture.asset(
+                    asset,
+                    colorFilter: const ColorFilter.mode(
+                      Colors.white,
+                      BlendMode.srcIn,
+                    ),
+                    placeholderBuilder: (_) => const SizedBox(
+                      child: Center(
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+                    errorBuilder: (_, __, ___) =>
+                        const Icon(Icons.image_not_supported),
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+
+    if (selected != null) {
+      setState(() => _iconAsset = selected);
+    }
+  }
 }
 
 class _SliderField extends StatelessWidget {
@@ -346,10 +395,31 @@ class _Section extends StatelessWidget {
 }
 
 const _iconOptions = [
+  // Missões / alvo
   'assets/game-icons.net.svg/icons/ffffff/000000/1x1/lorc/archery-target.svg',
+  'assets/game-icons.net.svg/icons/ffffff/000000/1x1/lorc/crosshair.svg',
+  'assets/game-icons.net.svg/icons/ffffff/000000/1x1/lorc/overkill.svg',
+  // Recompensas / loja
   'assets/game-icons.net.svg/icons/ffffff/000000/1x1/delapouite/present.svg',
-  'assets/game-icons.net.svg/icons/ffffff/000000/1x1/delapouite/chest.svg',
+  'assets/game-icons.net.svg/icons/ffffff/000000/1x1/delapouite/treasure-map.svg',
+  'assets/game-icons.net.svg/icons/ffffff/000000/1x1/delapouite/shopping-bag.svg',
   'assets/game-icons.net.svg/icons/ffffff/000000/1x1/delapouite/shop.svg',
+  // Inventário
+  'assets/game-icons.net.svg/icons/ffffff/000000/1x1/delapouite/chest.svg',
+  'assets/game-icons.net.svg/icons/ffffff/000000/1x1/skoll/open-treasure-chest.svg',
+  'assets/game-icons.net.svg/icons/ffffff/000000/1x1/lorc/locked-chest.svg',
+  // Perfil
   'assets/game-icons.net.svg/icons/ffffff/000000/1x1/darkzaitzev/hooded-figure.svg',
+  'assets/game-icons.net.svg/icons/ffffff/000000/1x1/lorc/angel-wings.svg',
+  'assets/game-icons.net.svg/icons/ffffff/000000/1x1/lorc/aura.svg',
+  // Skills
+  'assets/game-icons.net.svg/icons/ffffff/000000/1x1/delapouite/skills.svg',
+  'assets/game-icons.net.svg/icons/ffffff/000000/1x1/delapouite/barbell.svg',
+  'assets/game-icons.net.svg/icons/ffffff/000000/1x1/lorc/brain.svg',
+  'assets/game-icons.net.svg/icons/ffffff/000000/1x1/lorc/feathered-wing.svg',
+  // Miscelânea
+  'assets/game-icons.net.svg/icons/ffffff/000000/1x1/lorc/light-bulb.svg',
+  'assets/game-icons.net.svg/icons/ffffff/000000/1x1/lorc/gear-hammer.svg',
+  'assets/game-icons.net.svg/icons/ffffff/000000/1x1/lorc/compass.svg',
+  'assets/game-icons.net.svg/icons/ffffff/000000/1x1/lorc/bookmark.svg',
 ];
-

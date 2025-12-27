@@ -1,4 +1,3 @@
-import 'package:sqflite/sqflite.dart';
 import '../database/database_helper.dart';
 import '../models/skill.dart';
 
@@ -50,7 +49,6 @@ class SkillRepository {
     int newXP = skill.currentXP + xp;
     int newLevel = skill.level;
 
-    // Level up logic (100 XP por level)
     while (newXP >= newLevel * 100) {
       newXP -= newLevel * 100;
       newLevel++;

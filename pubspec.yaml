@@ -69,14 +69,14 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
-
-  assets:
-    - assets/game-icons.net.svg/icons/ffffff/000000/1x1/
-
   # To add assets to your application, add an assets section, like this:
   # assets:
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg
+  assets:
+    - assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/
+    - assets/game-icons.net.svg/icons/ffffff/transparent/1x1/delapouite/
+    - assets/game-icons.net.svg/icons/ffffff/transparent/1x1/darkzaitzev/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

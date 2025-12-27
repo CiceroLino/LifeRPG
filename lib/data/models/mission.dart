@@ -54,7 +54,6 @@ class Mission {
   })  : createdAt = createdAt ?? DateTime.now(),
         updatedAt = updatedAt ?? DateTime.now();
 
-  // Converter para Map (para salvar no banco)
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -84,7 +83,6 @@ class Mission {
     };
   }
 
-  // Converter de Map (do banco) para Mission
   factory Mission.fromMap(Map<String, dynamic> map) {
     return Mission(
       id: map['id'] as int?,
@@ -120,7 +118,6 @@ class Mission {
     );
   }
 
-  // Criar cópia com modificações
   Mission copyWith({
     int? id,
     String? title,

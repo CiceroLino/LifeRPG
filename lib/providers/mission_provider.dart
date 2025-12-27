@@ -58,16 +58,12 @@ class MissionProvider extends ChangeNotifier {
     try {
       final mission = await _missionRepo.getWithSkills(id);
       
-      // Completar missão
       await _missionRepo.complete(id);
       
-      // Adicionar XP ao player
       await _playerRepo.addXP(mission.xpReward);
       
-      // Adicionar reward points
       await _playerRepo.addRewardPoints(mission.rewardPoints);
       
-      // Distribuir XP para skills
       if (mission.skillIds.isNotEmpty) {
         final xpPerSkill = (mission.xpReward / mission.skillIds.length).round();
         for (final skillId in mission.skillIds) {
@@ -86,7 +82,6 @@ class MissionProvider extends ChangeNotifier {
     try {
       await _missionRepo.update(mission);
       
-      // Atualizar skills vinculadas
       if (mission.skillIds.isNotEmpty) {
         await _missionRepo.linkSkills(mission.id!, mission.skillIds);
       }

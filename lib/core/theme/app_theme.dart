@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  // Base palette
   static const Color background = Color(0xFF212121); // Dark base
   static const Color surface = Color(0xFF303030); // Slightly lighter for cards
   static const Color primary = Color(0xFF03A9F4); // Accent blue
@@ -12,7 +11,6 @@ class AppTheme {
   static const Color textSecondary = Color(0xFFBDBDBD);
   static const Color border = Color(0xFF424242);
 
-  // Legacy aliases (compatibilidade com widgets existentes)
   static const Color primaryPurple = primary;
   static const Color secondaryGold = accentAmber;
   static const Color successGreen = Color(0xFF4CAF50);
@@ -26,15 +24,14 @@ class AppTheme {
       colorScheme: ColorScheme.dark(
         primary: primary,
         secondary: accentAmber,
-        background: background,
         surface: surface,
         error: accentRed,
       ),
       textTheme: GoogleFonts.robotoTextTheme(
         ThemeData.dark().textTheme.apply(
-              bodyColor: textPrimary,
-              displayColor: textPrimary,
-            ),
+          bodyColor: textPrimary,
+          displayColor: textPrimary,
+        ),
       ),
       cardTheme: CardThemeData(
         color: surface,
@@ -48,7 +45,7 @@ class AppTheme {
       appBarTheme: AppBarTheme(
         centerTitle: false,
         elevation: 0,
-        color: background,
+        backgroundColor: background,
         foregroundColor: textPrimary,
         titleTextStyle: GoogleFonts.roboto(
           fontSize: 18,
@@ -88,7 +85,10 @@ class AppTheme {
         ),
         labelStyle: const TextStyle(color: textSecondary),
         hintStyle: const TextStyle(color: textSecondary),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 10,
+        ),
       ),
       progressIndicatorTheme: const ProgressIndicatorThemeData(
         color: primary,
@@ -97,6 +97,5 @@ class AppTheme {
     );
   }
 
-  // Tema claro mínimo apenas para compat; app usa dark por padrão.
   static ThemeData get lightTheme => darkTheme;
 }

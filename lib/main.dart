@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'dart:io' show Platform;
 
 import 'package:provider/provider.dart';
-import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'core/theme/app_theme.dart';
@@ -14,7 +13,6 @@ import 'ui/screens/main_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Habilita SQLite FFI para desktop (Linux/Windows/macOS).
   if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
@@ -31,7 +29,9 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => PlayerProvider()..loadPlayer()),
-        ChangeNotifierProvider(create: (_) => MissionProvider()..loadMissions()),
+        ChangeNotifierProvider(
+          create: (_) => MissionProvider()..loadMissions(),
+        ),
         ChangeNotifierProvider(create: (_) => SkillProvider()..loadSkills()),
       ],
       child: MaterialApp(

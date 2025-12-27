@@ -2,7 +2,6 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 
 class DatabaseHelper {
-  // Singleton
   static final DatabaseHelper _instance = DatabaseHelper._internal();
   factory DatabaseHelper() => _instance;
   DatabaseHelper._internal();
@@ -23,7 +22,6 @@ class DatabaseHelper {
       path,
       version: 1,
       onConfigure: (db) async {
-        // Garantir que as FKs sejam respeitadas (necessário no SQLite).
         await db.execute('PRAGMA foreign_keys = ON');
       },
       onCreate: _onCreate,
@@ -32,7 +30,6 @@ class DatabaseHelper {
   }
 
   Future<void> _onCreate(Database db, int version) async {
-    // Tabela Player
     await db.execute('''
       CREATE TABLE player (
         id INTEGER PRIMARY KEY CHECK (id = 1),
@@ -48,7 +45,6 @@ class DatabaseHelper {
       )
     ''');
 
-    // Tabela Skills
     await db.execute('''
       CREATE TABLE skills (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -64,7 +60,6 @@ class DatabaseHelper {
       )
     ''');
 
-    // Tabela Missions
     await db.execute('''
       CREATE TABLE missions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -95,11 +90,9 @@ class DatabaseHelper {
       )
     ''');
 
-    // Índices para performance
     await db.execute('CREATE INDEX idx_missions_status ON missions(status)');
     await db.execute('CREATE INDEX idx_missions_parent ON missions(parent_mission_id)');
 
-    // Tabela Mission_Skills (relacionamento Many-to-Many)
     await db.execute('''
       CREATE TABLE mission_skills (
         mission_id INTEGER NOT NULL,
@@ -110,7 +103,6 @@ class DatabaseHelper {
       )
     ''');
 
-    // Inserir player inicial
     await db.insert('player', {
       'id': 1,
       'name': 'Player',
@@ -123,7 +115,6 @@ class DatabaseHelper {
       'updated_at': DateTime.now().toIso8601String(),
     });
 
-    // Inserir skills iniciais
     final now = DateTime.now().toIso8601String();
     await db.insert('skills', {
       'name': 'Inteligência',
@@ -157,9 +148,7 @@ class DatabaseHelper {
     });
   }
 
-  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    // Futuras migrações vão aqui
-  }
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {}
 
   Future<void> close() async {
     final db = await database;
