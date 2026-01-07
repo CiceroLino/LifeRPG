@@ -2,8 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'missions/missions_list_screen.dart';
-import 'missions/mission_editor_screen.dart';
+import 'missions/mission_form_screen.dart';
+import 'map/map_screen.dart';
+import 'rewards/rewards_screen.dart';
+import 'inventory/inventory_screen.dart';
+import 'skills/skills_view.dart';
+import 'statistics/statistics_screen.dart';
+import 'profile/profile_screen.dart';
+import 'shop/shop_screen.dart';
+import 'settings/settings_screen.dart';
+import 'help/help_screen.dart';
 import '../widgets/common/app_drawer.dart';
+import '../widgets/common/liferpg_app_bar.dart';
 import '../widgets/player/player_stats_header.dart';
 import '../../providers/player_provider.dart';
 
@@ -16,6 +26,8 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
+  bool _isStatsExpanded = true;
+  bool _showCompleted = false;
 
   @override
   void initState() {
@@ -30,19 +42,19 @@ class _MainScreenState extends State<MainScreen> {
 
   final _pages = const [
     MissionsListScreen(),
-    _PlaceholderScreen(title: 'Map'),
-    _PlaceholderScreen(title: 'Rewards'),
-    _PlaceholderScreen(title: 'Inventory'),
-    _PlaceholderScreen(title: 'Skills'),
-    _PlaceholderScreen(title: 'Statistics'),
-    _PlaceholderScreen(title: 'Profile'),
-    _PlaceholderScreen(title: 'Shop'),
-    _PlaceholderScreen(title: 'Settings'),
-    _PlaceholderScreen(title: 'Help'),
+    MapScreen(),
+    RewardsScreen(),
+    InventoryScreen(),
+    SkillsView(),
+    StatisticsScreen(),
+    ProfileScreen(),
+    ShopScreen(),
+    SettingsScreen(),
+    HelpScreen(),
   ];
 
-  // Índices que NÃO devem mostrar o header (Settings e Help)
-  bool get _shouldShowHeader => _currentIndex != 8 && _currentIndex != 9;
+  // Índices que NÃO devem mostrar o header (Skills, Settings e Help)
+  bool get _shouldShowHeader => _currentIndex != 4 && _currentIndex != 8 && _currentIndex != 9;
 
   @override
   Widget build(BuildContext context) {
@@ -51,28 +63,64 @@ class _MainScreenState extends State<MainScreen> {
         selectedIndex: _currentIndex,
         onItemSelected: (i) => setState(() => _currentIndex = i),
       ),
-      appBar: AppBar(
-        leading: Builder(
-          builder: (context) => IconButton(
-            icon: const Icon(Icons.menu),
-            onPressed: () => Scaffold.of(context).openDrawer(),
-          ),
-        ),
-        title: Text(_titleForIndex(_currentIndex)),
+      appBar: LifeRPGAppBar(
+        currentScreen: _getCurrentScreenName(_currentIndex),
+        isStatsExpanded: _isStatsExpanded,
+        showCompleted: _showCompleted,
+        onToggleStats: () => setState(() => _isStatsExpanded = !_isStatsExpanded),
+        onToggleShowCompleted: (value) => setState(() => _showCompleted = value),
+        onSearch: () {
+          // TODO: Implementar busca
+        },
+        onEdit: () {
+          // TODO: Implementar edição de perfil
+        },
+        onCalendar: () {
+          // TODO: Implementar calendário
+        },
+        onAddMission: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => const MissionFormScreen(),
+            ),
+          );
+        },
+        onSortChanged: (sortValue) {
+          // TODO: Implementar ordenação
+          debugPrint('Sort changed to: $sortValue');
+        },
+        onWorkspaceChanged: (workspace) {
+          // TODO: Implementar troca de workspace
+          debugPrint('Workspace changed to:      $workspace');
+        },
+        onResetAvatar: () {
+          // TODO: Implementar reset de avatar
+        },
+        onShareProfile: () {
+          // TODO: Implementar compartilhamento de perfil
+        },
+        onExportData: () {
+          // TODO: Implementar exportação de dados
+        },
+        onClearHistory: () {
+          // TODO: Implementar limpeza de histórico
+        },
+        onSkillsFilter: () {
+          // TODO: Implementar filtro de skills
+        },
       ),
       body: Consumer<PlayerProvider>(
         builder: (context, playerProvider, _) {
-          return Column(
+            return Column(
             children: [
-              // Player Stats Header (mostra apenas se não for Settings ou Help)
-              if (_shouldShowHeader && playerProvider.player != null)
+              // Player Stats Header (mostra apenas se não for Settings ou Help e se estiver expandido)
+              if (_shouldShowHeader && 
+                  _isStatsExpanded && 
+                  playerProvider.player != null)
                 PlayerStatsHeader(
                   player: playerProvider.player!,
-                  title: 'Adventurer', // TODO: Adicionar campo title ao Player model
-                  onTabChanged: (index) {
-                    // TODO: Implementar filtro de missões baseado na tab selecionada
-                    // 0: PLAN, 1: ALL, 2: NEXT, 3: OVERDUE, 4: TODAY
-                  },
+                  showTabs: _currentIndex == 0,
+                  onTabChanged: (index) {},
                 ),
               // Conteúdo da tela
               Expanded(
@@ -85,54 +133,60 @@ class _MainScreenState extends State<MainScreen> {
           );
         },
       ),
-      floatingActionButton: _currentIndex == 0
-          ? FloatingActionButton(
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const MissionEditorScreen(),
-                  ),
-                );
-              },
-              child: const Icon(Icons.add),
-            )
-          : null,
+      floatingActionButton: _buildFAB(),
     );
   }
 
-  String _titleForIndex(int i) {
-    const titles = [
-      'Missions',
-      'Map',
-      'Rewards',
-      'Inventory',
-      'Skills',
-      'Statistics',
-      'Profile',
-      'Shop',
-      'Settings',
-      'Help',
-    ];
-    if (i >= 0 && i < titles.length) {
-      return titles[i];
+  Widget? _buildFAB() {
+    switch (_currentIndex) {
+      case 0:
+        return FloatingActionButton(
+          onPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const MissionFormScreen(),
+              ),
+            );
+          },
+          child: const Icon(Icons.add),
+        );
+      case 2:
+        return FloatingActionButton(
+          onPressed: () {},
+          child: const Icon(Icons.add),
+        );
+      case 3:
+        return FloatingActionButton(
+          onPressed: () {},
+          child: const Icon(Icons.add),
+        );
+      case 4:
+        return FloatingActionButton(
+          onPressed: () {},
+          child: const Icon(Icons.add),
+        );
+      default:
+        return null;
     }
-    return 'Unknown';
+  }
+
+  /// Retorna o nome da tela atual baseado no índice
+  String _getCurrentScreenName(int index) {
+    const screenNames = [
+      'missions',
+      'map',
+      'rewards',
+      'inventory',
+      'skills',
+      'statistics',
+      'profile',
+      'shop',
+      'settings',
+      'help',
+    ];
+    if (index >= 0 && index < screenNames.length) {
+      return screenNames[index];
+    }
+    return 'missions'; // Default
   }
 }
-
-class _PlaceholderScreen extends StatelessWidget {
-  final String title;
-
-  const _PlaceholderScreen({required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Text(
-        title,
-        style: const TextStyle(fontSize: 18),
-      ),
-    );
-  }
-}
-

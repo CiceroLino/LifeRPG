@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:intl/intl.dart';
+import 'dart:io';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/player.dart';
@@ -8,20 +10,21 @@ import '../../../core/utils/xp_calculator.dart';
 
 class PlayerStatsHeader extends StatelessWidget {
   final Player player;
-  final String? title; // Título/Classe do jogador (ex: "Junior Developer")
-  final int maxHp; // HP máximo (padrão: 100)
-  final ValueChanged<int>? onTabChanged; // Callback quando a tab muda
+  final int maxHp;
+  final ValueChanged<int>? onTabChanged;
+  final bool showTabs;
 
   const PlayerStatsHeader({
     super.key,
     required this.player,
-    this.title,
     this.maxHp = 100,
     this.onTabChanged,
+    this.showTabs = false,
   });
 
   /// Calcula o XP atual no nível
-  int get currentXp => XPCalculator.xpInCurrentLevel(player.totalXP, player.level);
+  int get currentXp =>
+      XPCalculator.xpInCurrentLevel(player.totalXP, player.level);
 
   /// Calcula o XP necessário para o próximo nível
   int get nextLevelXp => XPCalculator.xpForNextLevel(player.level);
@@ -50,125 +53,125 @@ class PlayerStatsHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 6,
-      child: Container(
-        color: AppTheme.background,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // SEÇÃO SUPERIOR: Info do Jogador
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Row(
-                children: [
-                  // Avatar (Esquerda)
-                  _buildAvatar(),
-                  const SizedBox(width: 12),
-                  
-                  // Nome e Título (Centro)
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+    final content = Container(
+      color: AppTheme.background,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // SEÇÃO SUPERIOR: Info do Jogador
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                // Avatar (Esquerda)
+                _buildAvatar(),
+                const SizedBox(width: 12),
+
+                // Nome e Título (Centro)
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        player.name,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        player.title,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Pontos e Nível (Direita)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Linha Superior: Diamante + Pontos
+                    Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(
-                          player.name,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.textPrimary,
-                          ),
+                        const FaIcon(
+                          FontAwesomeIcons.gem,
+                          size: 14,
+                          color: AppTheme.textSecondary,
                         ),
-                        const SizedBox(height: 2),
+                        const SizedBox(width: 4),
                         Text(
-                          title ?? 'Adventurer',
+                          '${player.rewardPoints}',
                           style: const TextStyle(
                             fontSize: 14,
+                            fontWeight: FontWeight.w600,
                             color: AppTheme.textSecondary,
                           ),
                         ),
                       ],
                     ),
-                  ),
-                  
-                  // Pontos e Nível (Direita)
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Linha Superior: Diamante + Pontos
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const FaIcon(
-                            FontAwesomeIcons.gem,
-                            size: 14,
-                            color: AppTheme.textSecondary,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${player.rewardPoints}',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: AppTheme.textSecondary,
-                            ),
-                          ),
-                        ],
+                    const SizedBox(height: 4),
+                    // Linha Inferior: Nível GIGANTE e AMARELO
+                    Text(
+                      '${player.level}',
+                      style: const TextStyle(
+                        fontSize: 44,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFFFFD700), // Gold/Amber
+                        height: 1.0,
+                        letterSpacing: -2,
                       ),
-                      const SizedBox(height: 4),
-                      // Linha Inferior: Nível GIGANTE e AMARELO
-                      Text(
-                        '${player.level}',
-                        style: const TextStyle(
-                          fontSize: 44,
-                          fontWeight: FontWeight.w900,
-                          color: Color(0xFFFFD700), // Gold/Amber
-                          height: 1.0,
-                          letterSpacing: -2,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+                    ),
+                  ],
+                ),
+              ],
             ),
+          ),
 
-            // SEÇÃO DO MEIO: Barras de Progresso Stacked
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Barra de XP (Cima)
-                  _buildProgressBar(
-                    progress: xpProgress,
-                    backgroundColor: const Color(0xFF424242),
-                    fillColor: const Color(0xFF2196F3), // Azul Neon
-                    height: 20,
-                    label: '${_formatNumber(currentXp)} / ${_formatNumber(nextLevelXp)}',
-                    labelAlignment: Alignment.centerLeft,
-                    labelPadding: const EdgeInsets.only(left: 8),
-                  ),
-                  
-                  // Barra de HP (Baixo) - sem espaçamento
-                  _buildProgressBar(
-                    progress: hpProgress,
-                    backgroundColor: const Color(0xFF424242),
-                    fillColor: AppTheme.accentRed, // Vermelho
-                    height: 20,
-                    label: '${player.currentEnergy}/$maxHp',
-                    labelAlignment: Alignment.centerLeft,
-                    labelPadding: const EdgeInsets.only(left: 8),
-                    rightLabel: _formatTimeLeft(),
-                    rightLabelPadding: const EdgeInsets.only(right: 8),
-                  ),
-                ],
-              ),
+          // SEÇÃO DO MEIO: Barras de Progresso Stacked
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Barra de XP (Cima)
+                _buildProgressBar(
+                  progress: xpProgress,
+                  backgroundColor: const Color(0xFF424242),
+                  fillColor: const Color(0xFF2196F3), // Azul Neon
+                  height: 20,
+                  label:
+                      '${_formatNumber(currentXp)} / ${_formatNumber(nextLevelXp)}',
+                  labelAlignment: Alignment.centerLeft,
+                  labelPadding: const EdgeInsets.only(left: 8),
+                ),
+
+                // Barra de HP (Baixo) - sem espaçamento
+                _buildProgressBar(
+                  progress: hpProgress,
+                  backgroundColor: const Color(0xFF424242),
+                  fillColor: AppTheme.accentRed, // Vermelho
+                  height: 20,
+                  label: '${player.currentEnergy}/$maxHp',
+                  labelAlignment: Alignment.centerLeft,
+                  labelPadding: const EdgeInsets.only(left: 8),
+                  rightLabel: _formatTimeLeft(),
+                  rightLabelPadding: const EdgeInsets.only(right: 8),
+                ),
+              ],
             ),
+          ),
 
-            // SEÇÃO INFERIOR: Tabs/Filtros
+          // SEÇÃO INFERIOR: Tabs/Filtros (apenas se showTabs == true)
+          if (showTabs)
             Container(
               color: AppTheme.surface,
               child: TabBar(
@@ -197,10 +200,16 @@ class PlayerStatsHeader extends StatelessWidget {
                 ],
               ),
             ),
-          ],
-        ),
+        ],
       ),
     );
+
+    // Se showTabs é true, precisa do DefaultTabController
+    if (showTabs) {
+      return DefaultTabController(length: 6, child: content);
+    }
+
+    return content;
   }
 
   /// Constrói o avatar
@@ -216,14 +225,64 @@ class PlayerStatsHeader extends StatelessWidget {
       child: player.avatarPath != null && player.avatarPath!.isNotEmpty
           ? ClipRRect(
               borderRadius: BorderRadius.circular(8),
-              child: Image.asset(
-                player.avatarPath!,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _buildAvatarPlaceholder(),
-              ),
+              child: _buildAvatarImage(player.avatarPath!),
             )
           : _buildAvatarPlaceholder(),
     );
+  }
+
+  /// Constrói a imagem do avatar suportando assets e arquivos customizados
+  Widget _buildAvatarImage(String avatarPath) {
+    // Se for um caminho absoluto (arquivo customizado)
+    if (avatarPath.startsWith('/') || avatarPath.startsWith('file://')) {
+      try {
+        final filePath = avatarPath.replaceFirst('file://', '');
+        final file = File(filePath);
+        if (file.existsSync()) {
+          if (filePath.endsWith('.svg')) {
+            return SvgPicture.file(
+              file,
+              fit: BoxFit.cover,
+              colorFilter: const ColorFilter.mode(
+                AppTheme.textPrimary,
+                BlendMode.srcIn,
+              ),
+              placeholderBuilder: (_) => _buildAvatarPlaceholder(),
+              errorBuilder: (_, __, ___) => _buildAvatarPlaceholder(),
+            );
+          } else {
+            return Image.file(
+              file,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => _buildAvatarPlaceholder(),
+            );
+          }
+        }
+      } catch (e) {
+        // Se houver erro, retorna placeholder
+        return _buildAvatarPlaceholder();
+      }
+    }
+
+    // Se for um asset (SVG ou imagem)
+    if (avatarPath.endsWith('.svg')) {
+      return SvgPicture.asset(
+        avatarPath,
+        fit: BoxFit.cover,
+        colorFilter: const ColorFilter.mode(
+          AppTheme.textPrimary,
+          BlendMode.srcIn,
+        ),
+        placeholderBuilder: (_) => _buildAvatarPlaceholder(),
+        errorBuilder: (_, __, ___) => _buildAvatarPlaceholder(),
+      );
+    } else {
+      return Image.asset(
+        avatarPath,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _buildAvatarPlaceholder(),
+      );
+    }
   }
 
   /// Placeholder do avatar
@@ -267,10 +326,7 @@ class PlayerStatsHeader extends StatelessWidget {
             // Preenchimento (Progresso)
             FractionallySizedBox(
               widthFactor: progress.clamp(0.0, 1.0),
-              child: Container(
-                height: height,
-                color: fillColor,
-              ),
+              child: Container(height: height, color: fillColor),
             ),
             // Texto sobreposto (Esquerda)
             Positioned.fill(

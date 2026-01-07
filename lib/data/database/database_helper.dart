@@ -20,7 +20,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
       },
@@ -34,6 +34,7 @@ class DatabaseHelper {
       CREATE TABLE player (
         id INTEGER PRIMARY KEY CHECK (id = 1),
         name TEXT NOT NULL DEFAULT 'Player',
+        title TEXT NOT NULL DEFAULT 'Adventurer',
         total_xp INTEGER DEFAULT 0,
         level INTEGER DEFAULT 1,
         reward_points INTEGER DEFAULT 0,
@@ -106,6 +107,7 @@ class DatabaseHelper {
     await db.insert('player', {
       'id': 1,
       'name': 'Player',
+      'title': 'Adventurer',
       'total_xp': 0,
       'level': 1,
       'reward_points': 0,
@@ -148,7 +150,11 @@ class DatabaseHelper {
     });
   }
 
-  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {}
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute('ALTER TABLE player ADD COLUMN title TEXT NOT NULL DEFAULT "Adventurer"');
+    }
+  }
 
   Future<void> close() async {
     final db = await database;

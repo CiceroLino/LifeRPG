@@ -90,6 +90,9 @@ class AppTheme {
           vertical: 10,
         ),
       ),
+      // Tema adicional para inputs com underline (estilo old school Android)
+      // Pode ser usado com: InputDecorationTheme(..., border: UnderlineInputBorder(...))
+      // ou diretamente no TextField com decoration customizada
       progressIndicatorTheme: const ProgressIndicatorThemeData(
         color: primary,
         linearTrackColor: border,

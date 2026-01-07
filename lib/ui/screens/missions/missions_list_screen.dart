@@ -5,15 +5,8 @@ import '../../../data/models/mission.dart';
 import '../../../providers/mission_provider.dart';
 import '../../widgets/mission/mission_card.dart';
 
-class MissionsListScreen extends StatefulWidget {
+class MissionsListScreen extends StatelessWidget {
   const MissionsListScreen({super.key});
-
-  @override
-  State<MissionsListScreen> createState() => _MissionsListScreenState();
-}
-
-class _MissionsListScreenState extends State<MissionsListScreen> {
-  String _filter = 'all';
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +19,7 @@ class _MissionsListScreenState extends State<MissionsListScreen> {
           if (provider.isLoading) {
             return const Center(child: CircularProgressIndicator());
           }
-          final missions = _filtered(provider.missions);
+          final missions = provider.missions;
 
           if (missions.isEmpty) {
             return const Center(
@@ -40,163 +33,32 @@ class _MissionsListScreenState extends State<MissionsListScreen> {
             );
           }
 
-          return Column(
-            children: [
-              // Filtros
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                color: Theme.of(context).scaffoldBackgroundColor,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    _FilterChip(
-                      label: 'Todas',
-                      selected: _filter == 'all',
-                      onTap: () => setState(() => _filter = 'all'),
-                    ),
-                    _FilterChip(
-                      label: 'Ativas',
-                      selected: _filter == 'active',
-                      onTap: () => setState(() => _filter = 'active'),
-                    ),
-                    _FilterChip(
-                      label: 'Completas',
-                      selected: _filter == 'completed',
-                      onTap: () => setState(() => _filter = 'completed'),
-                    ),
-                    _FilterChip(
-                      label: 'Arquivadas',
-                      selected: _filter == 'archived',
-                      onTap: () => setState(() => _filter = 'archived'),
-                    ),
-                  ],
-                ),
-              ),
-              // Lista de missões
-              Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.only(bottom: 88),
-                  itemCount: missions.length,
-                  itemBuilder: (context, index) {
-                    final mission = missions[index];
-                    return MissionCard(
-                      mission: mission,
-                      onTap: () {
-                        // Abre detalhes ou completa a missão
-                        if (mission.id != null) {
-                          _completeMission(mission);
-                        }
-                      },
-                      onAddSubtask: () {
-                        // TODO: Implementar adicionar subtask
-                      },
-                    );
-                  },
-                ),
-              ),
-            ],
+          return ListView.builder(
+            padding: const EdgeInsets.only(bottom: 88),
+            itemCount: missions.length,
+            itemBuilder: (context, index) {
+              final mission = missions[index];
+              return MissionCard(
+                mission: mission,
+                onTap: () {
+                  if (mission.id != null) {
+                    _completeMission(context, mission);
+                  }
+                },
+                onAddSubtask: () {},
+              );
+            },
           );
         },
       ),
     );
   }
 
-  List<Mission> _filtered(List<Mission> missions) {
-    switch (_filter) {
-      case 'active':
-        return missions.where((m) => m.status == 'active').toList();
-      case 'completed':
-        return missions.where((m) => m.status == 'completed').toList();
-      case 'archived':
-        return missions.where((m) => m.status == 'archived').toList();
-      default:
-        return missions;
-    }
-  }
-
-  Future<void> _completeMission(Mission mission) async {
+  Future<void> _completeMission(BuildContext context, Mission mission) async {
     await context.read<MissionProvider>().completeMission(mission.id!);
-    if (!mounted) return;
+    if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Missão "${mission.title}" concluída!')),
-    );
-  }
-
-  void _showAddMissionDialog() {
-    final titleController = TextEditingController();
-    final descController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Nova Missão'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: titleController,
-              decoration: const InputDecoration(
-                labelText: 'Título',
-                border: OutlineInputBorder(),
-              ),
-              autofocus: true,
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: descController,
-              decoration: const InputDecoration(
-                labelText: 'Descrição (opcional)',
-                border: OutlineInputBorder(),
-              ),
-              maxLines: 3,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (titleController.text.trim().isEmpty) return;
-              final mission = Mission(
-                title: titleController.text.trim(),
-                description: descController.text.trim(),
-                xpReward: 50,
-                rewardPoints: 10,
-              );
-              await context.read<MissionProvider>().addMission(mission);
-              if (context.mounted) Navigator.pop(context);
-            },
-            child: const Text('Criar'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _FilterChip extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _FilterChip({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ChoiceChip(
-      label: Text(label),
-      selected: selected,
-      onSelected: (_) => onTap(),
     );
   }
 }

@@ -1,4 +1,3 @@
-import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -11,46 +10,76 @@ class SkillsView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Skills'),
-      ),
-      body: Consumer<SkillProvider>(
-        builder: (context, provider, _) {
-          final skills = provider.skills;
-          if (provider.isLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          return DefaultTabController(
-            length: 2,
-            child: Column(
-              children: [
-                const TabBar(
-                  indicatorColor: AppTheme.primary,
-                  tabs: [
-                    Tab(text: 'LIST'),
-                    Tab(text: 'RADAR'),
-                  ],
-                ),
-                Expanded(
-                  child: TabBarView(
-                    children: [
-                      _buildList(skills),
-                      _buildRadar(skills),
-                    ],
-                  ),
-                ),
+    return DefaultTabController(
+      length: 2,
+      child: Column(
+        children: [
+          Container(
+            color: AppTheme.surface,
+            child: const TabBar(
+              indicatorColor: AppTheme.primary,
+              indicatorWeight: 3,
+              labelColor: AppTheme.textPrimary,
+              unselectedLabelColor: AppTheme.textSecondary,
+              labelStyle: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.5,
+              ),
+              tabs: [
+                Tab(text: 'ALL'),
+                Tab(text: 'TOP'),
               ],
             ),
-          );
-        },
+          ),
+          Expanded(
+            child: Consumer<SkillProvider>(
+              builder: (context, skillProvider, _) {
+                final skills = skillProvider.skills;
+
+                if (skillProvider.isLoading) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                return TabBarView(
+                  children: [
+                    _buildAllList(skills),
+                    _buildTopChart(skills),
+                  ],
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildList(List skills) {
+  Widget _buildAllList(List skills) {
+    if (skills.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.warning,
+              size: 64,
+              color: AppTheme.textPrimary,
+            ),
+            SizedBox(height: 16),
+            Text(
+              'No skills yet',
+              style: TextStyle(
+                fontSize: 16,
+                color: AppTheme.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return ListView.builder(
-      padding: const EdgeInsets.all(12),
       itemCount: skills.length,
       itemBuilder: (context, index) {
         final skill = skills[index];
@@ -59,65 +88,34 @@ class SkillsView extends StatelessWidget {
     );
   }
 
-  Widget _buildRadar(List skills) {
-    if (skills.isEmpty) {
+  Widget _buildTopChart(List skills) {
+    if (skills.length < 3) {
       return const Center(
-        child: Text(
-          'Sem skills para exibir',
-          style: TextStyle(color: AppTheme.textSecondary),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.warning,
+              size: 64,
+              color: AppTheme.textPrimary,
+            ),
+            SizedBox(height: 16),
+            Text(
+              'You need at least 3 skills to view chart.',
+              style: TextStyle(
+                fontSize: 16,
+                color: AppTheme.textSecondary,
+              ),
+            ),
+          ],
         ),
       );
     }
 
-    // Limitar número para visualização
-    final radarSkills = skills.take(8).toList();
-    final maxValue = (radarSkills.map((s) => s.level).fold<int>(1, (p, e) => e > p ? e : p)).toDouble();
-
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: RadarChart(
-        RadarChartData(
-          radarBackgroundColor: Colors.transparent,
-          borderData: FlBorderData(show: false),
-          gridBorderData: BorderSide(color: AppTheme.border.withOpacity(0.6), width: 1),
-          radarBorderData: const BorderSide(color: Colors.transparent),
-          tickBorderData: BorderSide(color: AppTheme.border.withOpacity(0.6), width: 1),
-          tickCount: 4,
-          titlePositionPercentageOffset: 0.15,
-          titleTextStyle: const TextStyle(
-            color: AppTheme.textSecondary,
-            fontSize: 12,
-          ),
-          dataSets: [
-            RadarDataSet(
-              fillColor: AppTheme.primary.withOpacity(0.5),
-              borderColor: AppTheme.primary,
-              entryRadius: 3,
-              borderWidth: 2,
-              dataEntries: radarSkills
-                  .map((s) => RadarEntry(value: s.level.toDouble()))
-                  .toList(),
-            ),
-          ],
-          getTitle: (index) {
-            if (index < 0 || index >= radarSkills.length) return '';
-            return radarSkills[index].name;
-          },
-          radarShape: RadarShape.polygon,
-          radarTouchData: const RadarTouchData(enabled: false),
-          tickLabels: const [
-            '0',
-            '25%',
-            '50%',
-            '75%',
-            '100%',
-          ],
-          tickLabelTextStyle: const TextStyle(
-            color: AppTheme.textSecondary,
-            fontSize: 10,
-          ),
-        ),
-        swapAnimationDuration: const Duration(milliseconds: 400),
+    return const Center(
+      child: Text(
+        'Chart view (coming soon)',
+        style: TextStyle(color: AppTheme.textSecondary),
       ),
     );
   }

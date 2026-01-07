@@ -28,7 +28,7 @@ class _IconPickerDialogState extends State<IconPickerDialog> {
     'task': Icons.check_circle_outline,
     'flag': Icons.flag_outlined,
     'star': Icons.star_border,
-    'sword': FontAwesomeIcons.sword,
+    'sword': FontAwesomeIcons.book,
     'book': FontAwesomeIcons.book,
     'brain': FontAwesomeIcons.brain,
     'bolt': FontAwesomeIcons.bolt,
@@ -119,13 +119,7 @@ class _IconPickerDialogState extends State<IconPickerDialog> {
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: AppTheme.border),
                 ),
-                child: Center(
-                  child: Icon(
-                    icon,
-                    color: Colors.white,
-                    size: 22,
-                  ),
-                ),
+                child: Center(child: Icon(icon, color: Colors.white, size: 22)),
               ),
             );
           },
@@ -134,5 +128,3 @@ class _IconPickerDialogState extends State<IconPickerDialog> {
     );
   }
 }
-
-

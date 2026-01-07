@@ -1,6 +1,7 @@
 class Player {
   final int id;
   final String name;
+  final String title;
   final int totalXP;
   final int level;
   final int rewardPoints;
@@ -13,6 +14,7 @@ class Player {
   Player({
     this.id = 1,
     this.name = 'Player',
+    this.title = 'Adventurer',
     this.totalXP = 0,
     this.level = 1,
     this.rewardPoints = 0,
@@ -28,6 +30,7 @@ class Player {
     return {
       'id': id,
       'name': name,
+      'title': title,
       'total_xp': totalXP,
       'level': level,
       'reward_points': rewardPoints,
@@ -43,6 +46,7 @@ class Player {
     return Player(
       id: map['id'] as int? ?? 1,
       name: map['name'] as String? ?? 'Player',
+      title: map['title'] as String? ?? 'Adventurer',
       totalXP: map['total_xp'] as int? ?? 0,
       level: map['level'] as int? ?? 1,
       rewardPoints: map['reward_points'] as int? ?? 0,
@@ -57,6 +61,7 @@ class Player {
   Player copyWith({
     int? id,
     String? name,
+    String? title,
     int? totalXP,
     int? level,
     int? rewardPoints,
@@ -69,6 +74,7 @@ class Player {
     return Player(
       id: id ?? this.id,
       name: name ?? this.name,
+      title: title ?? this.title,
       totalXP: totalXP ?? this.totalXP,
       level: level ?? this.level,
       rewardPoints: rewardPoints ?? this.rewardPoints,
