@@ -8,7 +8,7 @@ import 'package:path/path.dart' as path;
 
 import '../../../core/theme/app_theme.dart';
 import '../../../providers/player_provider.dart';
-import '../../../data/models/player.dart';
+// import '../../../data/models/player.dart';
 import '../../widgets/profile/profile_icon_picker.dart';
 
 /// Tela de perfil do jogador com layout de edição fiel ao design original.
@@ -31,7 +31,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.initState();
     final player = context.read<PlayerProvider>().player;
     _nameController = TextEditingController(text: player?.name ?? 'Player');
-    _titleController = TextEditingController(text: player?.title ?? 'Adventurer');
+    _titleController = TextEditingController(
+      text: player?.title ?? 'Adventurer',
+    );
     _descriptionController = TextEditingController(text: '');
   }
 
@@ -91,7 +93,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 width: 1,
                               ),
                             ),
-                            child: _showAvatar && player.avatarPath != null && player.avatarPath!.isNotEmpty
+                            child:
+                                _showAvatar &&
+                                    player.avatarPath != null &&
+                                    player.avatarPath!.isNotEmpty
                                 ? ClipRRect(
                                     borderRadius: BorderRadius.circular(8),
                                     child: player.avatarPath!.endsWith('.svg')
@@ -102,20 +107,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                               AppTheme.textPrimary,
                                               BlendMode.srcIn,
                                             ),
-                                            placeholderBuilder: (_) => _buildAvatarPlaceholder(),
-                                            errorBuilder: (_, __, ___) => _buildAvatarPlaceholder(),
+                                            placeholderBuilder: (_) =>
+                                                _buildAvatarPlaceholder(),
+                                            errorBuilder: (_, __, ___) =>
+                                                _buildAvatarPlaceholder(),
                                           )
-                                        : player.avatarPath!.startsWith('/') || player.avatarPath!.startsWith('file://')
-                                            ? Image.file(
-                                                File(player.avatarPath!.replaceFirst('file://', '')),
-                                                fit: BoxFit.cover,
-                                                errorBuilder: (_, __, ___) => _buildAvatarPlaceholder(),
+                                        : player.avatarPath!.startsWith('/') ||
+                                              player.avatarPath!.startsWith(
+                                                'file://',
                                               )
-                                            : Image.asset(
-                                                player.avatarPath!,
-                                                fit: BoxFit.cover,
-                                                errorBuilder: (_, __, ___) => _buildAvatarPlaceholder(),
+                                        ? Image.file(
+                                            File(
+                                              player.avatarPath!.replaceFirst(
+                                                'file://',
+                                                '',
                                               ),
+                                            ),
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (_, __, ___) =>
+                                                _buildAvatarPlaceholder(),
+                                          )
+                                        : Image.asset(
+                                            player.avatarPath!,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (_, __, ___) =>
+                                                _buildAvatarPlaceholder(),
+                                          ),
                                   )
                                 : _buildAvatarPlaceholder(),
                           ),
@@ -159,37 +176,61 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           child: TextButton(
                             onPressed: () async {
                               // Abre o explorador de arquivos para selecionar um ícone customizado
-                              final result = await FilePicker.platform.pickFiles(
-                                type: FileType.image,
-                                allowedExtensions: ['png', 'jpg', 'jpeg', 'svg', 'gif', 'webp'],
-                              );
+                              final result = await FilePicker.platform
+                                  .pickFiles(
+                                    type: FileType.image,
+                                    allowedExtensions: [
+                                      'png',
+                                      'jpg',
+                                      'jpeg',
+                                      'svg',
+                                      'gif',
+                                      'webp',
+                                    ],
+                                  );
 
-                              if (result != null && result.files.single.path != null && mounted) {
+                              if (result != null &&
+                                  result.files.single.path != null &&
+                                  mounted) {
                                 final filePath = result.files.single.path!;
-                                
+
                                 // Copia o arquivo para o diretório de documentos do app
                                 try {
-                                  final appDir = await getApplicationDocumentsDirectory();
-                                  final customIconsDir = Directory(path.join(appDir.path, 'custom_icons'));
+                                  final appDir =
+                                      await getApplicationDocumentsDirectory();
+                                  final customIconsDir = Directory(
+                                    path.join(appDir.path, 'custom_icons'),
+                                  );
                                   if (!await customIconsDir.exists()) {
-                                    await customIconsDir.create(recursive: true);
+                                    await customIconsDir.create(
+                                      recursive: true,
+                                    );
                                   }
 
                                   final fileName = path.basename(filePath);
-                                  final destPath = path.join(customIconsDir.path, fileName);
+                                  final destPath = path.join(
+                                    customIconsDir.path,
+                                    fileName,
+                                  );
                                   final sourceFile = File(filePath);
-                                  final destFile = await sourceFile.copy(destPath);
+                                  final destFile = await sourceFile.copy(
+                                    destPath,
+                                  );
 
                                   // Salva o caminho do arquivo copiado
                                   final updatedPlayer = player.copyWith(
                                     avatarPath: destFile.path,
                                   );
-                                  await playerProvider.updatePlayer(updatedPlayer);
+                                  await playerProvider.updatePlayer(
+                                    updatedPlayer,
+                                  );
                                 } catch (e) {
                                   if (mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
-                                        content: Text('Erro ao salvar ícone: $e'),
+                                        content: Text(
+                                          'Erro ao salvar ícone: $e',
+                                        ),
                                         backgroundColor: AppTheme.accentRed,
                                       ),
                                     );
@@ -252,16 +293,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   width: 1,
                                 ),
                               ),
-                              contentPadding: const EdgeInsets.only(
-                                bottom: 8,
-                              ),
+                              contentPadding: const EdgeInsets.only(bottom: 8),
                             ),
                             onSubmitted: (value) async {
                               if (value.trim().isNotEmpty) {
                                 final updatedPlayer = player.copyWith(
                                   name: value.trim(),
                                 );
-                                await playerProvider.updatePlayer(updatedPlayer);
+                                await playerProvider.updatePlayer(
+                                  updatedPlayer,
+                                );
                               }
                             },
                           ),
@@ -297,16 +338,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   width: 1,
                                 ),
                               ),
-                              contentPadding: const EdgeInsets.only(
-                                bottom: 8,
-                              ),
+                              contentPadding: const EdgeInsets.only(bottom: 8),
                             ),
                             onSubmitted: (value) async {
                               if (value.trim().isNotEmpty) {
                                 final updatedPlayer = player.copyWith(
                                   title: value.trim(),
                                 );
-                                await playerProvider.updatePlayer(updatedPlayer);
+                                await playerProvider.updatePlayer(
+                                  updatedPlayer,
+                                );
                               }
                             },
                           ),
@@ -331,27 +372,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       fontSize: 14,
                     ),
                     enabledBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(
-                        color: AppTheme.border,
-                        width: 1,
-                      ),
+                      borderSide: BorderSide(color: AppTheme.border, width: 1),
                     ),
                     focusedBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(
-                        color: AppTheme.primary,
-                        width: 2,
-                      ),
+                      borderSide: BorderSide(color: AppTheme.primary, width: 2),
                     ),
                     border: UnderlineInputBorder(
-                      borderSide: BorderSide(
-                        color: AppTheme.border,
-                        width: 1,
-                      ),
+                      borderSide: BorderSide(color: AppTheme.border, width: 1),
                     ),
-                    contentPadding: const EdgeInsets.only(
-                      top: 8,
-                      bottom: 8,
-                    ),
+                    contentPadding: const EdgeInsets.only(top: 8, bottom: 8),
                   ),
                 ),
               ],
@@ -370,11 +399,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         color: AppTheme.surface,
         borderRadius: BorderRadius.circular(8),
       ),
-      child: const Icon(
-        Icons.person,
-        color: AppTheme.textPrimary,
-        size: 40,
-      ),
+      child: const Icon(Icons.person, color: AppTheme.textPrimary, size: 40),
     );
   }
 }

@@ -8,6 +8,7 @@ import 'core/theme/app_theme.dart';
 import 'providers/mission_provider.dart';
 import 'providers/player_provider.dart';
 import 'providers/skill_provider.dart';
+import 'providers/settings_provider.dart';
 import 'ui/screens/main_screen.dart';
 
 void main() async {
@@ -33,6 +34,7 @@ class MyApp extends StatelessWidget {
           create: (_) => MissionProvider()..loadMissions(),
         ),
         ChangeNotifierProvider(create: (_) => SkillProvider()..loadSkills()),
+        ChangeNotifierProvider(create: (_) => SettingsProvider()..initialize()),
       ],
       child: MaterialApp(
         title: 'LifeRPG',
