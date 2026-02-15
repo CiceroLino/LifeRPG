@@ -47,8 +47,48 @@ class PlayerStatsHeader extends StatelessWidget {
 
   /// Formata o timer restante (placeholder - pode ser implementado com lógica real)
   String _formatTimeLeft() {
-    // TODO: Implementar lógica real de timer baseada em regeneração de energia
-    return '04:02:28 left';
+    if (player.energyMode != 'auto') {
+      return 'manual';
+    }
+    if (player.wakeUpTime == null || player.sleepTime == null) {
+      return 'set schedule';
+    }
+
+    final wake = _parseTodayTime(player.wakeUpTime!);
+    final sleep = _parseTodayTime(player.sleepTime!);
+    if (wake == null || sleep == null) {
+      return '--:-- left';
+    }
+
+    final now = DateTime.now();
+    final sleepAdjusted = sleep.isBefore(wake)
+        ? sleep.add(const Duration(days: 1))
+        : sleep;
+    final nowAdjusted = now.isBefore(wake)
+        ? now.add(const Duration(days: 1))
+        : now;
+
+    final target = nowAdjusted.isBefore(sleepAdjusted)
+        ? sleepAdjusted
+        : wake.add(const Duration(days: 1));
+    final remaining = target.difference(nowAdjusted);
+    if (remaining.isNegative) {
+      return '00:00:00 left';
+    }
+    final h = remaining.inHours.toString().padLeft(2, '0');
+    final m = (remaining.inMinutes % 60).toString().padLeft(2, '0');
+    final s = (remaining.inSeconds % 60).toString().padLeft(2, '0');
+    return '$h:$m:$s left';
+  }
+
+  DateTime? _parseTodayTime(String time) {
+    final parts = time.split(':');
+    if (parts.length < 2) return null;
+    final hour = int.tryParse(parts[0]);
+    final minute = int.tryParse(parts[1]);
+    if (hour == null || minute == null) return null;
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day, hour, minute);
   }
 
   @override
@@ -248,13 +288,13 @@ class PlayerStatsHeader extends StatelessWidget {
                 BlendMode.srcIn,
               ),
               placeholderBuilder: (_) => _buildAvatarPlaceholder(),
-              errorBuilder: (_, __, ___) => _buildAvatarPlaceholder(),
+              errorBuilder: (_, error, stackTrace) => _buildAvatarPlaceholder(),
             );
           } else {
             return Image.file(
               file,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => _buildAvatarPlaceholder(),
+              errorBuilder: (_, error, stackTrace) => _buildAvatarPlaceholder(),
             );
           }
         }
@@ -274,13 +314,13 @@ class PlayerStatsHeader extends StatelessWidget {
           BlendMode.srcIn,
         ),
         placeholderBuilder: (_) => _buildAvatarPlaceholder(),
-        errorBuilder: (_, __, ___) => _buildAvatarPlaceholder(),
+        errorBuilder: (_, error, stackTrace) => _buildAvatarPlaceholder(),
       );
     } else {
       return Image.asset(
         avatarPath,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => _buildAvatarPlaceholder(),
+        errorBuilder: (_, error, stackTrace) => _buildAvatarPlaceholder(),
       );
     }
   }
@@ -344,7 +384,7 @@ class PlayerStatsHeader extends StatelessWidget {
                         Shadow(
                           offset: const Offset(0, 0),
                           blurRadius: 2,
-                          color: Colors.black.withOpacity(0.8),
+                          color: Colors.black.withValues(alpha: 0.8),
                         ),
                       ],
                     ),
@@ -369,7 +409,7 @@ class PlayerStatsHeader extends StatelessWidget {
                           Shadow(
                             offset: const Offset(0, 0),
                             blurRadius: 2,
-                            color: Colors.black.withOpacity(0.8),
+                            color: Colors.black.withValues(alpha: 0.8),
                           ),
                         ],
                       ),

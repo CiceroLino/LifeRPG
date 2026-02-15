@@ -32,7 +32,10 @@ const List<String> _profileSvgIcons = [
 
 /// Mostra um dialog/bottom sheet para selecionar um ícone de perfil
 /// Retorna o caminho do SVG selecionado ou null se cancelado
-Future<String?> showProfileIconPicker(BuildContext context, {String? currentIconPath}) {
+Future<String?> showProfileIconPicker(
+  BuildContext context, {
+  String? currentIconPath,
+}) {
   return showModalBottomSheet<String>(
     context: context,
     showDragHandle: true,
@@ -53,7 +56,8 @@ class _ProfileIconPickerContent extends StatefulWidget {
   const _ProfileIconPickerContent({this.currentIconPath});
 
   @override
-  State<_ProfileIconPickerContent> createState() => _ProfileIconPickerContentState();
+  State<_ProfileIconPickerContent> createState() =>
+      _ProfileIconPickerContentState();
 }
 
 class _ProfileIconPickerContentState extends State<_ProfileIconPickerContent> {
@@ -79,7 +83,11 @@ class _ProfileIconPickerContentState extends State<_ProfileIconPickerContent> {
   List<String> get _filteredSvgIcons {
     if (_query.isEmpty) return _profileSvgIcons;
     return _profileSvgIcons.where((path) {
-      final fileName = path.split('/').last.replaceAll('.svg', '').replaceAll('-', ' ');
+      final fileName = path
+          .split('/')
+          .last
+          .replaceAll('.svg', '')
+          .replaceAll('-', ' ');
       return fileName.toLowerCase().contains(_query);
     }).toList();
   }
@@ -106,7 +114,11 @@ class _ProfileIconPickerContentState extends State<_ProfileIconPickerContent> {
                 controller: _searchController,
                 style: const TextStyle(color: AppTheme.textPrimary),
                 decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.search, size: 20, color: AppTheme.textSecondary),
+                  prefixIcon: const Icon(
+                    Icons.search,
+                    size: 20,
+                    color: AppTheme.textSecondary,
+                  ),
                   hintText: 'Search icons...',
                   hintStyle: const TextStyle(color: AppTheme.textSecondary),
                   filled: true,
@@ -121,9 +133,15 @@ class _ProfileIconPickerContentState extends State<_ProfileIconPickerContent> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: AppTheme.primary, width: 2),
+                    borderSide: const BorderSide(
+                      color: AppTheme.primary,
+                      width: 2,
+                    ),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
                 ),
               ),
             ],
@@ -139,7 +157,10 @@ class _ProfileIconPickerContentState extends State<_ProfileIconPickerContent> {
                   ),
                 )
               : GridView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 4,
                     mainAxisSpacing: 12,
@@ -156,7 +177,9 @@ class _ProfileIconPickerContentState extends State<_ProfileIconPickerContent> {
                           color: AppTheme.background,
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(
-                            color: isSelected ? AppTheme.primary : AppTheme.border,
+                            color: isSelected
+                                ? AppTheme.primary
+                                : AppTheme.border,
                             width: isSelected ? 2 : 1,
                           ),
                         ),
@@ -175,7 +198,7 @@ class _ProfileIconPickerContentState extends State<_ProfileIconPickerContent> {
                               ),
                             ),
                           ),
-                          errorBuilder: (_, __, ___) => const Icon(
+                          errorBuilder: (_, error, stackTrace) => const Icon(
                             Icons.image_not_supported,
                             color: AppTheme.textSecondary,
                             size: 24,
@@ -190,4 +213,3 @@ class _ProfileIconPickerContentState extends State<_ProfileIconPickerContent> {
     );
   }
 }
-

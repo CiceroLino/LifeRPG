@@ -36,10 +36,7 @@ class StatisticsScreen extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AppTheme.surface,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: AppTheme.border,
-                  width: 1,
-                ),
+                border: Border.all(color: AppTheme.border, width: 1),
               ),
               padding: const EdgeInsets.all(16),
               child: _LineChartPlaceholder(),
@@ -55,10 +52,7 @@ class StatisticsScreen extends StatelessWidget {
 class _LineChartPlaceholder extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return CustomPaint(
-      painter: _LineChartPainter(),
-      child: Container(),
-    );
+    return CustomPaint(painter: _LineChartPainter(), child: Container());
   }
 }
 
@@ -70,14 +64,9 @@ class _LineChartPainter extends CustomPainter {
       ..strokeWidth = 1.0
       ..style = PaintingStyle.stroke;
 
-    final textStyle = TextStyle(
-      color: AppTheme.textSecondary,
-      fontSize: 10,
-    );
+    final textStyle = TextStyle(color: AppTheme.textSecondary, fontSize: 10);
 
-    final textPainter = TextPainter(
-      textDirection: TextDirection.ltr,
-    );
+    final textPainter = TextPainter(textDirection: TextDirection.ltr);
 
     // Desenha eixo Y (vertical, à esquerda)
     final yAxisX = 40.0;
@@ -108,7 +97,7 @@ class _LineChartPainter extends CustomPainter {
       // Linha de grade horizontal
       if (i < ySteps) {
         final gridPaint = Paint()
-          ..color = AppTheme.border.withOpacity(0.3)
+          ..color = AppTheme.border.withValues(alpha: 0.3)
           ..strokeWidth = 0.5;
         canvas.drawLine(
           Offset(yAxisX, y),
@@ -138,15 +127,9 @@ class _LineChartPainter extends CustomPainter {
       final x = yAxisX + (i * xStep);
 
       // Label do dia
-      textPainter.text = TextSpan(
-        text: days[i],
-        style: textStyle,
-      );
+      textPainter.text = TextSpan(text: days[i], style: textStyle);
       textPainter.layout();
-      textPainter.paint(
-        canvas,
-        Offset(x - textPainter.width / 2, xAxisY + 8),
-      );
+      textPainter.paint(canvas, Offset(x - textPainter.width / 2, xAxisY + 8));
     }
 
     // Desenha linha de dados (placeholder com valores aleatórios)

@@ -89,7 +89,7 @@ class MissionCard extends StatelessWidget {
           colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
           placeholderBuilder: (_) =>
               Icon(Icons.task_alt, color: iconColor, size: 24),
-          errorBuilder: (_, __, ___) =>
+          errorBuilder: (_, error, stackTrace) =>
               Icon(Icons.task_alt, color: iconColor, size: 24),
         ),
       );
@@ -188,7 +188,9 @@ class MissionCard extends StatelessWidget {
                               width: 20,
                               height: 20,
                               decoration: BoxDecoration(
-                                color: AppTheme.textSecondary.withOpacity(0.2),
+                                color: AppTheme.textSecondary.withValues(
+                                  alpha: 0.2,
+                                ),
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: const Icon(

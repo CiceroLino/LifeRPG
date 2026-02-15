@@ -95,7 +95,9 @@ class DatabaseHelper {
     ''');
 
     await db.execute('CREATE INDEX idx_missions_status ON missions(status)');
-    await db.execute('CREATE INDEX idx_missions_parent ON missions(parent_mission_id)');
+    await db.execute(
+      'CREATE INDEX idx_missions_parent ON missions(parent_mission_id)',
+    );
 
     await db.execute('''
       CREATE TABLE mission_skills (
@@ -107,60 +109,23 @@ class DatabaseHelper {
       )
     ''');
 
-    await db.insert('player', {
-      'id': 1,
-      'name': 'Player',
-      'title': 'Adventurer',
-      'total_xp': 0,
-      'level': 1,
-      'reward_points': 0,
-      'current_energy': 100,
-      'energy_mode': 'manual',
-      'theme_mode': 'light',
-      'created_at': DateTime.now().toIso8601String(),
-      'updated_at': DateTime.now().toIso8601String(),
-    });
-
-    final now = DateTime.now().toIso8601String();
-    await db.insert('skills', {
-      'name': 'Inteligência',
-      'color': '#2196F3',
-      'created_at': now,
-      'updated_at': now,
-    });
-    await db.insert('skills', {
-      'name': 'Força',
-      'color': '#F44336',
-      'created_at': now,
-      'updated_at': now,
-    });
-    await db.insert('skills', {
-      'name': 'Saúde',
-      'color': '#4CAF50',
-      'created_at': now,
-      'updated_at': now,
-    });
-    await db.insert('skills', {
-      'name': 'Social',
-      'color': '#FF9800',
-      'created_at': now,
-      'updated_at': now,
-    });
-    await db.insert('skills', {
-      'name': 'Criatividade',
-      'color': '#9C27B0',
-      'created_at': now,
-      'updated_at': now,
-    });
+    await _insertDefaultPlayer(db);
+    await _insertDefaultSkills(db);
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
-      await db.execute('ALTER TABLE player ADD COLUMN title TEXT NOT NULL DEFAULT "Adventurer"');
+      await db.execute(
+        'ALTER TABLE player ADD COLUMN title TEXT NOT NULL DEFAULT "Adventurer"',
+      );
     }
     if (oldVersion < 3) {
-      await db.execute('UPDATE player SET current_energy = 100 WHERE current_energy < 100');
-      await db.execute('ALTER TABLE player ADD COLUMN energy_mode TEXT DEFAULT "manual"');
+      await db.execute(
+        'UPDATE player SET current_energy = 100 WHERE current_energy < 100',
+      );
+      await db.execute(
+        'ALTER TABLE player ADD COLUMN energy_mode TEXT DEFAULT "manual"',
+      );
       await db.execute('ALTER TABLE player ADD COLUMN wake_up_time TEXT');
       await db.execute('ALTER TABLE player ADD COLUMN sleep_time TEXT');
     }
@@ -182,6 +147,33 @@ class DatabaseHelper {
       'skills': skillsMaps,
       'mission_skills': missionSkillsMaps,
     };
+  }
+
+  Future<void> resetCharacterStats() async {
+    final db = await database;
+    final now = DateTime.now().toIso8601String();
+    await db.update('player', {
+      'total_xp': 0,
+      'level': 1,
+      'reward_points': 0,
+      'current_energy': 100,
+      'energy_mode': 'manual',
+      'wake_up_time': null,
+      'sleep_time': null,
+      'updated_at': now,
+    }, where: 'id = 1');
+  }
+
+  Future<void> factoryReset() async {
+    final db = await database;
+    await db.transaction((txn) async {
+      await txn.delete('mission_skills');
+      await txn.delete('missions');
+      await txn.delete('skills');
+      await txn.delete('player');
+      await _insertDefaultPlayer(txn);
+      await _insertDefaultSkills(txn);
+    });
   }
 
   Future<void> restoreData(Map<String, dynamic> data) async {
@@ -224,5 +216,42 @@ class DatabaseHelper {
   Future<void> close() async {
     final db = await database;
     await db.close();
+  }
+
+  Future<void> _insertDefaultPlayer(DatabaseExecutor db) async {
+    final now = DateTime.now().toIso8601String();
+    await db.insert('player', {
+      'id': 1,
+      'name': 'Player',
+      'title': 'Adventurer',
+      'total_xp': 0,
+      'level': 1,
+      'reward_points': 0,
+      'current_energy': 100,
+      'energy_mode': 'manual',
+      'theme_mode': 'light',
+      'created_at': now,
+      'updated_at': now,
+    });
+  }
+
+  Future<void> _insertDefaultSkills(DatabaseExecutor db) async {
+    final now = DateTime.now().toIso8601String();
+    final skills = [
+      ('Inteligência', '#2196F3'),
+      ('Força', '#F44336'),
+      ('Saúde', '#4CAF50'),
+      ('Social', '#FF9800'),
+      ('Criatividade', '#9C27B0'),
+    ];
+
+    for (final (name, color) in skills) {
+      await db.insert('skills', {
+        'name': name,
+        'color': color,
+        'created_at': now,
+        'updated_at': now,
+      });
+    }
   }
 }

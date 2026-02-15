@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 
 /// AppBar customizado para o LifeRPG
-/// 
+///
 /// Implementa [PreferredSizeWidget] para ser usado como `appBar:` em Scaffolds.
 /// Design denso, escuro e funcional que se adapta dinamicamente ao contexto da tela.
 class LifeRPGAppBar extends StatelessWidget implements PreferredSizeWidget {
@@ -173,19 +173,13 @@ class LifeRPGAppBar extends StatelessWidget implements PreferredSizeWidget {
       ),
       // Botão Search
       IconButton(
-        icon: const Icon(
-          Icons.search,
-          color: AppTheme.textPrimary,
-        ),
+        icon: const Icon(Icons.search, color: AppTheme.textPrimary),
         onPressed: onSearch,
         tooltip: 'Buscar',
       ),
       // Overflow Menu
       PopupMenuButton<String>(
-        icon: const Icon(
-          Icons.more_vert,
-          color: AppTheme.textPrimary,
-        ),
+        icon: const Icon(Icons.more_vert, color: AppTheme.textPrimary),
         onSelected: (value) => _handleMissionsMenuAction(context, value),
         itemBuilder: (context) => [
           const PopupMenuItem<String>(
@@ -242,19 +236,13 @@ class LifeRPGAppBar extends StatelessWidget implements PreferredSizeWidget {
       ),
       // Botão Edit
       IconButton(
-        icon: const Icon(
-          Icons.edit,
-          color: AppTheme.textPrimary,
-        ),
+        icon: const Icon(Icons.edit, color: AppTheme.textPrimary),
         onPressed: onEdit,
         tooltip: 'Editar Perfil',
       ),
       // Overflow Menu
       PopupMenuButton<String>(
-        icon: const Icon(
-          Icons.more_vert,
-          color: AppTheme.textPrimary,
-        ),
+        icon: const Icon(Icons.more_vert, color: AppTheme.textPrimary),
         onSelected: (value) => _handleProfileMenuAction(context, value),
         itemBuilder: (context) => [
           const PopupMenuItem<String>(
@@ -296,26 +284,24 @@ class LifeRPGAppBar extends StatelessWidget implements PreferredSizeWidget {
       ),
       // Botão Calendar
       IconButton(
-        icon: const Icon(
-          Icons.calendar_today,
-          color: AppTheme.textPrimary,
-        ),
+        icon: const Icon(Icons.calendar_today, color: AppTheme.textPrimary),
         onPressed: onCalendar,
         tooltip: 'Calendário',
       ),
       // Overflow Menu
       PopupMenuButton<String>(
-        icon: const Icon(
-          Icons.more_vert,
-          color: AppTheme.textPrimary,
-        ),
+        icon: const Icon(Icons.more_vert, color: AppTheme.textPrimary),
         onSelected: (value) => _handleStatisticsMenuAction(context, value),
         itemBuilder: (context) => [
           const PopupMenuItem<String>(
             value: 'export',
             child: Row(
               children: [
-                Icon(Icons.file_download, size: 20, color: AppTheme.textPrimary),
+                Icon(
+                  Icons.file_download,
+                  size: 20,
+                  color: AppTheme.textPrimary,
+                ),
                 SizedBox(width: 12),
                 Text('Export Data (CSV)'),
               ],
@@ -325,7 +311,11 @@ class LifeRPGAppBar extends StatelessWidget implements PreferredSizeWidget {
             value: 'clear_history',
             child: Row(
               children: [
-                Icon(Icons.delete_outline, size: 20, color: AppTheme.textPrimary),
+                Icon(
+                  Icons.delete_outline,
+                  size: 20,
+                  color: AppTheme.textPrimary,
+                ),
                 SizedBox(width: 12),
                 Text('Clear History'),
               ],
@@ -430,65 +420,34 @@ class LifeRPGAppBar extends StatelessWidget implements PreferredSizeWidget {
         ),
         content: StatefulBuilder(
           builder: (context, setState) {
+            Widget sortOption(String value, String label) {
+              final selected = selectedSort == value;
+              return ListTile(
+                title: Text(
+                  label,
+                  style: const TextStyle(color: AppTheme.textPrimary),
+                ),
+                trailing: selected
+                    ? const Icon(Icons.check_circle, color: AppTheme.primary)
+                    : const Icon(
+                        Icons.circle_outlined,
+                        color: AppTheme.textSecondary,
+                      ),
+                onTap: () {
+                  setState(() {
+                    selectedSort = value;
+                  });
+                },
+              );
+            }
+
             return Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                RadioListTile<String>(
-                  title: const Text(
-                    'Date',
-                    style: TextStyle(color: AppTheme.textPrimary),
-                  ),
-                  value: 'date',
-                  groupValue: selectedSort,
-                  activeColor: AppTheme.primary,
-                  onChanged: (value) {
-                    setState(() {
-                      selectedSort = value!;
-                    });
-                  },
-                ),
-                RadioListTile<String>(
-                  title: const Text(
-                    'Difficulty',
-                    style: TextStyle(color: AppTheme.textPrimary),
-                  ),
-                  value: 'difficulty',
-                  groupValue: selectedSort,
-                  activeColor: AppTheme.primary,
-                  onChanged: (value) {
-                    setState(() {
-                      selectedSort = value!;
-                    });
-                  },
-                ),
-                RadioListTile<String>(
-                  title: const Text(
-                    'Importance',
-                    style: TextStyle(color: AppTheme.textPrimary),
-                  ),
-                  value: 'importance',
-                  groupValue: selectedSort,
-                  activeColor: AppTheme.primary,
-                  onChanged: (value) {
-                    setState(() {
-                      selectedSort = value!;
-                    });
-                  },
-                ),
-                RadioListTile<String>(
-                  title: const Text(
-                    'Reward',
-                    style: TextStyle(color: AppTheme.textPrimary),
-                  ),
-                  value: 'reward',
-                  groupValue: selectedSort,
-                  activeColor: AppTheme.primary,
-                  onChanged: (value) {
-                    setState(() {
-                      selectedSort = value!;
-                    });
-                  },
-                ),
+                sortOption('date', 'Date'),
+                sortOption('difficulty', 'Difficulty'),
+                sortOption('importance', 'Importance'),
+                sortOption('reward', 'Reward'),
               ],
             );
           },

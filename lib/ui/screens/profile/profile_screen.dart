@@ -108,8 +108,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                             ),
                                             placeholderBuilder: (_) =>
                                                 _buildAvatarPlaceholder(),
-                                            errorBuilder: (_, __, ___) =>
-                                                _buildAvatarPlaceholder(),
+                                            errorBuilder:
+                                                (_, error, stackTrace) =>
+                                                    _buildAvatarPlaceholder(),
                                           )
                                         : player.avatarPath!.startsWith('/') ||
                                               player.avatarPath!.startsWith(
@@ -123,14 +124,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                               ),
                                             ),
                                             fit: BoxFit.cover,
-                                            errorBuilder: (_, __, ___) =>
-                                                _buildAvatarPlaceholder(),
+                                            errorBuilder:
+                                                (_, error, stackTrace) =>
+                                                    _buildAvatarPlaceholder(),
                                           )
                                         : Image.asset(
                                             player.avatarPath!,
                                             fit: BoxFit.cover,
-                                            errorBuilder: (_, __, ___) =>
-                                                _buildAvatarPlaceholder(),
+                                            errorBuilder:
+                                                (_, error, stackTrace) =>
+                                                    _buildAvatarPlaceholder(),
                                           ),
                                   )
                                 : _buildAvatarPlaceholder(),
@@ -224,16 +227,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     updatedPlayer,
                                   );
                                 } catch (e) {
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          'Erro ao salvar ícone: $e',
-                                        ),
-                                        backgroundColor: AppTheme.accentRed,
-                                      ),
-                                    );
-                                  }
+                                  if (!mounted) return;
+                                  ScaffoldMessenger.of(
+                                    this.context,
+                                  ).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Erro ao salvar ícone: $e'),
+                                      backgroundColor: AppTheme.accentRed,
+                                    ),
+                                  );
                                 }
                               }
                             },

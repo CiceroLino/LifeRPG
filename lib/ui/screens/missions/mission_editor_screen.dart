@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/mission.dart';
+import '../../../data/models/skill.dart';
+import '../../../providers/mission_provider.dart';
+import '../../../providers/skill_provider.dart';
 
 class MissionEditorScreen extends StatefulWidget {
   final Mission? initial;
   final ValueChanged<Mission>? onSave;
 
-  const MissionEditorScreen({
-    super.key,
-    this.initial,
-    this.onSave,
-  });
+  const MissionEditorScreen({super.key, this.initial, this.onSave});
 
   @override
   State<MissionEditorScreen> createState() => _MissionEditorScreenState();
@@ -29,19 +29,30 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
 
   DateTime? _dueDate;
   String _recurrence = 'once';
+  int? _parentMissionId;
+  int _rewardPoints = 0;
+  Set<int> _selectedSkillIds = {};
 
   @override
   void initState() {
     super.initState();
     final m = widget.initial;
     _titleController = TextEditingController(text: m?.title ?? '');
-    _descriptionController =
-        TextEditingController(text: m?.description ?? '');
+    _descriptionController = TextEditingController(text: m?.description ?? '');
     _difficulty = (m?.difficulty ?? 3).toDouble();
     _urgency = (m?.urgency ?? 3).toDouble();
     _fear = (m?.fear ?? 2).toDouble();
     _dueDate = m?.dueDate;
     _recurrence = m?.recurrenceType ?? 'once';
+    _parentMissionId = m?.parentMissionId;
+    _rewardPoints = m?.rewardPoints ?? 0;
+    _selectedSkillIds = {...(m?.skillIds ?? const <int>[])};
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<SkillProvider>().loadSkills();
+      context.read<MissionProvider>().loadMissions();
+    });
   }
 
   @override
@@ -53,6 +64,16 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final skillProvider = context.watch<SkillProvider>();
+    final missionProvider = context.watch<MissionProvider>();
+    final allMissions = missionProvider.missions;
+    final availableParentMissions = allMissions
+        .where((m) => m.id != widget.initial?.id)
+        .toList();
+    final selectedSkills = skillProvider.skills
+        .where((skill) => _selectedSkillIds.contains(skill.id))
+        .toList();
+
     return Scaffold(
       appBar: AppBar(
         leading: TextButton(
@@ -85,18 +106,14 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
               children: [
                 TextFormField(
                   controller: _titleController,
-                  decoration: const InputDecoration(
-                    labelText: 'Task',
-                  ),
+                  decoration: const InputDecoration(labelText: 'Task'),
                   validator: (v) =>
                       v == null || v.trim().isEmpty ? 'Required' : null,
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _descriptionController,
-                  decoration: const InputDecoration(
-                    labelText: 'Details',
-                  ),
+                  decoration: const InputDecoration(labelText: 'Details'),
                   minLines: 2,
                   maxLines: 4,
                 ),
@@ -141,22 +158,20 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
                 const SizedBox(height: 8),
                 _LinkRow(
                   label: 'Skills',
-                  value: 'Select skills',
+                  value: selectedSkills.isEmpty
+                      ? 'Select skills'
+                      : selectedSkills.map((s) => s.name).join(', '),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    // TODO: abrir seletor de skills
-                  },
+                  onTap: () => _pickSkills(skillProvider.skills),
                 ),
                 const Divider(height: 16),
                 _LinkRow(
                   label: 'Parent Mission',
-                  value: widget.initial?.parentMissionId != null
-                      ? 'Mission #${widget.initial!.parentMissionId}'
+                  value: _parentMissionId != null
+                      ? _parentMissionTitle(availableParentMissions)
                       : 'None',
                   trailing: const Icon(Icons.expand_more),
-                  onTap: () {
-                    // TODO: abrir seletor de parent mission
-                  },
+                  onTap: () => _pickParentMission(availableParentMissions),
                 ),
                 const Divider(height: 16),
                 _LinkRow(
@@ -188,15 +203,17 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
                     onPressed: () async {
                       final value = await showDialog<int>(
                         context: context,
-                        builder: (context) => const _CircularValuePickerDialog(
-                          initialValue: 10,
+                        builder: (context) => _CircularValuePickerDialog(
+                          initialValue: _rewardPoints,
                         ),
                       );
                       if (value != null) {
-                        // TODO: integrar com rewardPoints se desejar
+                        setState(() {
+                          _rewardPoints = value;
+                        });
                       }
                     },
-                    child: const Text('Set Reward Points'),
+                    child: Text('Set Reward Points ($_rewardPoints)'),
                   ),
                 ),
               ],
@@ -268,6 +285,131 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
     }
   }
 
+  String _parentMissionTitle(List<Mission> missions) {
+    final match = missions.where((m) => m.id == _parentMissionId);
+    if (match.isEmpty) {
+      return 'Mission #$_parentMissionId';
+    }
+    return match.first.title;
+  }
+
+  Future<void> _pickSkills(List<Skill> skills) async {
+    if (skills.isEmpty) return;
+    final selected = {..._selectedSkillIds};
+
+    final result = await showModalBottomSheet<Set<int>>(
+      context: context,
+      showDragHandle: true,
+      backgroundColor: AppTheme.surface,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Selecionar Skills',
+                    style: TextStyle(
+                      color: AppTheme.textPrimary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: skills.map((skill) {
+                      return FilterChip(
+                        label: Text(skill.name),
+                        selected:
+                            skill.id != null && selected.contains(skill.id),
+                        onSelected: (enabled) {
+                          if (skill.id == null) return;
+                          setSheetState(() {
+                            if (enabled) {
+                              selected.add(skill.id!);
+                            } else {
+                              selected.remove(skill.id!);
+                            }
+                          });
+                        },
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      TextButton(
+                        onPressed: () {
+                          selected.clear();
+                          setSheetState(() {});
+                        },
+                        child: const Text('Limpar'),
+                      ),
+                      const Spacer(),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Cancelar'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, selected),
+                        child: const Text('Aplicar'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (result != null) {
+      setState(() {
+        _selectedSkillIds = result;
+      });
+    }
+  }
+
+  Future<void> _pickParentMission(List<Mission> missions) async {
+    final result = await showModalBottomSheet<int?>(
+      context: context,
+      showDragHandle: true,
+      backgroundColor: AppTheme.surface,
+      builder: (context) {
+        return ListView(
+          shrinkWrap: true,
+          children: [
+            ListTile(
+              title: const Text('None'),
+              onTap: () => Navigator.pop(context, null),
+            ),
+            ...missions.map(
+              (mission) => ListTile(
+                title: Text(mission.title),
+                subtitle: mission.id != null
+                    ? Text('Mission #${mission.id}')
+                    : null,
+                trailing: mission.id == _parentMissionId
+                    ? const Icon(Icons.check, color: AppTheme.primary)
+                    : null,
+                onTap: () => Navigator.pop(context, mission.id),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    setState(() {
+      _parentMissionId = result;
+    });
+  }
+
   void _save() {
     if (!_formKey.currentState!.validate()) return;
     final base = widget.initial;
@@ -280,7 +422,7 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
       fear: _fear.round(),
       energyRequired: base?.energyRequired ?? 1,
       xpReward: base?.xpReward ?? 10,
-      rewardPoints: base?.rewardPoints ?? 0,
+      rewardPoints: _rewardPoints,
       status: base?.status ?? 'active',
       dueDate: _dueDate,
       estimatedDuration: base?.estimatedDuration,
@@ -289,14 +431,14 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
       recurrenceInterval: base?.recurrenceInterval,
       lastCompletedAt: base?.lastCompletedAt,
       streak: base?.streak ?? 0,
-      parentMissionId: base?.parentMissionId,
+      parentMissionId: _parentMissionId,
       orderIndex: base?.orderIndex ?? 0,
       icon: base?.icon,
       emoji: base?.emoji,
       createdAt: base?.createdAt,
       updatedAt: DateTime.now(),
       completedAt: base?.completedAt,
-      skillIds: base?.skillIds ?? const [],
+      skillIds: _selectedSkillIds.toList(),
     );
 
     widget.onSave?.call(mission);
@@ -343,7 +485,7 @@ class AttributeSliderRow extends StatelessWidget {
                 activeTrackColor: activeColor,
                 inactiveTrackColor: AppTheme.border,
                 thumbColor: activeColor,
-                overlayColor: activeColor.withOpacity(0.2),
+                overlayColor: activeColor.withValues(alpha: 0.2),
                 trackHeight: 4,
               ),
               child: Slider(
@@ -357,11 +499,7 @@ class AttributeSliderRow extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          Icon(
-            icon,
-            color: activeColor,
-            size: 20,
-          ),
+          Icon(icon, color: activeColor, size: 20),
         ],
       ),
     );
@@ -392,11 +530,7 @@ class _LinkRow extends StatelessWidget {
         child: Row(
           children: [
             if (leadingIcon != null) ...[
-              Icon(
-                leadingIcon,
-                color: AppTheme.textSecondary,
-                size: 18,
-              ),
+              Icon(leadingIcon, color: AppTheme.textSecondary, size: 18),
               const SizedBox(width: 8),
             ],
             Expanded(
@@ -469,10 +603,7 @@ class _CircularValuePickerDialogState
               height: 110,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(
-                  color: AppTheme.primary,
-                  width: 3,
-                ),
+                border: Border.all(color: AppTheme.primary, width: 3),
               ),
               child: Center(
                 child: Row(
@@ -524,5 +655,3 @@ class _CircularValuePickerDialogState
     );
   }
 }
-
-

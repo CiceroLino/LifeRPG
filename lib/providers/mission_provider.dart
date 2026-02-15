@@ -220,4 +220,19 @@ class MissionProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  Future<void> clearCompletedMissions() async {
+    try {
+      final completed = await _missionRepo.getByStatus('completed');
+      for (final mission in completed) {
+        if (mission.id != null) {
+          await _missionRepo.delete(mission.id!);
+        }
+      }
+      await loadMissions();
+    } catch (e) {
+      _error = 'Erro ao limpar histórico: $e';
+      notifyListeners();
+    }
+  }
 }

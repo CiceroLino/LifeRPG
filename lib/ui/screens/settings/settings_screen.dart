@@ -40,13 +40,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   title: 'Sound Effects',
                   subtitle: 'Play sounds for actions',
                   value: settings.soundEffectsEnabled,
-                  onChanged: (value) => settings.setSoundEffectsEnabled(value ?? false),
+                  onChanged: (value) =>
+                      settings.setSoundEffectsEnabled(value ?? false),
                 ),
                 _SettingsCheckboxTile(
                   title: 'Notification Sounds',
                   subtitle: 'Play sounds for notifications',
                   value: settings.notificationSoundsEnabled,
-                  onChanged: (value) => settings.setNotificationSoundsEnabled(value ?? true),
+                  onChanged: (value) =>
+                      settings.setNotificationSoundsEnabled(value ?? true),
                 ),
                 const Divider(height: 1),
                 const _SettingsSectionHeader('DATA & BACKUP'),
@@ -54,13 +56,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   title: 'Export Database',
                   subtitle: 'Save your data to a file',
                   icon: Icons.upload_file,
-                  onTap: _isExporting ? null : () async => await _handleExport(context, settings),
+                  onTap: _isExporting
+                      ? null
+                      : () async => await _handleExport(context, settings),
                 ),
                 _SettingsActionTile(
                   title: 'Import Database',
                   subtitle: 'Restore data from a file',
                   icon: Icons.download,
-                  onTap: _isImporting ? null : () async => await _handleImport(context, settings),
+                  onTap: _isImporting
+                      ? null
+                      : () async => await _handleImport(context, settings),
                 ),
                 const Divider(height: 1),
                 const _SettingsSectionHeader('SYSTEM'),
@@ -68,19 +74,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   title: 'Enable Notifications',
                   subtitle: 'Receive reminders and alerts',
                   value: settings.notificationsEnabled,
-                  onChanged: (value) => settings.setNotificationsEnabled(value ?? true),
+                  onChanged: (value) =>
+                      settings.setNotificationsEnabled(value ?? true),
                 ),
                 _SettingsCheckboxTile(
                   title: 'Start week on Monday',
                   subtitle: 'Calendar and date formatting',
                   value: settings.startWeekOnMonday,
-                  onChanged: (value) => settings.setStartWeekOnMonday(value ?? false),
+                  onChanged: (value) =>
+                      settings.setStartWeekOnMonday(value ?? false),
                 ),
                 _SettingsCheckboxTile(
                   title: '24-Hour Clock',
                   subtitle: 'Use 24-hour time format',
                   value: settings.use24HourFormat,
-                  onChanged: (value) => settings.setUse24HourFormat(value ?? false),
+                  onChanged: (value) =>
+                      settings.setUse24HourFormat(value ?? false),
                 ),
                 const Divider(height: 1),
                 const _SettingsSectionHeader('INTERFACE'),
@@ -108,9 +117,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             if (_isExporting || _isImporting)
               Container(
                 color: Colors.black54,
-                child: const Center(
-                  child: CircularProgressIndicator(),
-                ),
+                child: const Center(child: CircularProgressIndicator()),
               ),
           ],
         );
@@ -118,13 +125,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Future<void> _handleExport(BuildContext context, SettingsProvider settings) async {
+  Future<void> _handleExport(
+    BuildContext context,
+    SettingsProvider settings,
+  ) async {
     setState(() => _isExporting = true);
 
     try {
       await settings.exportData();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.of(this.context).showSnackBar(
           const SnackBar(
             content: Text('Backup created successfully!'),
             backgroundColor: AppTheme.successGreen,
@@ -133,7 +143,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.of(this.context).showSnackBar(
           SnackBar(
             content: Text('Error creating backup: ${e.toString()}'),
             backgroundColor: AppTheme.accentRed,
@@ -147,7 +157,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  Future<void> _handleImport(BuildContext context, SettingsProvider settings) async {
+  Future<void> _handleImport(
+    BuildContext context,
+    SettingsProvider settings,
+  ) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -180,13 +193,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
 
     if (confirmed != true) return;
+    if (!mounted) return;
 
     setState(() => _isImporting = true);
 
     try {
       final message = await settings.importData();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.of(this.context).showSnackBar(
           SnackBar(
             content: Text(message),
             backgroundColor: message.toLowerCase().contains('success')
@@ -198,7 +212,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
         if (message.toLowerCase().contains('success')) {
           showDialog(
-            context: context,
+            context: this.context,
             barrierDismissible: false,
             builder: (context) => AlertDialog(
               backgroundColor: AppTheme.surface,
@@ -225,7 +239,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.of(this.context).showSnackBar(
           SnackBar(
             content: Text('Error importing backup: ${e.toString()}'),
             backgroundColor: AppTheme.accentRed,
@@ -308,7 +322,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  void _showResetCharacterDialog(BuildContext context, SettingsProvider settings) {
+  void _showResetCharacterDialog(
+    BuildContext context,
+    SettingsProvider settings,
+  ) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -330,24 +347,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
           TextButton(
-            onPressed: () {
-              settings.resetCharacter();
+            onPressed: () async {
+              await settings.resetCharacter();
+              if (!context.mounted) return;
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
+              if (!mounted) return;
+              ScaffoldMessenger.of(this.context).showSnackBar(
                 const SnackBar(content: Text('Character stats reset')),
               );
             },
-            child: const Text(
-              'Reset',
-              style: TextStyle(color: Colors.orange),
-            ),
+            child: const Text('Reset', style: TextStyle(color: Colors.orange)),
           ),
         ],
       ),
     );
   }
 
-  void _showFactoryResetDialog(BuildContext context, SettingsProvider settings) {
+  void _showFactoryResetDialog(
+    BuildContext context,
+    SettingsProvider settings,
+  ) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -369,10 +388,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
           TextButton(
-            onPressed: () {
-              settings.factoryReset();
+            onPressed: () async {
+              await settings.factoryReset();
+              if (!context.mounted) return;
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
+              if (!mounted) return;
+              ScaffoldMessenger.of(this.context).showSnackBar(
                 const SnackBar(
                   content: Text('Factory reset completed'),
                   backgroundColor: AppTheme.accentRed,
@@ -436,17 +457,11 @@ class _SettingsCheckboxTile extends StatelessWidget {
       controlAffinity: ListTileControlAffinity.trailing,
       title: Text(
         title,
-        style: const TextStyle(
-          color: AppTheme.textPrimary,
-          fontSize: 16,
-        ),
+        style: const TextStyle(color: AppTheme.textPrimary, fontSize: 16),
       ),
       subtitle: Text(
         subtitle,
-        style: const TextStyle(
-          color: AppTheme.textSecondary,
-          fontSize: 13,
-        ),
+        style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13),
       ),
       activeColor: AppTheme.primary,
       checkColor: AppTheme.background,
@@ -473,25 +488,33 @@ class _SettingsActionTile extends StatelessWidget {
       enabled: onTap != null,
       leading: Icon(
         icon,
-        color: onTap != null ? AppTheme.textSecondary : AppTheme.textSecondary.withOpacity(0.5),
+        color: onTap != null
+            ? AppTheme.textSecondary
+            : AppTheme.textSecondary.withValues(alpha: 0.5),
       ),
       title: Text(
         title,
         style: TextStyle(
-          color: onTap != null ? AppTheme.textPrimary : AppTheme.textPrimary.withOpacity(0.5),
+          color: onTap != null
+              ? AppTheme.textPrimary
+              : AppTheme.textPrimary.withValues(alpha: 0.5),
           fontSize: 16,
         ),
       ),
       subtitle: Text(
         subtitle,
         style: TextStyle(
-          color: onTap != null ? AppTheme.textSecondary : AppTheme.textSecondary.withOpacity(0.5),
+          color: onTap != null
+              ? AppTheme.textSecondary
+              : AppTheme.textSecondary.withValues(alpha: 0.5),
           fontSize: 13,
         ),
       ),
       trailing: Icon(
         Icons.chevron_right,
-        color: onTap != null ? AppTheme.textSecondary : AppTheme.textSecondary.withOpacity(0.5),
+        color: onTap != null
+            ? AppTheme.textSecondary
+            : AppTheme.textSecondary.withValues(alpha: 0.5),
       ),
       onTap: onTap,
     );
@@ -520,10 +543,7 @@ class _SettingsDangerTile extends StatelessWidget {
           fontWeight: FontWeight.w600,
         ),
       ),
-      trailing: Icon(
-        Icons.warning,
-        color: color,
-      ),
+      trailing: Icon(Icons.warning, color: color),
       onTap: onTap,
     );
   }
@@ -545,7 +565,7 @@ class _LanguageOption extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isSelected = language == currentLanguage;
-    
+
     return ListTile(
       title: Text(
         name,
@@ -561,6 +581,3 @@ class _LanguageOption extends StatelessWidget {
     );
   }
 }
-
-
-

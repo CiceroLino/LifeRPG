@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 import 'missions/missions_list_screen.dart';
 import 'missions/mission_form_screen.dart';
@@ -17,6 +18,7 @@ import '../widgets/common/liferpg_app_bar.dart';
 import '../widgets/player/player_stats_header.dart';
 import '../../providers/mission_provider.dart';
 import '../../providers/player_provider.dart';
+import '../../providers/settings_provider.dart';
 import '../../providers/skill_provider.dart';
 
 class MainScreen extends StatefulWidget {
@@ -30,6 +32,7 @@ class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
   bool _isStatsExpanded = true;
   bool _showCompleted = false;
+  String _workspace = 'personal';
 
   @override
   void initState() {
@@ -75,34 +78,19 @@ class _MainScreenState extends State<MainScreen> {
         onToggleShowCompleted: (value) =>
             setState(() => _showCompleted = value),
         onSearch: _showMissionSearchDialog,
-        onEdit: () {
-          // TODO: Implementar edição de perfil
-        },
-        onCalendar: () {
-          // TODO: Implementar calendário
-        },
+        onEdit: _goToProfile,
+        onCalendar: _showCalendarPicker,
         onAddMission: () {
           Navigator.of(
             context,
           ).push(MaterialPageRoute(builder: (_) => const MissionFormScreen()));
         },
         onSortChanged: (sortValue) => _applySort(sortValue),
-        onWorkspaceChanged: (workspace) {
-          // TODO: Implementar troca de workspace
-          debugPrint('Workspace changed to:      $workspace');
-        },
-        onResetAvatar: () {
-          // TODO: Implementar reset de avatar
-        },
-        onShareProfile: () {
-          // TODO: Implementar compartilhamento de perfil
-        },
-        onExportData: () {
-          // TODO: Implementar exportação de dados
-        },
-        onClearHistory: () {
-          // TODO: Implementar limpeza de histórico
-        },
+        onWorkspaceChanged: _setWorkspace,
+        onResetAvatar: _resetAvatar,
+        onShareProfile: _shareProfile,
+        onExportData: _exportData,
+        onClearHistory: _clearHistory,
         onSkillsFilter: _openSkillsFilterSheet,
       ),
       body: Consumer<PlayerProvider>(
@@ -183,6 +171,75 @@ class _MainScreenState extends State<MainScreen> {
     }
 
     context.read<MissionProvider>().setSortMode(mode);
+  }
+
+  void _goToProfile() {
+    setState(() {
+      _currentIndex = 6;
+    });
+  }
+
+  Future<void> _showCalendarPicker() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: now,
+      firstDate: now.subtract(const Duration(days: 365 * 2)),
+      lastDate: now.add(const Duration(days: 365 * 3)),
+    );
+    if (!mounted || picked == null) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Data selecionada: ${picked.toIso8601String().split('T').first}',
+        ),
+      ),
+    );
+  }
+
+  void _setWorkspace(String workspace) {
+    setState(() {
+      _workspace = workspace;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Workspace alterado para $_workspace.')),
+    );
+  }
+
+  Future<void> _resetAvatar() async {
+    final playerProvider = context.read<PlayerProvider>();
+    final player = playerProvider.player;
+    if (player == null) return;
+    await playerProvider.updatePlayer(player.copyWith(avatarPath: null));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Avatar resetado com sucesso.')),
+    );
+  }
+
+  Future<void> _shareProfile() async {
+    final player = context.read<PlayerProvider>().player;
+    if (player == null) return;
+    final text =
+        'LifeRPG Profile\\nNome: ${player.name}\\nTítulo: ${player.title}\\nNível: ${player.level}\\nXP: ${player.totalXP}\\nReward Points: ${player.rewardPoints}';
+    await Share.share(text, subject: 'Meu perfil LifeRPG');
+  }
+
+  Future<void> _exportData() async {
+    final settings = context.read<SettingsProvider>();
+    await settings.exportData();
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Exportação concluída.')));
+  }
+
+  Future<void> _clearHistory() async {
+    await context.read<MissionProvider>().clearCompletedMissions();
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Histórico limpo.')));
   }
 
   Future<void> _openSkillsFilterSheet() async {

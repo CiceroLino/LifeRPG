@@ -35,7 +35,6 @@ class XPBar extends StatelessWidget {
               ),
             )
           : null,
-      linearStrokeCap: LinearStrokeCap.roundAll,
       progressColor: AppTheme.xpBlue,
       backgroundColor: Colors.grey[300],
       barRadius: const Radius.circular(12),

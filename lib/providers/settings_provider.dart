@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../data/database/database_helper.dart';
 import '../services/backup_service.dart';
 
 class SettingsProvider extends ChangeNotifier {
@@ -13,6 +14,7 @@ class SettingsProvider extends ChangeNotifier {
   static const String _keyShowXpBar = 'show_xp_bar';
 
   final BackupService _backupService = BackupService();
+  final DatabaseHelper _dbHelper = DatabaseHelper();
 
   SharedPreferences? _prefs;
   bool _isLoading = true;
@@ -54,7 +56,8 @@ class SettingsProvider extends ChangeNotifier {
 
     _language = _prefs!.getString(_keyLanguage) ?? 'en';
     _soundEffectsEnabled = _prefs!.getBool(_keySoundEffects) ?? false;
-    _notificationSoundsEnabled = _prefs!.getBool(_keyNotificationSounds) ?? true;
+    _notificationSoundsEnabled =
+        _prefs!.getBool(_keyNotificationSounds) ?? true;
     _notificationsEnabled = _prefs!.getBool(_keyNotifications) ?? true;
     _startWeekOnMonday = _prefs!.getBool(_keyStartWeekOnMonday) ?? false;
     _use24HourFormat = _prefs!.getBool(_keyUse24HourFormat) ?? false;
@@ -133,10 +136,24 @@ class SettingsProvider extends ChangeNotifier {
   }
 
   Future<void> resetCharacter() async {
-    debugPrint('TODO: Implementar reset de personagem');
+    await _dbHelper.resetCharacterStats();
   }
 
   Future<void> factoryReset() async {
-    debugPrint('TODO: Implementar reset total (factory reset)');
+    await _dbHelper.factoryReset();
+
+    if (_prefs != null) {
+      await _prefs!.clear();
+    }
+
+    _language = 'en';
+    _soundEffectsEnabled = false;
+    _notificationSoundsEnabled = true;
+    _notificationsEnabled = true;
+    _startWeekOnMonday = false;
+    _use24HourFormat = false;
+    _showXpBar = true;
+
+    await initialize();
   }
 }

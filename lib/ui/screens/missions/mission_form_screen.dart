@@ -38,8 +38,8 @@ class _MissionFormScreenState extends State<MissionFormScreen> {
   @override
   void initState() {
     super.initState();
-    // Garantir que skills/missions estejam carregadas
-    Future.microtask(() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       context.read<SkillProvider>().loadSkills();
       context.read<MissionProvider>().loadMissions();
     });
@@ -242,7 +242,7 @@ class _MissionFormScreenState extends State<MissionFormScreen> {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   ),
                 ),
-                errorBuilder: (_, __, ___) =>
+                errorBuilder: (_, error, stackTrace) =>
                     const Icon(Icons.image_not_supported, size: 18),
               ),
               label: const Text('Escolher ícone'),
@@ -431,7 +431,7 @@ class _MissionFormScreenState extends State<MissionFormScreen> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       ),
                     ),
-                    errorBuilder: (_, __, ___) =>
+                    errorBuilder: (_, error, stackTrace) =>
                         const Icon(Icons.image_not_supported),
                   ),
                 ),

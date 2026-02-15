@@ -5,11 +5,7 @@ class LevelBadge extends StatelessWidget {
   final int level;
   final double size;
 
-  const LevelBadge({
-    super.key,
-    required this.level,
-    this.size = 60,
-  });
+  const LevelBadge({super.key, required this.level, this.size = 60});
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +21,7 @@ class LevelBadge extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.primaryPurple.withOpacity(0.3),
+            color: AppTheme.primaryPurple.withValues(alpha: 0.3),
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),

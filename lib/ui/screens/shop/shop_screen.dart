@@ -25,10 +25,7 @@ class ShopScreen extends StatelessWidget {
           const Text(
             'Aqui você pode imaginar uma loja de cosméticos do app: '
             'temas, pacotes de ícones, skins, etc.',
-            style: TextStyle(
-              fontSize: 13,
-              color: AppTheme.textSecondary,
-            ),
+            style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
           ),
           const SizedBox(height: 16),
           Expanded(
@@ -41,7 +38,8 @@ class ShopScreen extends StatelessWidget {
                 SizedBox(height: 8),
                 _ShopItemPlaceholder(
                   title: 'Pacote de Ícones “Sci‑Fi”',
-                  description: 'Conjunto de ícones especiais para missões e menus.',
+                  description:
+                      'Conjunto de ícones especiais para missões e menus.',
                 ),
               ],
             ),
@@ -56,10 +54,7 @@ class _ShopItemPlaceholder extends StatelessWidget {
   final String title;
   final String description;
 
-  const _ShopItemPlaceholder({
-    required this.title,
-    required this.description,
-  });
+  const _ShopItemPlaceholder({required this.title, required this.description});
 
   @override
   Widget build(BuildContext context) {
@@ -77,7 +72,7 @@ class _ShopItemPlaceholder extends StatelessWidget {
             height: 40,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(10),
-              color: AppTheme.primary.withOpacity(0.18),
+              color: AppTheme.primary.withValues(alpha: 0.18),
             ),
             child: const Icon(
               Icons.shopping_bag_outlined,
@@ -112,5 +107,3 @@ class _ShopItemPlaceholder extends StatelessWidget {
     );
   }
 }
-
-
