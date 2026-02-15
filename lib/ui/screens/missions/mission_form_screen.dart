@@ -5,6 +5,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/mission.dart';
+import '../../../data/models/skill.dart';
 import '../../../providers/mission_provider.dart';
 import '../../../providers/skill_provider.dart';
 import '../../widgets/common/reward_picker_dialog.dart';
@@ -22,7 +23,7 @@ class _MissionFormScreenState extends State<MissionFormScreen> {
   final _titleController = TextEditingController();
   final _descController = TextEditingController();
   final _durationController = TextEditingController(text: '30');
-  
+
   int _rewardPoints = 10;
   double _difficulty = 3;
   double _urgency = 3;
@@ -124,6 +125,14 @@ class _MissionFormScreenState extends State<MissionFormScreen> {
                     )
                     .toList(),
               ),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: _createSkillInline,
+                icon: const Icon(Icons.add),
+                label: const Text('+ Nova skill'),
+              ),
+            ),
             const SizedBox(height: 16),
             _Section(title: 'Relacionamento'),
             DropdownButtonFormField<int>(
@@ -273,14 +282,79 @@ class _MissionFormScreenState extends State<MissionFormScreen> {
   Future<void> _pickReward() async {
     final result = await showDialog<int>(
       context: context,
-      builder: (context) => RewardPickerDialog(
-        initialValue: _rewardPoints,
-      ),
+      builder: (context) => RewardPickerDialog(initialValue: _rewardPoints),
     );
 
     if (result != null) {
       setState(() => _rewardPoints = result);
     }
+  }
+
+  Future<void> _createSkillInline() async {
+    final nameController = TextEditingController();
+    final descriptionController = TextEditingController();
+
+    final created = await showDialog<(String, String)>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Nova skill'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              key: const Key('new-skill-name-field'),
+              controller: nameController,
+              decoration: const InputDecoration(labelText: 'Nome'),
+              autofocus: true,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              key: const Key('new-skill-description-field'),
+              controller: descriptionController,
+              decoration: const InputDecoration(
+                labelText: 'Descrição (opcional)',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () {
+              final name = nameController.text.trim();
+              if (name.isEmpty) {
+                return;
+              }
+              Navigator.pop(dialogContext, (
+                name,
+                descriptionController.text.trim(),
+              ));
+            },
+            child: const Text('Criar'),
+          ),
+        ],
+      ),
+    );
+
+    if (created == null || !mounted) return;
+
+    final createdSkillId = await context.read<SkillProvider>().addSkill(
+      Skill(name: created.$1, description: created.$2),
+    );
+    if (!mounted) return;
+    if (createdSkillId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Não foi possível criar a skill.')),
+      );
+      return;
+    }
+
+    setState(() {
+      _selectedSkills.add(createdSkillId);
+    });
   }
 
   Future<void> _save() async {

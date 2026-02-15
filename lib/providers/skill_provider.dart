@@ -25,12 +25,14 @@ class SkillProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> addSkill(Skill skill) async {
+  Future<int?> addSkill(Skill skill) async {
     try {
-      await _skillRepo.insert(skill);
+      final id = await _skillRepo.insert(skill);
       await loadSkills();
+      return id;
     } catch (e) {
       debugPrint('Erro ao adicionar skill: $e');
+      return null;
     }
   }
 

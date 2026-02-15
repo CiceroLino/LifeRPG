@@ -41,12 +41,12 @@ class MissionProvider extends ChangeNotifier {
   Future<void> addMission(Mission mission) async {
     try {
       final id = await _missionRepo.insert(mission);
-      
+
       // Link skills if any
       if (mission.skillIds.isNotEmpty) {
         await _missionRepo.linkSkills(id, mission.skillIds);
       }
-      
+
       await loadMissions();
     } catch (e) {
       _error = 'Erro ao adicionar missão: $e';
@@ -57,20 +57,20 @@ class MissionProvider extends ChangeNotifier {
   Future<void> completeMission(int id) async {
     try {
       final mission = await _missionRepo.getWithSkills(id);
-      
+
       await _missionRepo.complete(id);
-      
+
       await _playerRepo.addXP(mission.xpReward);
-      
+
       await _playerRepo.addRewardPoints(mission.rewardPoints);
-      
+
       if (mission.skillIds.isNotEmpty) {
         final xpPerSkill = (mission.xpReward / mission.skillIds.length).round();
         for (final skillId in mission.skillIds) {
           await _skillRepo.addXP(skillId, xpPerSkill);
         }
       }
-      
+
       await loadMissions();
     } catch (e) {
       _error = 'Erro ao completar missão: $e';
@@ -78,14 +78,38 @@ class MissionProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> updateMissionStatus(int id, String status) async {
+    try {
+      final mission = await _missionRepo.getWithSkills(id);
+      if (mission.status == status) {
+        return;
+      }
+
+      if (status == 'completed') {
+        await completeMission(id);
+        return;
+      }
+
+      final updated = mission.copyWith(
+        status: status,
+        completedAt: status == 'completed' ? DateTime.now() : null,
+      );
+      await _missionRepo.update(updated);
+      await loadMissions();
+    } catch (e) {
+      _error = 'Erro ao atualizar status da missão: $e';
+      notifyListeners();
+    }
+  }
+
   Future<void> updateMission(Mission mission) async {
     try {
       await _missionRepo.update(mission);
-      
+
       if (mission.skillIds.isNotEmpty) {
         await _missionRepo.linkSkills(mission.id!, mission.skillIds);
       }
-      
+
       await loadMissions();
     } catch (e) {
       _error = 'Erro ao atualizar missão: $e';
