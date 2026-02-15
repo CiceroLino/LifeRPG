@@ -20,7 +20,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
       },
@@ -39,7 +39,10 @@ class DatabaseHelper {
         level INTEGER DEFAULT 1,
         reward_points INTEGER DEFAULT 0,
         avatar_path TEXT,
-        current_energy INTEGER DEFAULT 5,
+        current_energy INTEGER DEFAULT 100,
+        energy_mode TEXT DEFAULT 'manual',
+        wake_up_time TEXT,
+        sleep_time TEXT,
         theme_mode TEXT DEFAULT 'light',
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
@@ -111,7 +114,8 @@ class DatabaseHelper {
       'total_xp': 0,
       'level': 1,
       'reward_points': 0,
-      'current_energy': 5,
+      'current_energy': 100,
+      'energy_mode': 'manual',
       'theme_mode': 'light',
       'created_at': DateTime.now().toIso8601String(),
       'updated_at': DateTime.now().toIso8601String(),
@@ -154,6 +158,67 @@ class DatabaseHelper {
     if (oldVersion < 2) {
       await db.execute('ALTER TABLE player ADD COLUMN title TEXT NOT NULL DEFAULT "Adventurer"');
     }
+    if (oldVersion < 3) {
+      await db.execute('UPDATE player SET current_energy = 100 WHERE current_energy < 100');
+      await db.execute('ALTER TABLE player ADD COLUMN energy_mode TEXT DEFAULT "manual"');
+      await db.execute('ALTER TABLE player ADD COLUMN wake_up_time TEXT');
+      await db.execute('ALTER TABLE player ADD COLUMN sleep_time TEXT');
+    }
+  }
+
+  Future<Map<String, dynamic>> getAllDataForBackup() async {
+    final db = await database;
+
+    final playerMaps = await db.query('player');
+    final missionsMaps = await db.query('missions');
+    final skillsMaps = await db.query('skills');
+    final missionSkillsMaps = await db.query('mission_skills');
+
+    return {
+      'version': '1.0',
+      'timestamp': DateTime.now().toIso8601String(),
+      'player': playerMaps.isNotEmpty ? playerMaps.first : null,
+      'missions': missionsMaps,
+      'skills': skillsMaps,
+      'mission_skills': missionSkillsMaps,
+    };
+  }
+
+  Future<void> restoreData(Map<String, dynamic> data) async {
+    final db = await database;
+
+    await db.transaction((txn) async {
+      await txn.delete('mission_skills');
+      await txn.delete('missions');
+      await txn.delete('skills');
+      await txn.delete('player');
+
+      final playerData = data['player'] as Map<String, dynamic>?;
+      if (playerData != null) {
+        await txn.insert('player', playerData);
+      }
+
+      final skills = data['skills'] as List<dynamic>?;
+      if (skills != null) {
+        for (final skill in skills) {
+          await txn.insert('skills', skill as Map<String, dynamic>);
+        }
+      }
+
+      final missions = data['missions'] as List<dynamic>?;
+      if (missions != null) {
+        for (final mission in missions) {
+          await txn.insert('missions', mission as Map<String, dynamic>);
+        }
+      }
+
+      final missionSkills = data['mission_skills'] as List<dynamic>?;
+      if (missionSkills != null) {
+        for (final ms in missionSkills) {
+          await txn.insert('mission_skills', ms as Map<String, dynamic>);
+        }
+      }
+    });
   }
 
   Future<void> close() async {

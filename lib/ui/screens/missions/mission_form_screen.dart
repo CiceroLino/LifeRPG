@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/mission.dart';
 import '../../../providers/mission_provider.dart';
 import '../../../providers/skill_provider.dart';
+import '../../widgets/common/reward_picker_dialog.dart';
 
 class MissionFormScreen extends StatefulWidget {
   const MissionFormScreen({super.key});
@@ -20,8 +22,8 @@ class _MissionFormScreenState extends State<MissionFormScreen> {
   final _titleController = TextEditingController();
   final _descController = TextEditingController();
   final _durationController = TextEditingController(text: '30');
-  final _rewardController = TextEditingController(text: '10');
-
+  
+  int _rewardPoints = 10;
   double _difficulty = 3;
   double _urgency = 3;
   double _fear = 2;
@@ -47,7 +49,6 @@ class _MissionFormScreenState extends State<MissionFormScreen> {
     _titleController.dispose();
     _descController.dispose();
     _durationController.dispose();
-    _rewardController.dispose();
     super.dispose();
   }
 
@@ -183,11 +184,34 @@ class _MissionFormScreenState extends State<MissionFormScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            TextFormField(
-              controller: _rewardController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Reward (money/points)',
+            InkWell(
+              onTap: _pickReward,
+              borderRadius: BorderRadius.circular(10),
+              child: InputDecorator(
+                decoration: InputDecoration(
+                  labelText: 'Reward Points',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Text(
+                      _rewardPoints.toString(),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const FaIcon(
+                      FontAwesomeIcons.gem,
+                      size: 16,
+                      color: AppTheme.primary,
+                    ),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -246,11 +270,23 @@ class _MissionFormScreenState extends State<MissionFormScreen> {
     }
   }
 
+  Future<void> _pickReward() async {
+    final result = await showDialog<int>(
+      context: context,
+      builder: (context) => RewardPickerDialog(
+        initialValue: _rewardPoints,
+      ),
+    );
+
+    if (result != null) {
+      setState(() => _rewardPoints = result);
+    }
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
     final duration = int.tryParse(_durationController.text.trim()) ?? 0;
-    final reward = int.tryParse(_rewardController.text.trim()) ?? 0;
 
     final isRecurring = _recurrence != 'once';
     final recurrenceType = _recurrence == 'once' ? null : _recurrence;
@@ -264,7 +300,7 @@ class _MissionFormScreenState extends State<MissionFormScreen> {
       urgency: _urgency.round(),
       fear: _fear.round(),
       estimatedDuration: duration.clamp(0, 60),
-      rewardPoints: reward,
+      rewardPoints: _rewardPoints,
       dueDate: _dueDate,
       isRecurring: isRecurring,
       recurrenceType: recurrenceType,

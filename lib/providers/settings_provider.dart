@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../services/backup_service.dart';
+
 class SettingsProvider extends ChangeNotifier {
   static const String _keyLanguage = 'language';
   static const String _keySoundEffects = 'sound_effects_enabled';
@@ -9,6 +11,8 @@ class SettingsProvider extends ChangeNotifier {
   static const String _keyStartWeekOnMonday = 'start_week_on_monday';
   static const String _keyUse24HourFormat = 'use_24_hour_format';
   static const String _keyShowXpBar = 'show_xp_bar';
+
+  final BackupService _backupService = BackupService();
 
   SharedPreferences? _prefs;
   bool _isLoading = true;
@@ -107,11 +111,25 @@ class SettingsProvider extends ChangeNotifier {
   }
 
   Future<void> exportData() async {
-    debugPrint('TODO: Implementar exportação de dados');
+    try {
+      final success = await _backupService.createBackupFile();
+      if (!success) {
+        debugPrint('Falha ao criar arquivo de backup');
+      }
+    } catch (e) {
+      debugPrint('Erro ao exportar dados: $e');
+      rethrow;
+    }
   }
 
-  Future<void> importData() async {
-    debugPrint('TODO: Implementar importação de dados');
+  Future<String> importData() async {
+    try {
+      final result = await _backupService.restoreBackupFile();
+      return result.message;
+    } catch (e) {
+      debugPrint('Erro ao importar dados: $e');
+      return 'Error: ${e.toString()}';
+    }
   }
 
   Future<void> resetCharacter() async {

@@ -7,6 +7,9 @@ class Player {
   final int rewardPoints;
   final String? avatarPath;
   final int currentEnergy;
+  final String energyMode;
+  final String? wakeUpTime;
+  final String? sleepTime;
   final String themeMode;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -19,7 +22,10 @@ class Player {
     this.level = 1,
     this.rewardPoints = 0,
     this.avatarPath,
-    this.currentEnergy = 5,
+    this.currentEnergy = 100,
+    this.energyMode = 'manual',
+    this.wakeUpTime,
+    this.sleepTime,
     this.themeMode = 'light',
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -36,6 +42,9 @@ class Player {
       'reward_points': rewardPoints,
       'avatar_path': avatarPath,
       'current_energy': currentEnergy,
+      'energy_mode': energyMode,
+      'wake_up_time': wakeUpTime,
+      'sleep_time': sleepTime,
       'theme_mode': themeMode,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
@@ -51,12 +60,19 @@ class Player {
       level: map['level'] as int? ?? 1,
       rewardPoints: map['reward_points'] as int? ?? 0,
       avatarPath: map['avatar_path'] as String?,
-      currentEnergy: map['current_energy'] as int? ?? 5,
+      currentEnergy: map['current_energy'] as int? ?? 100,
+      energyMode: map['energy_mode'] as String? ?? 'manual',
+      wakeUpTime: map['wake_up_time'] as String?,
+      sleepTime: map['sleep_time'] as String?,
       themeMode: map['theme_mode'] as String? ?? 'light',
       createdAt: DateTime.parse(map['created_at'] as String),
       updatedAt: DateTime.parse(map['updated_at'] as String),
     );
   }
+
+  Map<String, dynamic> toJson() => toMap();
+
+  factory Player.fromJson(Map<String, dynamic> json) => Player.fromMap(json);
 
   Player copyWith({
     int? id,
@@ -67,6 +83,9 @@ class Player {
     int? rewardPoints,
     String? avatarPath,
     int? currentEnergy,
+    String? energyMode,
+    String? wakeUpTime,
+    String? sleepTime,
     String? themeMode,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -80,6 +99,9 @@ class Player {
       rewardPoints: rewardPoints ?? this.rewardPoints,
       avatarPath: avatarPath ?? this.avatarPath,
       currentEnergy: currentEnergy ?? this.currentEnergy,
+      energyMode: energyMode ?? this.energyMode,
+      wakeUpTime: wakeUpTime ?? this.wakeUpTime,
+      sleepTime: sleepTime ?? this.sleepTime,
       themeMode: themeMode ?? this.themeMode,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

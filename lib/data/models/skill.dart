@@ -54,6 +54,10 @@ class Skill {
     );
   }
 
+  Map<String, dynamic> toJson() => toMap();
+
+  factory Skill.fromJson(Map<String, dynamic> json) => Skill.fromMap(json);
+
   Skill copyWith({
     int? id,
     String? name,

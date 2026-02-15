@@ -4,8 +4,16 @@ import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../providers/settings_provider.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  bool _isExporting = false;
+  bool _isImporting = false;
 
   @override
   Widget build(BuildContext context) {
@@ -15,88 +23,220 @@ class SettingsScreen extends StatelessWidget {
           return const Center(child: CircularProgressIndicator());
         }
 
-        return ListView(
+        return Stack(
           children: [
-            const _SettingsSectionHeader('LANGUAGE'),
-            _SettingsActionTile(
-              title: 'Language',
-              subtitle: _getLanguageName(settings.language),
-              icon: Icons.language,
-              onTap: () => _showLanguageDialog(context, settings),
+            ListView(
+              children: [
+                const _SettingsSectionHeader('LANGUAGE'),
+                _SettingsActionTile(
+                  title: 'Language',
+                  subtitle: _getLanguageName(settings.language),
+                  icon: Icons.language,
+                  onTap: () => _showLanguageDialog(context, settings),
+                ),
+                const Divider(height: 1),
+                const _SettingsSectionHeader('SOUNDS'),
+                _SettingsCheckboxTile(
+                  title: 'Sound Effects',
+                  subtitle: 'Play sounds for actions',
+                  value: settings.soundEffectsEnabled,
+                  onChanged: (value) => settings.setSoundEffectsEnabled(value ?? false),
+                ),
+                _SettingsCheckboxTile(
+                  title: 'Notification Sounds',
+                  subtitle: 'Play sounds for notifications',
+                  value: settings.notificationSoundsEnabled,
+                  onChanged: (value) => settings.setNotificationSoundsEnabled(value ?? true),
+                ),
+                const Divider(height: 1),
+                const _SettingsSectionHeader('DATA & BACKUP'),
+                _SettingsActionTile(
+                  title: 'Export Database',
+                  subtitle: 'Save your data to a file',
+                  icon: Icons.upload_file,
+                  onTap: _isExporting ? null : () async => await _handleExport(context, settings),
+                ),
+                _SettingsActionTile(
+                  title: 'Import Database',
+                  subtitle: 'Restore data from a file',
+                  icon: Icons.download,
+                  onTap: _isImporting ? null : () async => await _handleImport(context, settings),
+                ),
+                const Divider(height: 1),
+                const _SettingsSectionHeader('SYSTEM'),
+                _SettingsCheckboxTile(
+                  title: 'Enable Notifications',
+                  subtitle: 'Receive reminders and alerts',
+                  value: settings.notificationsEnabled,
+                  onChanged: (value) => settings.setNotificationsEnabled(value ?? true),
+                ),
+                _SettingsCheckboxTile(
+                  title: 'Start week on Monday',
+                  subtitle: 'Calendar and date formatting',
+                  value: settings.startWeekOnMonday,
+                  onChanged: (value) => settings.setStartWeekOnMonday(value ?? false),
+                ),
+                _SettingsCheckboxTile(
+                  title: '24-Hour Clock',
+                  subtitle: 'Use 24-hour time format',
+                  value: settings.use24HourFormat,
+                  onChanged: (value) => settings.setUse24HourFormat(value ?? false),
+                ),
+                const Divider(height: 1),
+                const _SettingsSectionHeader('INTERFACE'),
+                _SettingsCheckboxTile(
+                  title: 'Show XP Bar',
+                  subtitle: 'Display experience bar in header',
+                  value: settings.showXpBar,
+                  onChanged: (value) => settings.setShowXpBar(value ?? true),
+                ),
+                const Divider(height: 1),
+                const _SettingsSectionHeader('RESET'),
+                _SettingsDangerTile(
+                  title: 'Reset Character Stats',
+                  color: Colors.orange,
+                  onTap: () => _showResetCharacterDialog(context, settings),
+                ),
+                _SettingsDangerTile(
+                  title: 'Factory Reset / Wipe All',
+                  color: AppTheme.accentRed,
+                  onTap: () => _showFactoryResetDialog(context, settings),
+                ),
+                const SizedBox(height: 32),
+              ],
             ),
-            const Divider(height: 1),
-            const _SettingsSectionHeader('SOUNDS'),
-            _SettingsCheckboxTile(
-              title: 'Sound Effects',
-              subtitle: 'Play sounds for actions',
-              value: settings.soundEffectsEnabled,
-              onChanged: (value) => settings.setSoundEffectsEnabled(value ?? false),
-            ),
-            _SettingsCheckboxTile(
-              title: 'Notification Sounds',
-              subtitle: 'Play sounds for notifications',
-              value: settings.notificationSoundsEnabled,
-              onChanged: (value) => settings.setNotificationSoundsEnabled(value ?? true),
-            ),
-            const Divider(height: 1),
-            const _SettingsSectionHeader('DATA & BACKUP'),
-            _SettingsActionTile(
-              title: 'Export Database',
-              subtitle: 'Save your data to a file',
-              icon: Icons.upload_file,
-              onTap: () => settings.exportData(),
-            ),
-            _SettingsActionTile(
-              title: 'Import Database',
-              subtitle: 'Restore data from a file',
-              icon: Icons.download,
-              onTap: () => settings.importData(),
-            ),
-            const Divider(height: 1),
-            const _SettingsSectionHeader('SYSTEM'),
-            _SettingsCheckboxTile(
-              title: 'Enable Notifications',
-              subtitle: 'Receive reminders and alerts',
-              value: settings.notificationsEnabled,
-              onChanged: (value) => settings.setNotificationsEnabled(value ?? true),
-            ),
-            _SettingsCheckboxTile(
-              title: 'Start week on Monday',
-              subtitle: 'Calendar and date formatting',
-              value: settings.startWeekOnMonday,
-              onChanged: (value) => settings.setStartWeekOnMonday(value ?? false),
-            ),
-            _SettingsCheckboxTile(
-              title: '24-Hour Clock',
-              subtitle: 'Use 24-hour time format',
-              value: settings.use24HourFormat,
-              onChanged: (value) => settings.setUse24HourFormat(value ?? false),
-            ),
-            const Divider(height: 1),
-            const _SettingsSectionHeader('INTERFACE'),
-            _SettingsCheckboxTile(
-              title: 'Show XP Bar',
-              subtitle: 'Display experience bar in header',
-              value: settings.showXpBar,
-              onChanged: (value) => settings.setShowXpBar(value ?? true),
-            ),
-            const Divider(height: 1),
-            const _SettingsSectionHeader('RESET'),
-            _SettingsDangerTile(
-              title: 'Reset Character Stats',
-              color: Colors.orange,
-              onTap: () => _showResetCharacterDialog(context, settings),
-            ),
-            _SettingsDangerTile(
-              title: 'Factory Reset / Wipe All',
-              color: AppTheme.accentRed,
-              onTap: () => _showFactoryResetDialog(context, settings),
-            ),
-            const SizedBox(height: 32),
+            if (_isExporting || _isImporting)
+              Container(
+                color: Colors.black54,
+                child: const Center(
+                  child: CircularProgressIndicator(),
+                ),
+              ),
           ],
         );
       },
     );
+  }
+
+  Future<void> _handleExport(BuildContext context, SettingsProvider settings) async {
+    setState(() => _isExporting = true);
+
+    try {
+      await settings.exportData();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Backup created successfully!'),
+            backgroundColor: AppTheme.successGreen,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error creating backup: ${e.toString()}'),
+            backgroundColor: AppTheme.accentRed,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isExporting = false);
+      }
+    }
+  }
+
+  Future<void> _handleImport(BuildContext context, SettingsProvider settings) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppTheme.surface,
+        title: const Text(
+          'Import Backup',
+          style: TextStyle(color: AppTheme.textPrimary),
+        ),
+        content: const Text(
+          'This will replace ALL your current data with the backup file.\n\nAre you sure you want to continue?',
+          style: TextStyle(color: AppTheme.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: AppTheme.textSecondary),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(
+              'Import',
+              style: TextStyle(color: AppTheme.primary),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _isImporting = true);
+
+    try {
+      final message = await settings.importData();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message),
+            backgroundColor: message.toLowerCase().contains('success')
+                ? AppTheme.successGreen
+                : AppTheme.accentRed,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+
+        if (message.toLowerCase().contains('success')) {
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => AlertDialog(
+              backgroundColor: AppTheme.surface,
+              title: const Text(
+                'Restart Required',
+                style: TextStyle(color: AppTheme.textPrimary),
+              ),
+              content: const Text(
+                'Data has been restored successfully.\n\nPlease restart the application to load the restored data.',
+                style: TextStyle(color: AppTheme.textSecondary),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text(
+                    'OK',
+                    style: TextStyle(color: AppTheme.primary),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error importing backup: ${e.toString()}'),
+            backgroundColor: AppTheme.accentRed,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isImporting = false);
+      }
+    }
   }
 
   String _getLanguageName(String code) {
@@ -318,36 +458,40 @@ class _SettingsActionTile extends StatelessWidget {
   final String title;
   final String subtitle;
   final IconData icon;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   const _SettingsActionTile({
     required this.title,
     required this.subtitle,
     required this.icon,
-    required this.onTap,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      leading: Icon(icon, color: AppTheme.textSecondary),
+      enabled: onTap != null,
+      leading: Icon(
+        icon,
+        color: onTap != null ? AppTheme.textSecondary : AppTheme.textSecondary.withOpacity(0.5),
+      ),
       title: Text(
         title,
-        style: const TextStyle(
-          color: AppTheme.textPrimary,
+        style: TextStyle(
+          color: onTap != null ? AppTheme.textPrimary : AppTheme.textPrimary.withOpacity(0.5),
           fontSize: 16,
         ),
       ),
       subtitle: Text(
         subtitle,
-        style: const TextStyle(
-          color: AppTheme.textSecondary,
+        style: TextStyle(
+          color: onTap != null ? AppTheme.textSecondary : AppTheme.textSecondary.withOpacity(0.5),
           fontSize: 13,
         ),
       ),
-      trailing: const Icon(
+      trailing: Icon(
         Icons.chevron_right,
-        color: AppTheme.textSecondary,
+        color: onTap != null ? AppTheme.textSecondary : AppTheme.textSecondary.withOpacity(0.5),
       ),
       onTap: onTap,
     );

@@ -118,6 +118,20 @@ class Mission {
     );
   }
 
+  Map<String, dynamic> toJson() {
+    final json = toMap();
+    json['skill_ids'] = skillIds;
+    return json;
+  }
+
+  factory Mission.fromJson(Map<String, dynamic> json) {
+    final mission = Mission.fromMap(json);
+    final skillIdsList = json['skill_ids'] as List<dynamic>?;
+    return mission.copyWith(
+      skillIds: skillIdsList?.map((e) => e as int).toList() ?? [],
+    );
+  }
+
   Mission copyWith({
     int? id,
     String? title,
