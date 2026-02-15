@@ -8,7 +8,6 @@ import 'package:path/path.dart' as path;
 
 import '../../../core/theme/app_theme.dart';
 import '../../../providers/player_provider.dart';
-// import '../../../data/models/player.dart';
 import '../../widgets/profile/profile_icon_picker.dart';
 
 /// Tela de perfil do jogador com layout de edição fiel ao design original.
