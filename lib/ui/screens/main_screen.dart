@@ -15,7 +15,9 @@ import 'help/help_screen.dart';
 import '../widgets/common/app_drawer.dart';
 import '../widgets/common/liferpg_app_bar.dart';
 import '../widgets/player/player_stats_header.dart';
+import '../../providers/mission_provider.dart';
 import '../../providers/player_provider.dart';
+import '../../providers/skill_provider.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -32,10 +34,10 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void initState() {
     super.initState();
-    // Garante que o player seja carregado
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         context.read<PlayerProvider>().loadPlayer();
+        context.read<SkillProvider>().loadSkills();
       }
     });
   }
@@ -54,7 +56,8 @@ class _MainScreenState extends State<MainScreen> {
   ];
 
   // Índices que NÃO devem mostrar o header (Skills, Settings e Help)
-  bool get _shouldShowHeader => _currentIndex != 4 && _currentIndex != 8 && _currentIndex != 9;
+  bool get _shouldShowHeader =>
+      _currentIndex != 4 && _currentIndex != 8 && _currentIndex != 9;
 
   @override
   Widget build(BuildContext context) {
@@ -67,11 +70,11 @@ class _MainScreenState extends State<MainScreen> {
         currentScreen: _getCurrentScreenName(_currentIndex),
         isStatsExpanded: _isStatsExpanded,
         showCompleted: _showCompleted,
-        onToggleStats: () => setState(() => _isStatsExpanded = !_isStatsExpanded),
-        onToggleShowCompleted: (value) => setState(() => _showCompleted = value),
-        onSearch: () {
-          // TODO: Implementar busca
-        },
+        onToggleStats: () =>
+            setState(() => _isStatsExpanded = !_isStatsExpanded),
+        onToggleShowCompleted: (value) =>
+            setState(() => _showCompleted = value),
+        onSearch: _showMissionSearchDialog,
         onEdit: () {
           // TODO: Implementar edição de perfil
         },
@@ -79,16 +82,11 @@ class _MainScreenState extends State<MainScreen> {
           // TODO: Implementar calendário
         },
         onAddMission: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => const MissionFormScreen(),
-            ),
-          );
+          Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const MissionFormScreen()));
         },
-        onSortChanged: (sortValue) {
-          // TODO: Implementar ordenação
-          debugPrint('Sort changed to: $sortValue');
-        },
+        onSortChanged: (sortValue) => _applySort(sortValue),
         onWorkspaceChanged: (workspace) {
           // TODO: Implementar troca de workspace
           debugPrint('Workspace changed to:      $workspace');
@@ -105,17 +103,15 @@ class _MainScreenState extends State<MainScreen> {
         onClearHistory: () {
           // TODO: Implementar limpeza de histórico
         },
-        onSkillsFilter: () {
-          // TODO: Implementar filtro de skills
-        },
+        onSkillsFilter: _openSkillsFilterSheet,
       ),
       body: Consumer<PlayerProvider>(
         builder: (context, playerProvider, _) {
-            return Column(
+          return Column(
             children: [
               // Player Stats Header (mostra apenas se não for Settings ou Help e se estiver expandido)
-              if (_shouldShowHeader && 
-                  _isStatsExpanded && 
+              if (_shouldShowHeader &&
+                  _isStatsExpanded &&
                   playerProvider.player != null)
                 PlayerStatsHeader(
                   player: playerProvider.player!,
@@ -124,10 +120,7 @@ class _MainScreenState extends State<MainScreen> {
                 ),
               // Conteúdo da tela
               Expanded(
-                child: IndexedStack(
-                  index: _currentIndex,
-                  children: _pages,
-                ),
+                child: IndexedStack(index: _currentIndex, children: _pages),
               ),
             ],
           );
@@ -137,15 +130,151 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
+  Future<void> _showMissionSearchDialog() async {
+    final controller = TextEditingController(
+      text: context.read<MissionProvider>().searchQuery,
+    );
+    final query = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Buscar missões'),
+        content: TextField(
+          key: const Key('mission-search-field'),
+          controller: controller,
+          decoration: const InputDecoration(hintText: 'Título ou descrição'),
+          autofocus: true,
+          onSubmitted: (value) => Navigator.of(dialogContext).pop(value),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(controller.text),
+            child: const Text('Aplicar'),
+          ),
+        ],
+      ),
+    );
+
+    controller.dispose();
+
+    if (!mounted || query == null) return;
+    context.read<MissionProvider>().setSearchQuery(query);
+  }
+
+  void _applySort(String sortValue) {
+    MissionSortMode mode = MissionSortMode.recent;
+    switch (sortValue) {
+      case 'difficulty':
+        mode = MissionSortMode.difficultyDesc;
+        break;
+      case 'importance':
+        mode = MissionSortMode.priorityDesc;
+        break;
+      case 'reward':
+        mode = MissionSortMode.rewardDesc;
+        break;
+      case 'date':
+      default:
+        mode = MissionSortMode.recent;
+        break;
+    }
+
+    context.read<MissionProvider>().setSortMode(mode);
+  }
+
+  Future<void> _openSkillsFilterSheet() async {
+    final skillProvider = context.read<SkillProvider>();
+    final missionProvider = context.read<MissionProvider>();
+    final selected = {...missionProvider.selectedSkillIds};
+
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        final skills = skillProvider.skills;
+        if (skills.isEmpty) {
+          return const Padding(
+            padding: EdgeInsets.all(16),
+            child: Text('Nenhuma skill disponível para filtrar.'),
+          );
+        }
+
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Filtrar por skills',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: skills.map((skill) {
+                      return FilterChip(
+                        label: Text(skill.name),
+                        selected: selected.contains(skill.id),
+                        onSelected: (enabled) {
+                          if (skill.id == null) return;
+                          setState(() {
+                            if (enabled) {
+                              selected.add(skill.id!);
+                            } else {
+                              selected.remove(skill.id!);
+                            }
+                          });
+                        },
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      TextButton(
+                        onPressed: () {
+                          selected.clear();
+                          setState(() {});
+                        },
+                        child: const Text('Limpar'),
+                      ),
+                      const Spacer(),
+                      TextButton(
+                        onPressed: () => Navigator.of(sheetContext).pop(),
+                        child: const Text('Cancelar'),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          missionProvider.setSkillFilters(selected);
+                          Navigator.of(sheetContext).pop();
+                        },
+                        child: const Text('Aplicar'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   Widget? _buildFAB() {
     switch (_currentIndex) {
       case 0:
         return FloatingActionButton(
           onPressed: () {
             Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => const MissionFormScreen(),
-              ),
+              MaterialPageRoute(builder: (_) => const MissionFormScreen()),
             );
           },
           child: const Icon(Icons.add),

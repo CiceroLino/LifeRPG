@@ -1,0 +1,125 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
+
+import 'package:liferpg/data/models/mission.dart';
+import 'package:liferpg/data/models/skill.dart';
+import 'package:liferpg/providers/mission_provider.dart';
+import 'package:liferpg/providers/player_provider.dart';
+import 'package:liferpg/providers/settings_provider.dart';
+import 'package:liferpg/providers/skill_provider.dart';
+import 'package:liferpg/ui/screens/main_screen.dart';
+import 'package:liferpg/ui/widgets/common/liferpg_app_bar.dart';
+
+class FakeMissionProvider extends MissionProvider {
+  MissionSortMode? lastSortMode;
+  String? lastQuery;
+  Set<int> lastSkillFilters = {};
+
+  @override
+  bool get isLoading => false;
+
+  @override
+  List<Mission> get filteredMissions => const [];
+
+  @override
+  List<Mission> get missions => const [];
+
+  @override
+  Future<void> loadMissions() async {}
+
+  @override
+  void setSortMode(MissionSortMode mode) {
+    lastSortMode = mode;
+  }
+
+  @override
+  void setSearchQuery(String query) {
+    lastQuery = query;
+  }
+
+  @override
+  void setSkillFilters(Set<int> skillIds) {
+    lastSkillFilters = skillIds;
+  }
+}
+
+class FakeSkillProvider extends SkillProvider {
+  @override
+  bool get isLoading => false;
+
+  @override
+  List<Skill> get skills => [
+    Skill(id: 11, name: 'Programming'),
+    Skill(id: 22, name: 'Fitness'),
+  ];
+
+  @override
+  Future<void> loadSkills() async {}
+}
+
+class FakePlayerProvider extends PlayerProvider {
+  @override
+  Future<void> loadPlayer() async {}
+}
+
+class FakeSettingsProvider extends SettingsProvider {
+  @override
+  Future<void> initialize() async {}
+}
+
+void main() {
+  Future<void> pumpMain(
+    WidgetTester tester,
+    FakeMissionProvider missionProvider,
+  ) async {
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<MissionProvider>.value(value: missionProvider),
+          ChangeNotifierProvider<SkillProvider>.value(
+            value: FakeSkillProvider(),
+          ),
+          ChangeNotifierProvider<PlayerProvider>.value(
+            value: FakePlayerProvider(),
+          ),
+          ChangeNotifierProvider<SettingsProvider>.value(
+            value: FakeSettingsProvider(),
+          ),
+        ],
+        child: const MaterialApp(home: MainScreen()),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+  }
+
+  testWidgets('search action updates mission query', (tester) async {
+    final missionProvider = FakeMissionProvider();
+    await pumpMain(tester, missionProvider);
+
+    final appBar = tester.widget<LifeRPGAppBar>(find.byType(LifeRPGAppBar));
+    appBar.onSearch?.call();
+    await tester.pump();
+
+    await tester.enterText(
+      find.byKey(const Key('mission-search-field')),
+      'flutter',
+    );
+    await tester.tap(find.widgetWithText(TextButton, 'Aplicar'));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(missionProvider.lastQuery, 'flutter');
+  });
+
+  testWidgets('sort action maps to provider sort mode', (tester) async {
+    final missionProvider = FakeMissionProvider();
+    await pumpMain(tester, missionProvider);
+
+    final appBar = tester.widget<LifeRPGAppBar>(find.byType(LifeRPGAppBar));
+    appBar.onSortChanged?.call('difficulty');
+    await tester.pump();
+
+    expect(missionProvider.lastSortMode, MissionSortMode.difficultyDesc);
+  });
+}

@@ -27,7 +27,7 @@ class _MissionsListScreenState extends State<MissionsListScreen> {
           if (provider.isLoading) {
             return const Center(child: CircularProgressIndicator());
           }
-          final missions = provider.missions;
+          final missions = provider.filteredMissions;
 
           if (missions.isEmpty) {
             return const Center(
