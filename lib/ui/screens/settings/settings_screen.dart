@@ -20,9 +20,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<SettingsProvider>(
-      builder: (context, settings, _) {
+    return Consumer2<SettingsProvider, PlayerProvider>(
+      builder: (context, settings, playerProvider, _) {
         if (settings.isLoading) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final player = playerProvider.player;
+        if (player == null) {
           return const Center(child: CircularProgressIndicator());
         }
 
@@ -103,6 +107,49 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   onChanged: (value) => settings.setShowXpBar(value ?? true),
                 ),
                 const Divider(height: 1),
+                const _SettingsSectionHeader('ENERGY'),
+                ListTile(
+                  title: const Text(
+                    'Energy Mode',
+                    style: TextStyle(color: AppTheme.textPrimary, fontSize: 16),
+                  ),
+                  subtitle: const Text(
+                    'Manual lets you edit energy; automatic follows your schedule',
+                    style: TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 13,
+                    ),
+                  ),
+                  trailing: DropdownButton<String>(
+                    value: player.energyMode == 'auto' ? 'auto' : 'manual',
+                    dropdownColor: AppTheme.surface,
+                    style: const TextStyle(color: AppTheme.textPrimary),
+                    underline: const SizedBox.shrink(),
+                    items: const [
+                      DropdownMenuItem(value: 'manual', child: Text('Manual')),
+                      DropdownMenuItem(value: 'auto', child: Text('Automatic')),
+                    ],
+                    onChanged: (value) async {
+                      if (value == null) return;
+                      await playerProvider.setEnergyMode(value);
+                    },
+                  ),
+                ),
+                if (player.energyMode == 'auto') ...[
+                  _SettingsActionTile(
+                    title: 'Wake Up Time',
+                    subtitle: player.wakeUpTime ?? 'Not set',
+                    icon: Icons.wb_sunny_outlined,
+                    onTap: () async => _pickWakeUpTime(context, playerProvider),
+                  ),
+                  _SettingsActionTile(
+                    title: 'Sleep Time',
+                    subtitle: player.sleepTime ?? 'Not set',
+                    icon: Icons.nightlight_round,
+                    onTap: () async => _pickSleepTime(context, playerProvider),
+                  ),
+                ],
+                const Divider(height: 1),
                 const _SettingsSectionHeader('RESET'),
                 _SettingsDangerTile(
                   title: 'Reset Character Stats',
@@ -126,6 +173,74 @@ class _SettingsScreenState extends State<SettingsScreen> {
         );
       },
     );
+  }
+
+  Future<void> _pickWakeUpTime(
+    BuildContext context,
+    PlayerProvider playerProvider,
+  ) async {
+    final player = playerProvider.player;
+    if (player == null) return;
+    final picked = await showTimePicker(
+      context: context,
+      initialTime:
+          _parseTime(player.wakeUpTime) ?? const TimeOfDay(hour: 8, minute: 0),
+    );
+    if (picked == null) return;
+
+    final value = _formatTime(picked);
+    if (value == player.sleepTime) {
+      _showScheduleError();
+      return;
+    }
+    await playerProvider.setWakeUpTime(value);
+  }
+
+  Future<void> _pickSleepTime(
+    BuildContext context,
+    PlayerProvider playerProvider,
+  ) async {
+    final player = playerProvider.player;
+    if (player == null) return;
+    final picked = await showTimePicker(
+      context: context,
+      initialTime:
+          _parseTime(player.sleepTime) ?? const TimeOfDay(hour: 22, minute: 0),
+    );
+    if (picked == null) return;
+
+    final value = _formatTime(picked);
+    if (value == player.wakeUpTime) {
+      _showScheduleError();
+      return;
+    }
+    await playerProvider.setSleepTime(value);
+  }
+
+  void _showScheduleError() {
+    if (!mounted) return;
+    ScaffoldMessenger.of(this.context).showSnackBar(
+      const SnackBar(
+        content: Text('Wake and sleep times must be different'),
+        backgroundColor: AppTheme.accentRed,
+      ),
+    );
+  }
+
+  TimeOfDay? _parseTime(String? value) {
+    if (value == null) return null;
+    final parts = value.split(':');
+    if (parts.length < 2) return null;
+    final hour = int.tryParse(parts[0]);
+    final minute = int.tryParse(parts[1]);
+    if (hour == null || minute == null) return null;
+    return TimeOfDay(hour: hour, minute: minute);
+  }
+
+  String _formatTime(TimeOfDay time) {
+    final hour = time.hour.toString().padLeft(2, '0');
+    final minute = time.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
   }
 
   Future<void> _handleExport(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -33,6 +34,7 @@ class _MainScreenState extends State<MainScreen> {
   bool _isStatsExpanded = true;
   bool _showCompleted = false;
   String _workspace = 'personal';
+  Timer? _energyAutoRefreshTimer;
 
   @override
   void initState() {
@@ -41,8 +43,15 @@ class _MainScreenState extends State<MainScreen> {
       if (mounted) {
         context.read<PlayerProvider>().loadPlayer();
         context.read<SkillProvider>().loadSkills();
+        _syncEnergyAutoRefreshTimer();
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _energyAutoRefreshTimer?.cancel();
+    super.dispose();
   }
 
   final _pages = const [
@@ -95,6 +104,7 @@ class _MainScreenState extends State<MainScreen> {
       ),
       body: Consumer<PlayerProvider>(
         builder: (context, playerProvider, _) {
+          _syncEnergyAutoRefreshTimer();
           return Column(
             children: [
               // Player Stats Header (mostra apenas se não for Settings ou Help e se estiver expandido)
@@ -103,6 +113,7 @@ class _MainScreenState extends State<MainScreen> {
                   playerProvider.player != null)
                 PlayerStatsHeader(
                   player: playerProvider.player!,
+                  onManualEnergyChanged: (value) => _setManualEnergy(value),
                   showTabs: _currentIndex == 0,
                   onTabChanged: (index) {},
                 ),
@@ -116,6 +127,29 @@ class _MainScreenState extends State<MainScreen> {
       ),
       floatingActionButton: _buildFAB(),
     );
+  }
+
+  Future<void> _setManualEnergy(int value) async {
+    final playerProvider = context.read<PlayerProvider>();
+    if (playerProvider.player?.energyMode != 'manual') return;
+    await playerProvider.setManualEnergy(value);
+  }
+
+  void _syncEnergyAutoRefreshTimer() {
+    if (!mounted) return;
+    final isAutoMode =
+        context.read<PlayerProvider>().player?.energyMode == 'auto';
+    if (!isAutoMode) {
+      _energyAutoRefreshTimer?.cancel();
+      _energyAutoRefreshTimer = null;
+      return;
+    }
+
+    if (_energyAutoRefreshTimer != null) return;
+    _energyAutoRefreshTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (!mounted) return;
+      setState(() {});
+    });
   }
 
   Future<void> _showMissionSearchDialog() async {

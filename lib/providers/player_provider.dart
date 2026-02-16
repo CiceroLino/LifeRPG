@@ -44,4 +44,29 @@ class PlayerProvider extends ChangeNotifier {
       debugPrint('Erro ao atualizar player: $e');
     }
   }
+
+  Future<void> setEnergyMode(String mode) async {
+    if (mode != 'manual' && mode != 'auto') return;
+    final current = _player;
+    if (current == null) return;
+    await updatePlayer(current.copyWith(energyMode: mode));
+  }
+
+  Future<void> setWakeUpTime(String wakeUpTime) async {
+    final current = _player;
+    if (current == null) return;
+    await updatePlayer(current.copyWith(wakeUpTime: wakeUpTime));
+  }
+
+  Future<void> setSleepTime(String sleepTime) async {
+    final current = _player;
+    if (current == null) return;
+    await updatePlayer(current.copyWith(sleepTime: sleepTime));
+  }
+
+  Future<void> setManualEnergy(int value) async {
+    final current = _player;
+    if (current == null) return;
+    await updatePlayer(current.copyWith(currentEnergy: value.clamp(0, 100)));
+  }
 }

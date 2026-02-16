@@ -6,12 +6,14 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/player.dart';
+import '../../../core/utils/energy_schedule_calculator.dart';
 import '../../../core/utils/xp_calculator.dart';
 
 class PlayerStatsHeader extends StatelessWidget {
   final Player player;
   final int maxHp;
   final ValueChanged<int>? onTabChanged;
+  final ValueChanged<int>? onManualEnergyChanged;
   final bool showTabs;
 
   const PlayerStatsHeader({
@@ -19,6 +21,7 @@ class PlayerStatsHeader extends StatelessWidget {
     required this.player,
     this.maxHp = 100,
     this.onTabChanged,
+    this.onManualEnergyChanged,
     this.showTabs = false,
   });
 
@@ -33,11 +36,6 @@ class PlayerStatsHeader extends StatelessWidget {
   double get xpProgress {
     if (nextLevelXp == 0) return 0.0;
     return (currentXp / nextLevelXp).clamp(0.0, 1.0);
-  }
-
-  /// Calcula o progresso do HP/Energy (0.0 a 1.0)
-  double get hpProgress {
-    return (player.currentEnergy / maxHp).clamp(0.0, 1.0);
   }
 
   /// Formata números grandes com vírgulas
@@ -93,6 +91,29 @@ class PlayerStatsHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final autoEnergy = EnergyScheduleCalculator.compute(
+      now: DateTime.now(),
+      wakeUpTime: player.wakeUpTime,
+      sleepTime: player.sleepTime,
+    );
+    final isAutoMode =
+        player.energyMode == 'auto' && autoEnergy.isAutoConfigured;
+    final energyPercent = isAutoMode
+        ? autoEnergy.energyPercent
+        : player.currentEnergy.toDouble();
+    final energyProgress = (energyPercent / maxHp).clamp(0.0, 1.0);
+    final energyValue = energyPercent.round().clamp(0, maxHp);
+    final hpFillColor = isAutoMode
+        ? (autoEnergy.isCharging
+              ? Color.lerp(
+                      AppTheme.accentRed,
+                      Colors.cyanAccent,
+                      (energyPercent / 100).clamp(0.0, 1.0),
+                    ) ??
+                    Colors.cyanAccent
+              : AppTheme.accentRed)
+        : AppTheme.accentRed;
+
     final content = Container(
       color: AppTheme.background,
       child: Column(
@@ -196,15 +217,26 @@ class PlayerStatsHeader extends StatelessWidget {
 
                 // Barra de HP (Baixo) - sem espaçamento
                 _buildProgressBar(
-                  progress: hpProgress,
+                  key: const Key('energy-bar'),
+                  progress: energyProgress,
                   backgroundColor: const Color(0xFF424242),
-                  fillColor: AppTheme.accentRed, // Vermelho
+                  fillColor: hpFillColor,
                   height: 20,
-                  label: '${player.currentEnergy}/$maxHp',
+                  label: '$energyValue/$maxHp',
                   labelAlignment: Alignment.centerLeft,
                   labelPadding: const EdgeInsets.only(left: 8),
                   rightLabel: _formatTimeLeft(),
                   rightLabelPadding: const EdgeInsets.only(right: 8),
+                  onTapDown: player.energyMode == 'manual'
+                      ? (localX, width) {
+                          if (onManualEnergyChanged == null || width <= 0)
+                            return;
+                          final ratio = (localX / width).clamp(0.0, 1.0);
+                          onManualEnergyChanged!(
+                            (ratio * maxHp).round().clamp(0, maxHp),
+                          );
+                        }
+                      : null,
                 ),
               ],
             ),
@@ -341,6 +373,7 @@ class PlayerStatsHeader extends StatelessWidget {
 
   /// Constrói uma barra de progresso customizada com texto sobreposto
   Widget _buildProgressBar({
+    Key? key,
     required double progress,
     required Color backgroundColor,
     required Color fillColor,
@@ -350,25 +383,24 @@ class PlayerStatsHeader extends StatelessWidget {
     required EdgeInsets labelPadding,
     String? rightLabel,
     EdgeInsets? rightLabelPadding,
+    void Function(double localX, double width)? onTapDown,
   }) {
-    return ClipRRect(
+    final bar = ClipRRect(
       borderRadius: BorderRadius.circular(4),
       child: SizedBox(
+        key: key,
         height: height,
         child: Stack(
           children: [
-            // Fundo
             Container(
               width: double.infinity,
               height: height,
               color: backgroundColor,
             ),
-            // Preenchimento (Progresso)
             FractionallySizedBox(
               widthFactor: progress.clamp(0.0, 1.0),
               child: Container(height: height, color: fillColor),
             ),
-            // Texto sobreposto (Esquerda)
             Positioned.fill(
               child: Align(
                 alignment: labelAlignment,
@@ -392,7 +424,6 @@ class PlayerStatsHeader extends StatelessWidget {
                 ),
               ),
             ),
-            // Texto sobreposto (Direita) - se fornecido
             if (rightLabel != null)
               Positioned.fill(
                 child: Align(
@@ -420,6 +451,20 @@ class PlayerStatsHeader extends StatelessWidget {
           ],
         ),
       ),
+    );
+
+    if (onTapDown == null) return bar;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTapDown: (details) =>
+              onTapDown(details.localPosition.dx, constraints.maxWidth),
+          onHorizontalDragUpdate: (details) =>
+              onTapDown(details.localPosition.dx, constraints.maxWidth),
+          child: bar,
+        );
+      },
     );
   }
 }

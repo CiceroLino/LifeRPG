@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
+import 'package:liferpg/data/models/player.dart';
 import 'package:liferpg/providers/mission_provider.dart';
 import 'package:liferpg/providers/player_provider.dart';
 import 'package:liferpg/providers/settings_provider.dart';
@@ -27,6 +28,15 @@ class FakeSkillProvider extends SkillProvider {
 }
 
 class FakePlayerProvider extends PlayerProvider {
+  final Player _player = Player(
+    energyMode: 'manual',
+    wakeUpTime: '08:00',
+    sleepTime: '22:00',
+  );
+
+  @override
+  Player? get player => _player;
+
   int loadPlayerCalls = 0;
 
   @override
@@ -76,7 +86,11 @@ void main() {
       300,
       scrollable: find.byType(Scrollable),
     );
-    await tester.tap(find.text('Factory Reset / Wipe All'));
+    await tester.ensureVisible(
+      find.widgetWithText(ListTile, 'Factory Reset / Wipe All'),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ListTile, 'Factory Reset / Wipe All'));
     await tester.pumpAndSettle();
 
     await tester.tap(find.widgetWithText(TextButton, 'WIPE ALL DATA'));
