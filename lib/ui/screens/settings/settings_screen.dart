@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../providers/mission_provider.dart';
+import '../../../providers/player_provider.dart';
 import '../../../providers/settings_provider.dart';
+import '../../../providers/skill_provider.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -350,6 +353,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onPressed: () async {
               await settings.resetCharacter();
               if (!context.mounted) return;
+              await context.read<PlayerProvider>().loadPlayer();
+              if (!context.mounted) return;
               Navigator.pop(context);
               if (!mounted) return;
               ScaffoldMessenger.of(this.context).showSnackBar(
@@ -390,6 +395,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           TextButton(
             onPressed: () async {
               await settings.factoryReset();
+              if (!context.mounted) return;
+              await context.read<PlayerProvider>().loadPlayer();
+              await context.read<MissionProvider>().loadMissions();
+              await context.read<SkillProvider>().loadSkills();
               if (!context.mounted) return;
               Navigator.pop(context);
               if (!mounted) return;
