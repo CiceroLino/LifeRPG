@@ -71,12 +71,11 @@ class PlayerStatsHeader extends StatelessWidget {
         : wake.add(const Duration(days: 1));
     final remaining = target.difference(nowAdjusted);
     if (remaining.isNegative) {
-      return '00:00:00 left';
+      return '00:00 left';
     }
     final h = remaining.inHours.toString().padLeft(2, '0');
     final m = (remaining.inMinutes % 60).toString().padLeft(2, '0');
-    final s = (remaining.inSeconds % 60).toString().padLeft(2, '0');
-    return '$h:$m:$s left';
+    return '$h:$m left';
   }
 
   DateTime? _parseTodayTime(String time) {
