@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
 import 'package:liferpg/data/models/mission.dart';
+import 'package:liferpg/data/models/player.dart';
 import 'package:liferpg/data/models/skill.dart';
 import 'package:liferpg/providers/mission_provider.dart';
 import 'package:liferpg/providers/player_provider.dart';
@@ -13,6 +14,7 @@ import 'package:liferpg/ui/widgets/common/liferpg_app_bar.dart';
 
 class FakeMissionProvider extends MissionProvider {
   MissionSortMode? lastSortMode;
+  MissionFilterMode? lastFilterMode;
   String? lastQuery;
   Set<int> lastSkillFilters = {};
 
@@ -31,6 +33,11 @@ class FakeMissionProvider extends MissionProvider {
   @override
   void setSortMode(MissionSortMode mode) {
     lastSortMode = mode;
+  }
+
+  @override
+  void setFilterMode(MissionFilterMode mode) {
+    lastFilterMode = mode;
   }
 
   @override
@@ -59,6 +66,9 @@ class FakeSkillProvider extends SkillProvider {
 }
 
 class FakePlayerProvider extends PlayerProvider {
+  @override
+  Player? get player => Player();
+
   @override
   Future<void> loadPlayer() async {}
 }
@@ -121,5 +131,20 @@ void main() {
     await tester.pump();
 
     expect(missionProvider.lastSortMode, MissionSortMode.difficultyDesc);
+  });
+
+  testWidgets('mission header tabs map to provider filters', (tester) async {
+    final missionProvider = FakeMissionProvider();
+    await pumpMain(tester, missionProvider);
+
+    expect(find.text('Completed/History'), findsNothing);
+
+    await tester.tap(find.text('TODAY'));
+    await tester.pump();
+    expect(missionProvider.lastFilterMode, MissionFilterMode.today);
+
+    await tester.tap(find.text('TOMORROW'));
+    await tester.pump();
+    expect(missionProvider.lastFilterMode, MissionFilterMode.tomorrow);
   });
 }

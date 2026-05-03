@@ -9,6 +9,7 @@ import '../../../data/models/skill.dart';
 import '../../../providers/mission_provider.dart';
 import '../../../providers/skill_provider.dart';
 import '../../widgets/common/reward_picker_dialog.dart';
+import 'mission_icon_assets.dart';
 
 class MissionFormScreen extends StatefulWidget {
   const MissionFormScreen({super.key});
@@ -32,7 +33,7 @@ class _MissionFormScreenState extends State<MissionFormScreen> {
   String _recurrence = 'once';
   int? _parentMissionId;
   final Set<int> _selectedSkills = {};
-  String _iconAsset = _iconOptions.first;
+  String _iconAsset = missionIconOptions.first;
   bool _isCompleted = false;
 
   @override
@@ -228,7 +229,7 @@ class _MissionFormScreenState extends State<MissionFormScreen> {
             OutlinedButton.icon(
               onPressed: _pickIcon,
               icon: SvgPicture.asset(
-                _iconAsset,
+                normalizeMissionIconAsset(_iconAsset),
                 width: 20,
                 height: 20,
                 colorFilter: const ColorFilter.mode(
@@ -404,10 +405,10 @@ class _MissionFormScreenState extends State<MissionFormScreen> {
               mainAxisSpacing: 12,
               crossAxisSpacing: 12,
             ),
-            itemCount: _iconOptions.length,
+            itemCount: missionIconOptions.length,
             itemBuilder: (context, index) {
-              final asset = _iconOptions[index];
-              final isSelected = asset == _iconAsset;
+              final asset = missionIconOptions[index];
+              final isSelected = asset == normalizeMissionIconAsset(_iconAsset);
               return GestureDetector(
                 onTap: () => Navigator.pop(context, asset),
                 child: Container(
@@ -503,27 +504,3 @@ class _Section extends StatelessWidget {
     );
   }
 }
-
-const _iconOptions = [
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/archery-target.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/crosshair.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/overkill.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/delapouite/present.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/delapouite/treasure-map.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/delapouite/shopping-bag.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/delapouite/shop.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/delapouite/chest.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/skoll/open-treasure-chest.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/locked-chest.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/darkzaitzev/hooded-figure.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/angel-wings.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/aura.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/delapouite/skills.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/delapouite/barbell.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/brain.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/feathered-wing.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/light-bulb.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/gear-hammer.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/compass.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/bookmark.svg',
-];

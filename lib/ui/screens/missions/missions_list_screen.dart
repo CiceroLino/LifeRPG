@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 
 import '../../../data/models/mission.dart';
 import '../../../providers/mission_provider.dart';
+import '../../../providers/player_provider.dart';
+import '../../../providers/skill_provider.dart';
 import 'mission_editor_screen.dart';
 import '../../widgets/mission/mission_card.dart';
 
@@ -72,10 +74,17 @@ class _MissionsListScreenState extends State<MissionsListScreen> {
 
   Future<void> _updateMissionStatus(Mission mission, String status) async {
     if (mission.id == null) return;
-    await context.read<MissionProvider>().updateMissionStatus(
-      mission.id!,
-      status,
-    );
+    final missionProvider = context.read<MissionProvider>();
+    final playerProvider = context.read<PlayerProvider>();
+    final skillProvider = context.read<SkillProvider>();
+
+    await missionProvider.updateMissionStatus(mission.id!, status);
+    if (status == 'completed') {
+      await Future.wait([
+        playerProvider.loadPlayer(),
+        skillProvider.loadSkills(),
+      ]);
+    }
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

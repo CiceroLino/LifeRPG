@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
@@ -6,6 +8,7 @@ import 'package:liferpg/data/models/mission.dart';
 import 'package:liferpg/data/models/skill.dart';
 import 'package:liferpg/providers/mission_provider.dart';
 import 'package:liferpg/providers/skill_provider.dart';
+import 'package:liferpg/ui/screens/missions/mission_icon_assets.dart';
 import 'package:liferpg/ui/screens/missions/mission_form_screen.dart';
 
 class FakeSkillProvider extends SkillProvider {
@@ -79,5 +82,15 @@ void main() {
       find.widgetWithText(FilterChip, 'Programming'),
     );
     expect(chip.selected, isTrue);
+  });
+
+  test('mission icon options point at bundled assets', () {
+    for (final asset in missionIconOptions) {
+      expect(File(asset).existsSync(), isTrue, reason: asset);
+      expect(asset, isNot(contains('/lorc/crosshair.svg')));
+      expect(asset, isNot(contains('/lorc/overkill.svg')));
+      expect(asset, isNot(contains('/delapouite/treasure-map.svg')));
+      expect(asset, isNot(contains('/delapouite/barbell.svg')));
+    }
   });
 }

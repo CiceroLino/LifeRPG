@@ -4,6 +4,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/mission.dart';
+import '../../screens/missions/mission_icon_assets.dart';
 
 class MissionCard extends StatelessWidget {
   final Mission mission;
@@ -74,6 +75,7 @@ class MissionCard extends StatelessWidget {
 
     // Se tem ícone SVG, usa ele
     if (mission.icon != null && mission.icon!.isNotEmpty) {
+      final iconAsset = normalizeMissionIconAsset(mission.icon!);
       return Container(
         width: 50,
         height: 50,
@@ -83,7 +85,7 @@ class MissionCard extends StatelessWidget {
         ),
         padding: const EdgeInsets.all(8),
         child: SvgPicture.asset(
-          mission.icon!,
+          iconAsset,
           width: 34,
           height: 34,
           colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),

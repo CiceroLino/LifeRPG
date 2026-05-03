@@ -20,7 +20,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 3,
+      version: 4,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
       },
@@ -109,6 +109,8 @@ class DatabaseHelper {
       )
     ''');
 
+    await _createMissionCompletionHistoryTables(db);
+
     await _insertDefaultPlayer(db);
     await _insertDefaultSkills(db);
   }
@@ -129,6 +131,49 @@ class DatabaseHelper {
       await db.execute('ALTER TABLE player ADD COLUMN wake_up_time TEXT');
       await db.execute('ALTER TABLE player ADD COLUMN sleep_time TEXT');
     }
+    if (oldVersion < 4) {
+      await _createMissionCompletionHistoryTables(db);
+    }
+  }
+
+  Future<void> _createMissionCompletionHistoryTables(
+    DatabaseExecutor db,
+  ) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS mission_completion_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        mission_id INTEGER NOT NULL,
+        mission_title_snapshot TEXT NOT NULL,
+        xp_granted INTEGER DEFAULT 0,
+        reward_points_granted INTEGER DEFAULT 0,
+        completed_at TEXT NOT NULL,
+        recurrence_type TEXT,
+        resulting_streak INTEGER DEFAULT 0,
+        FOREIGN KEY(mission_id) REFERENCES missions(id) ON DELETE CASCADE
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS mission_completion_skill_rewards (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        event_id INTEGER NOT NULL,
+        skill_id INTEGER NOT NULL,
+        skill_name_snapshot TEXT NOT NULL,
+        xp_granted INTEGER DEFAULT 0,
+        FOREIGN KEY(event_id) REFERENCES mission_completion_events(id) ON DELETE CASCADE,
+        FOREIGN KEY(skill_id) REFERENCES skills(id) ON DELETE CASCADE
+      )
+    ''');
+
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_completion_events_mission ON mission_completion_events(mission_id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_completion_events_completed_at ON mission_completion_events(completed_at)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_completion_skill_rewards_event ON mission_completion_skill_rewards(event_id)',
+    );
   }
 
   Future<Map<String, dynamic>> getAllDataForBackup() async {
@@ -138,6 +183,10 @@ class DatabaseHelper {
     final missionsMaps = await db.query('missions');
     final skillsMaps = await db.query('skills');
     final missionSkillsMaps = await db.query('mission_skills');
+    final completionEventsMaps = await db.query('mission_completion_events');
+    final completionSkillRewardsMaps = await db.query(
+      'mission_completion_skill_rewards',
+    );
 
     return {
       'version': '1.0',
@@ -146,6 +195,8 @@ class DatabaseHelper {
       'missions': missionsMaps,
       'skills': skillsMaps,
       'mission_skills': missionSkillsMaps,
+      'mission_completion_events': completionEventsMaps,
+      'mission_completion_skill_rewards': completionSkillRewardsMaps,
     };
   }
 
@@ -167,6 +218,8 @@ class DatabaseHelper {
   Future<void> factoryReset() async {
     final db = await database;
     await db.transaction((txn) async {
+      await txn.delete('mission_completion_skill_rewards');
+      await txn.delete('mission_completion_events');
       await txn.delete('mission_skills');
       await txn.delete('missions');
       await txn.delete('skills');
@@ -180,6 +233,8 @@ class DatabaseHelper {
     final db = await database;
 
     await db.transaction((txn) async {
+      await txn.delete('mission_completion_skill_rewards');
+      await txn.delete('mission_completion_events');
       await txn.delete('mission_skills');
       await txn.delete('missions');
       await txn.delete('skills');
@@ -210,12 +265,46 @@ class DatabaseHelper {
           await txn.insert('mission_skills', ms as Map<String, dynamic>);
         }
       }
+
+      final completionEvents =
+          data['mission_completion_events'] as List<dynamic>?;
+      if (completionEvents != null) {
+        for (final event in completionEvents) {
+          await txn.insert(
+            'mission_completion_events',
+            event as Map<String, dynamic>,
+          );
+        }
+      }
+
+      final completionSkillRewards =
+          data['mission_completion_skill_rewards'] as List<dynamic>?;
+      if (completionSkillRewards != null) {
+        for (final reward in completionSkillRewards) {
+          await txn.insert(
+            'mission_completion_skill_rewards',
+            reward as Map<String, dynamic>,
+          );
+        }
+      }
     });
   }
 
   Future<void> close() async {
     final db = await database;
     await db.close();
+    _database = null;
+  }
+
+  Future<void> resetForTesting() async {
+    if (_database != null) {
+      await _database!.close();
+      _database = null;
+    }
+    final databasesPath = await getDatabasesPath();
+    final path = join(databasesPath, 'liferpg.db');
+    await deleteDatabase(path);
+    _database = await _initDatabase();
   }
 
   Future<void> _insertDefaultPlayer(DatabaseExecutor db) async {

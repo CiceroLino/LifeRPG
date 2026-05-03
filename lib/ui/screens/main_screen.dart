@@ -84,8 +84,10 @@ class _MainScreenState extends State<MainScreen> {
         showCompleted: _showCompleted,
         onToggleStats: () =>
             setState(() => _isStatsExpanded = !_isStatsExpanded),
-        onToggleShowCompleted: (value) =>
-            setState(() => _showCompleted = value),
+        onToggleShowCompleted: (value) {
+          setState(() => _showCompleted = value);
+          context.read<MissionProvider>().setShowCompleted(value);
+        },
         onSearch: _showMissionSearchDialog,
         onEdit: _goToProfile,
         onCalendar: _showCalendarPicker,
@@ -115,7 +117,7 @@ class _MainScreenState extends State<MainScreen> {
                   player: playerProvider.player!,
                   onManualEnergyChanged: (value) => _setManualEnergy(value),
                   showTabs: _currentIndex == 0,
-                  onTabChanged: (index) {},
+                  onTabChanged: _setMissionTabFilter,
                 ),
               // Conteúdo da tela
               Expanded(
@@ -205,6 +207,19 @@ class _MainScreenState extends State<MainScreen> {
     }
 
     context.read<MissionProvider>().setSortMode(mode);
+  }
+
+  void _setMissionTabFilter(int index) {
+    const filters = [
+      MissionFilterMode.plan,
+      MissionFilterMode.all,
+      MissionFilterMode.next,
+      MissionFilterMode.overdue,
+      MissionFilterMode.today,
+      MissionFilterMode.tomorrow,
+    ];
+    if (index < 0 || index >= filters.length) return;
+    context.read<MissionProvider>().setFilterMode(filters[index]);
   }
 
   void _goToProfile() {

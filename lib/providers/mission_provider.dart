@@ -1,8 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../data/models/mission.dart';
 import '../data/repositories/mission_repository.dart';
-import '../data/repositories/skill_repository.dart';
-import '../data/repositories/player_repository.dart';
+import '../services/mission_completion_service.dart';
 
 enum MissionSortMode {
   recent,
@@ -12,10 +11,12 @@ enum MissionSortMode {
   rewardDesc,
 }
 
+enum MissionFilterMode { plan, all, next, overdue, today, tomorrow }
+
 class MissionProvider extends ChangeNotifier {
   final MissionRepository _missionRepo = MissionRepository();
-  final SkillRepository _skillRepo = SkillRepository();
-  final PlayerRepository _playerRepo = PlayerRepository();
+  final MissionCompletionService _completionService =
+      MissionCompletionService();
 
   List<Mission> _missions = [];
   bool _isLoading = false;
@@ -23,6 +24,9 @@ class MissionProvider extends ChangeNotifier {
   String _searchQuery = '';
   Set<int> _selectedSkillIds = {};
   MissionSortMode _sortMode = MissionSortMode.recent;
+  MissionFilterMode _filterMode = MissionFilterMode.all;
+  bool _showCompleted = false;
+  MissionCompletionResult? _lastCompletionResult;
 
   List<Mission> get missions => _missions;
   bool get isLoading => _isLoading;
@@ -30,6 +34,9 @@ class MissionProvider extends ChangeNotifier {
   String get searchQuery => _searchQuery;
   Set<int> get selectedSkillIds => _selectedSkillIds;
   MissionSortMode get sortMode => _sortMode;
+  MissionFilterMode get filterMode => _filterMode;
+  bool get showCompleted => _showCompleted;
+  MissionCompletionResult? get lastCompletionResult => _lastCompletionResult;
 
   List<Mission> get activeMissions =>
       _missions.where((m) => m.status == 'active').toList();
@@ -39,6 +46,8 @@ class MissionProvider extends ChangeNotifier {
 
   List<Mission> get filteredMissions {
     Iterable<Mission> items = _missions;
+
+    items = _applyFilterMode(items);
 
     final query = _searchQuery.trim().toLowerCase();
     if (query.isNotEmpty) {
@@ -77,6 +86,63 @@ class MissionProvider extends ChangeNotifier {
     return sorted;
   }
 
+  Iterable<Mission> _applyFilterMode(Iterable<Mission> items) {
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+    final tomorrowStart = todayStart.add(const Duration(days: 1));
+    final dayAfterTomorrowStart = tomorrowStart.add(const Duration(days: 1));
+
+    switch (_filterMode) {
+      case MissionFilterMode.plan:
+        return items.where((mission) {
+          if (_isHiddenCompleted(mission)) return false;
+          return mission.status == 'active' && mission.dueDate == null;
+        });
+      case MissionFilterMode.all:
+        return items.where((mission) => !_isHiddenCompleted(mission));
+      case MissionFilterMode.next:
+        return items.where((mission) {
+          if (_isHiddenCompleted(mission)) return false;
+          final dueDate = mission.dueDate;
+          return mission.status == 'active' &&
+              dueDate != null &&
+              !dueDate.isBefore(now);
+        });
+      case MissionFilterMode.today:
+        return items.where((mission) {
+          if (_isHiddenCompleted(mission) || mission.status != 'active') {
+            return false;
+          }
+          final dueDate = mission.dueDate;
+          return dueDate != null &&
+              !dueDate.isBefore(todayStart) &&
+              dueDate.isBefore(tomorrowStart);
+        });
+      case MissionFilterMode.tomorrow:
+        return items.where((mission) {
+          if (_isHiddenCompleted(mission) || mission.status != 'active') {
+            return false;
+          }
+          final dueDate = mission.dueDate;
+          return dueDate != null &&
+              !dueDate.isBefore(tomorrowStart) &&
+              dueDate.isBefore(dayAfterTomorrowStart);
+        });
+      case MissionFilterMode.overdue:
+        return items.where((mission) {
+          if (_isHiddenCompleted(mission) || mission.status != 'active') {
+            return false;
+          }
+          final dueDate = mission.dueDate;
+          return dueDate != null && dueDate.isBefore(todayStart);
+        });
+    }
+  }
+
+  bool _isHiddenCompleted(Mission mission) {
+    return !_showCompleted && mission.status == 'completed';
+  }
+
   void setSearchQuery(String query) {
     final normalized = query.trim();
     if (_searchQuery == normalized) return;
@@ -87,6 +153,18 @@ class MissionProvider extends ChangeNotifier {
   void setSortMode(MissionSortMode mode) {
     if (_sortMode == mode) return;
     _sortMode = mode;
+    notifyListeners();
+  }
+
+  void setFilterMode(MissionFilterMode mode) {
+    if (_filterMode == mode) return;
+    _filterMode = mode;
+    notifyListeners();
+  }
+
+  void setShowCompleted(bool value) {
+    if (_showCompleted == value) return;
+    _showCompleted = value;
     notifyListeners();
   }
 
@@ -150,21 +228,7 @@ class MissionProvider extends ChangeNotifier {
 
   Future<void> completeMission(int id) async {
     try {
-      final mission = await _missionRepo.getWithSkills(id);
-
-      await _missionRepo.complete(id);
-
-      await _playerRepo.addXP(mission.xpReward);
-
-      await _playerRepo.addRewardPoints(mission.rewardPoints);
-
-      if (mission.skillIds.isNotEmpty) {
-        final xpPerSkill = (mission.xpReward / mission.skillIds.length).round();
-        for (final skillId in mission.skillIds) {
-          await _skillRepo.addXP(skillId, xpPerSkill);
-        }
-      }
-
+      _lastCompletionResult = await _completionService.completeMission(id);
       await loadMissions();
     } catch (e) {
       _error = 'Erro ao completar missão: $e';
