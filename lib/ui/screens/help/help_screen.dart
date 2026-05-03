@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
+import 'strategy_guide_screen.dart';
 
 class HelpScreen extends StatelessWidget {
   const HelpScreen({super.key});
@@ -10,16 +11,10 @@ class HelpScreen extends StatelessWidget {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppTheme.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         title: Column(
           children: [
-            Icon(
-              Icons.games,
-              size: 64,
-              color: AppTheme.primary,
-            ),
+            Icon(Icons.games, size: 64, color: AppTheme.primary),
             const SizedBox(height: 16),
             const Text(
               'LifeRPG',
@@ -36,29 +31,20 @@ class HelpScreen extends StatelessWidget {
           children: [
             Text(
               'Version 2.3.5',
-              style: TextStyle(
-                fontSize: 16,
-                color: AppTheme.textSecondary,
-              ),
+              style: TextStyle(fontSize: 16, color: AppTheme.textSecondary),
             ),
             SizedBox(height: 16),
             Text(
               '© 2025 LifeRPG Team\nAll rights reserved.',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 12,
-                color: AppTheme.textSecondary,
-              ),
+              style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
             ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text(
-              'OK',
-              style: TextStyle(color: AppTheme.primary),
-            ),
+            child: const Text('OK', style: TextStyle(color: AppTheme.primary)),
           ),
         ],
       ),
@@ -97,15 +83,17 @@ class HelpScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Help'),
-      ),
+      appBar: AppBar(title: const Text('Help')),
       body: ListView(
         children: [
           _HelpListTile(
             icon: Icons.book,
             title: 'Manual',
-            onTap: () {},
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const StrategyGuideScreen(),
+              ),
+            ),
           ),
           _HelpListTile(
             icon: Icons.bug_report,
@@ -156,18 +144,10 @@ class _HelpListTile extends StatelessWidget {
       leading: Icon(icon, color: AppTheme.textSecondary),
       title: Text(
         title,
-        style: const TextStyle(
-          color: AppTheme.textPrimary,
-          fontSize: 16,
-        ),
+        style: const TextStyle(color: AppTheme.textPrimary, fontSize: 16),
       ),
-      trailing: const Icon(
-        Icons.chevron_right,
-        color: AppTheme.textSecondary,
-      ),
+      trailing: const Icon(Icons.chevron_right, color: AppTheme.textSecondary),
       onTap: onTap,
     );
   }
 }
-
-

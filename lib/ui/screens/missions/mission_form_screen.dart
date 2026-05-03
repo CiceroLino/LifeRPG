@@ -3,6 +3,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
+import '../../../core/utils/reward_point_advisor.dart';
+import '../../../core/utils/xp_calculator.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/mission.dart';
 import '../../../data/models/skill.dart';
@@ -25,10 +27,10 @@ class _MissionFormScreenState extends State<MissionFormScreen> {
   final _descController = TextEditingController();
   final _durationController = TextEditingController(text: '30');
 
-  int _rewardPoints = 10;
-  double _difficulty = 3;
-  double _urgency = 3;
-  double _fear = 2;
+  int _rewardPoints = 5;
+  double _difficulty = 50;
+  double _urgency = 50;
+  double _fear = 30;
   DateTime? _dueDate;
   String _recurrence = 'once';
   int? _parentMissionId;
@@ -58,6 +60,8 @@ class _MissionFormScreenState extends State<MissionFormScreen> {
   Widget build(BuildContext context) {
     final skillProvider = context.watch<SkillProvider>();
     final missions = context.watch<MissionProvider>().missions;
+    final xpPreview = _xpPreview;
+    final recommendedRewardPoints = _recommendedRewardPoints;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Nova Missão')),
@@ -87,18 +91,27 @@ class _MissionFormScreenState extends State<MissionFormScreen> {
             _Section(title: 'Parâmetros (XP)'),
             _SliderField(
               label: 'Dificuldade',
+              attribute: MissionAttribute.difficulty,
               value: _difficulty,
               onChanged: (v) => setState(() => _difficulty = v),
             ),
             _SliderField(
               label: 'Urgência',
+              attribute: MissionAttribute.urgency,
               value: _urgency,
               onChanged: (v) => setState(() => _urgency = v),
             ),
             _SliderField(
               label: 'Medo',
+              attribute: MissionAttribute.fear,
               value: _fear,
               onChanged: (v) => setState(() => _fear = v),
+            ),
+            const SizedBox(height: 8),
+            _StrategyPreview(
+              icon: Icons.stars,
+              label: 'XP calculado',
+              value: '$xpPreview XP',
             ),
             const SizedBox(height: 16),
             _Section(title: 'Skills'),
@@ -129,6 +142,7 @@ class _MissionFormScreenState extends State<MissionFormScreen> {
             Align(
               alignment: Alignment.centerLeft,
               child: TextButton.icon(
+                key: const Key('create-skill-button'),
                 onPressed: _createSkillInline,
                 icon: const Icon(Icons.add),
                 label: const Text('+ Nova skill'),
@@ -220,6 +234,14 @@ class _MissionFormScreenState extends State<MissionFormScreen> {
                       size: 16,
                       color: AppTheme.primary,
                     ),
+                    const Spacer(),
+                    TextButton(
+                      key: const Key('use-recommended-rp-button'),
+                      onPressed: () => setState(
+                        () => _rewardPoints = recommendedRewardPoints,
+                      ),
+                      child: Text('Usar $recommendedRewardPoints RP'),
+                    ),
                   ],
                 ),
               ),
@@ -256,6 +278,7 @@ class _MissionFormScreenState extends State<MissionFormScreen> {
             ),
             const SizedBox(height: 24),
             ElevatedButton.icon(
+              key: const Key('save-mission-button'),
               onPressed: _save,
               icon: const Icon(Icons.save),
               label: const Text('Salvar Missão'),
@@ -266,6 +289,19 @@ class _MissionFormScreenState extends State<MissionFormScreen> {
       ),
     );
   }
+
+  int get _xpPreview => XPCalculator.calculateMissionXP(
+    difficulty: _difficulty.round(),
+    urgency: _urgency.round(),
+    fear: _fear.round(),
+  );
+
+  int get _recommendedRewardPoints =>
+      RewardPointAdvisor.recommendMissionRewardPoints(
+        xpReward: _xpPreview,
+        isChildMission: _parentMissionId != null,
+        recurrenceType: _recurrence == 'once' ? null : _recurrence,
+      );
 
   Future<void> _pickDate() async {
     final now = DateTime.now();
@@ -374,6 +410,7 @@ class _MissionFormScreenState extends State<MissionFormScreen> {
       difficulty: _difficulty.round(),
       urgency: _urgency.round(),
       fear: _fear.round(),
+      xpReward: _xpPreview,
       estimatedDuration: duration.clamp(0, 60),
       rewardPoints: _rewardPoints,
       dueDate: _dueDate,
@@ -451,11 +488,13 @@ class _MissionFormScreenState extends State<MissionFormScreen> {
 
 class _SliderField extends StatelessWidget {
   final String label;
+  final MissionAttribute attribute;
   final double value;
   final ValueChanged<double> onChanged;
 
   const _SliderField({
     required this.label,
+    required this.attribute,
     required this.value,
     required this.onChanged,
   });
@@ -469,18 +508,62 @@ class _SliderField extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
-            Text(value.toStringAsFixed(0)),
+            Text('${value.toStringAsFixed(0)}%'),
           ],
         ),
         Slider(
           value: value,
-          min: 1,
-          max: 5,
-          divisions: 4,
-          label: value.toStringAsFixed(0),
+          min: 0,
+          max: 100,
+          divisions: 100,
+          label: '${value.toStringAsFixed(0)}%',
           onChanged: onChanged,
         ),
+        Text(
+          '${XPCalculator.attributeBand(value.round())}: '
+          '${XPCalculator.attributeGuideLabel(attribute, value.round())}',
+          style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+        ),
       ],
+    );
+  }
+}
+
+class _StrategyPreview extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+
+  const _StrategyPreview({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppTheme.border),
+      ),
+      padding: const EdgeInsets.all(12),
+      child: Row(
+        children: [
+          Icon(icon, color: AppTheme.primary, size: 18),
+          const SizedBox(width: 8),
+          Text(label, style: const TextStyle(color: AppTheme.textSecondary)),
+          const Spacer(),
+          Text(
+            value,
+            style: const TextStyle(
+              color: AppTheme.textPrimary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -29,9 +29,9 @@ class Mission {
     this.id,
     required this.title,
     this.description = '',
-    this.difficulty = 1,
-    this.urgency = 1,
-    this.fear = 1,
+    this.difficulty = 10,
+    this.urgency = 10,
+    this.fear = 10,
     this.energyRequired = 1,
     this.xpReward = 10,
     this.rewardPoints = 5,
@@ -51,8 +51,8 @@ class Mission {
     DateTime? updatedAt,
     this.completedAt,
     this.skillIds = const [],
-  })  : createdAt = createdAt ?? DateTime.now(),
-        updatedAt = updatedAt ?? DateTime.now();
+  }) : createdAt = createdAt ?? DateTime.now(),
+       updatedAt = updatedAt ?? DateTime.now();
 
   Map<String, dynamic> toMap() {
     return {
@@ -95,8 +95,8 @@ class Mission {
       xpReward: map['xp_reward'] as int? ?? 10,
       rewardPoints: map['reward_points'] as int? ?? 5,
       status: map['status'] as String? ?? 'active',
-      dueDate: map['due_date'] != null 
-          ? DateTime.parse(map['due_date'] as String) 
+      dueDate: map['due_date'] != null
+          ? DateTime.parse(map['due_date'] as String)
           : null,
       estimatedDuration: map['estimated_duration'] as int?,
       isRecurring: (map['is_recurring'] as int? ?? 0) == 1,

@@ -81,13 +81,13 @@ class MissionCardReal extends StatelessWidget {
                 children: [
                   _AttributeChip(
                     icon: Icons.fitness_center,
-                    label: 'Dif ${mission.difficulty}',
+                    label: 'Dif ${mission.difficulty}%',
                     color: Colors.orange,
                   ),
                   const SizedBox(width: 8),
                   _AttributeChip(
                     icon: Icons.warning_amber,
-                    label: 'Urg ${mission.urgency}',
+                    label: 'Urg ${mission.urgency}%',
                     color: Colors.red,
                   ),
                   const SizedBox(width: 8),

@@ -219,7 +219,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   void _showScheduleError() {
     if (!mounted) return;
-    ScaffoldMessenger.of(this.context).showSnackBar(
+    ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Wake and sleep times must be different'),
         backgroundColor: AppTheme.accentRed,
@@ -509,13 +509,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           TextButton(
             onPressed: () async {
+              final playerProvider = context.read<PlayerProvider>();
+              final missionProvider = context.read<MissionProvider>();
+              final skillProvider = context.read<SkillProvider>();
+              final navigator = Navigator.of(context);
               await settings.factoryReset();
-              if (!context.mounted) return;
-              await context.read<PlayerProvider>().loadPlayer();
-              await context.read<MissionProvider>().loadMissions();
-              await context.read<SkillProvider>().loadSkills();
-              if (!context.mounted) return;
-              Navigator.pop(context);
+              await playerProvider.loadPlayer();
+              await missionProvider.loadMissions();
+              await skillProvider.loadSkills();
+              navigator.pop();
               if (!mounted) return;
               ScaffoldMessenger.of(this.context).showSnackBar(
                 const SnackBar(

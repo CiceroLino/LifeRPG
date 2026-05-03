@@ -34,6 +34,8 @@ class FakeSkillProvider extends SkillProvider {
 }
 
 class FakeMissionProvider extends MissionProvider {
+  Mission? addedMission;
+
   @override
   List<Mission> get missions => const [];
 
@@ -41,13 +43,21 @@ class FakeMissionProvider extends MissionProvider {
   Future<void> loadMissions() async {}
 
   @override
-  Future<void> addMission(Mission mission) async {}
+  Future<void> addMission(Mission mission) async {
+    addedMission = mission;
+  }
+}
+
+Future<void> _setLargeSurface(WidgetTester tester) async {
+  await tester.binding.setSurfaceSize(const Size(900, 1400));
+  addTearDown(() => tester.binding.setSurfaceSize(null));
 }
 
 void main() {
   testWidgets('creates and auto-selects new skill from mission form', (
     tester,
   ) async {
+    await _setLargeSurface(tester);
     final skillProvider = FakeSkillProvider();
     final missionProvider = FakeMissionProvider();
 
@@ -63,7 +73,7 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    await tester.tap(find.textContaining('Nova skill'));
+    await tester.tap(find.byKey(const Key('create-skill-button')).last);
     await tester.pumpAndSettle();
 
     await tester.enterText(
@@ -92,5 +102,59 @@ void main() {
       expect(asset, isNot(contains('/delapouite/treasure-map.svg')));
       expect(asset, isNot(contains('/delapouite/barbell.svg')));
     }
+  });
+
+  testWidgets('shows strategy labels and calculated XP preview', (
+    tester,
+  ) async {
+    await _setLargeSurface(tester);
+    final skillProvider = FakeSkillProvider();
+    final missionProvider = FakeMissionProvider();
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<SkillProvider>.value(value: skillProvider),
+          ChangeNotifierProvider<MissionProvider>.value(value: missionProvider),
+        ],
+        child: const MaterialApp(home: MissionFormScreen()),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Medium'), findsWidgets);
+    expect(find.textContaining('XP calculado'), findsOneWidget);
+    expect(find.text('3250 XP'), findsOneWidget);
+    expect(find.text('Usar 25 RP'), findsOneWidget);
+  });
+
+  testWidgets('saves calculated mission XP from current attributes', (
+    tester,
+  ) async {
+    await _setLargeSurface(tester);
+    final skillProvider = FakeSkillProvider();
+    final missionProvider = FakeMissionProvider();
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<SkillProvider>.value(value: skillProvider),
+          ChangeNotifierProvider<MissionProvider>.value(value: missionProvider),
+        ],
+        child: const MaterialApp(home: MissionFormScreen()),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField).first, 'Write plan');
+    await tester.tap(find.byKey(const Key('save-mission-button')).last);
+    await tester.pumpAndSettle();
+
+    expect(missionProvider.addedMission, isNotNull);
+    expect(missionProvider.addedMission!.difficulty, 50);
+    expect(missionProvider.addedMission!.urgency, 50);
+    expect(missionProvider.addedMission!.fear, 30);
+    expect(missionProvider.addedMission!.xpReward, 3250);
   });
 }

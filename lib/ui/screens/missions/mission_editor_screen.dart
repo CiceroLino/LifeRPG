@@ -3,6 +3,8 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/reward_point_advisor.dart';
+import '../../../core/utils/xp_calculator.dart';
 import '../../../data/models/mission.dart';
 import '../../../data/models/skill.dart';
 import '../../../providers/mission_provider.dart';
@@ -23,9 +25,9 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
   late TextEditingController _titleController;
   late TextEditingController _descriptionController;
 
-  double _difficulty = 3;
-  double _urgency = 3;
-  double _fear = 2;
+  double _difficulty = 50;
+  double _urgency = 50;
+  double _fear = 30;
 
   DateTime? _dueDate;
   String _recurrence = 'once';
@@ -39,9 +41,9 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
     final m = widget.initial;
     _titleController = TextEditingController(text: m?.title ?? '');
     _descriptionController = TextEditingController(text: m?.description ?? '');
-    _difficulty = (m?.difficulty ?? 3).toDouble();
-    _urgency = (m?.urgency ?? 3).toDouble();
-    _fear = (m?.fear ?? 2).toDouble();
+    _difficulty = (m?.difficulty ?? 50).toDouble();
+    _urgency = (m?.urgency ?? 50).toDouble();
+    _fear = (m?.fear ?? 30).toDouble();
     _dueDate = m?.dueDate;
     _recurrence = m?.recurrenceType ?? 'once';
     _parentMissionId = m?.parentMissionId;
@@ -73,6 +75,8 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
     final selectedSkills = skillProvider.skills
         .where((skill) => _selectedSkillIds.contains(skill.id))
         .toList();
+    final xpPreview = _xpPreview;
+    final recommendedRewardPoints = _recommendedRewardPoints;
 
     return Scaffold(
       appBar: AppBar(
@@ -128,6 +132,7 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
                 const SizedBox(height: 8),
                 AttributeSliderRow(
                   label: 'Difficulty',
+                  attribute: MissionAttribute.difficulty,
                   icon: FontAwesomeIcons.personHiking,
                   value: _difficulty,
                   activeColor: const Color(0xFF00BCD4),
@@ -135,6 +140,7 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
                 ),
                 AttributeSliderRow(
                   label: 'Urgency',
+                  attribute: MissionAttribute.urgency,
                   icon: FontAwesomeIcons.personRunning,
                   value: _urgency,
                   activeColor: const Color(0xFF2196F3),
@@ -142,10 +148,17 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
                 ),
                 AttributeSliderRow(
                   label: 'Fear',
+                  attribute: MissionAttribute.fear,
                   icon: FontAwesomeIcons.mask,
                   value: _fear,
                   activeColor: const Color(0xFF673AB7),
                   onChanged: (v) => setState(() => _fear = v),
+                ),
+                const SizedBox(height: 8),
+                _StrategyPreview(
+                  icon: Icons.stars,
+                  label: 'Calculated XP',
+                  value: '$xpPreview XP',
                 ),
                 const SizedBox(height: 20),
                 const Text(
@@ -199,21 +212,33 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
                 const SizedBox(height: 8),
                 Align(
                   alignment: Alignment.centerLeft,
-                  child: ElevatedButton(
-                    onPressed: () async {
-                      final value = await showDialog<int>(
-                        context: context,
-                        builder: (context) => _CircularValuePickerDialog(
-                          initialValue: _rewardPoints,
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      ElevatedButton(
+                        onPressed: () async {
+                          final value = await showDialog<int>(
+                            context: context,
+                            builder: (context) => _CircularValuePickerDialog(
+                              initialValue: _rewardPoints,
+                            ),
+                          );
+                          if (value != null) {
+                            setState(() {
+                              _rewardPoints = value;
+                            });
+                          }
+                        },
+                        child: Text('Set Reward Points ($_rewardPoints)'),
+                      ),
+                      OutlinedButton(
+                        onPressed: () => setState(
+                          () => _rewardPoints = recommendedRewardPoints,
                         ),
-                      );
-                      if (value != null) {
-                        setState(() {
-                          _rewardPoints = value;
-                        });
-                      }
-                    },
-                    child: Text('Set Reward Points ($_rewardPoints)'),
+                        child: Text('Use $recommendedRewardPoints RP'),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -223,6 +248,19 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
       ),
     );
   }
+
+  int get _xpPreview => XPCalculator.calculateMissionXP(
+    difficulty: _difficulty.round(),
+    urgency: _urgency.round(),
+    fear: _fear.round(),
+  );
+
+  int get _recommendedRewardPoints =>
+      RewardPointAdvisor.recommendMissionRewardPoints(
+        xpReward: _xpPreview,
+        isChildMission: _parentMissionId != null,
+        recurrenceType: _recurrence == 'once' ? null : _recurrence,
+      );
 
   Future<void> _pickDate() async {
     final now = DateTime.now();
@@ -421,7 +459,7 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
       urgency: _urgency.round(),
       fear: _fear.round(),
       energyRequired: base?.energyRequired ?? 1,
-      xpReward: base?.xpReward ?? 10,
+      xpReward: _xpPreview,
       rewardPoints: _rewardPoints,
       status: base?.status ?? 'active',
       dueDate: _dueDate,
@@ -448,6 +486,7 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
 
 class AttributeSliderRow extends StatelessWidget {
   final String label;
+  final MissionAttribute attribute;
   final IconData icon;
   final double value;
   final Color activeColor;
@@ -456,6 +495,7 @@ class AttributeSliderRow extends StatelessWidget {
   const AttributeSliderRow({
     super.key,
     required this.label,
+    required this.attribute,
     required this.icon,
     required this.value,
     required this.activeColor,
@@ -469,37 +509,101 @@ class AttributeSliderRow extends StatelessWidget {
       child: Row(
         children: [
           SizedBox(
-            width: 90,
-            child: Text(
-              label,
-              style: const TextStyle(
-                color: AppTheme.textPrimary,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-              ),
+            width: 96,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    color: AppTheme.textPrimary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  '${value.round()}%',
+                  style: const TextStyle(
+                    color: AppTheme.textSecondary,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
             ),
           ),
           Expanded(
-            child: SliderTheme(
-              data: SliderTheme.of(context).copyWith(
-                activeTrackColor: activeColor,
-                inactiveTrackColor: AppTheme.border,
-                thumbColor: activeColor,
-                overlayColor: activeColor.withValues(alpha: 0.2),
-                trackHeight: 4,
-              ),
-              child: Slider(
-                value: value,
-                min: 1,
-                max: 5,
-                divisions: 4,
-                label: value.toStringAsFixed(0),
-                onChanged: onChanged,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SliderTheme(
+                  data: SliderTheme.of(context).copyWith(
+                    activeTrackColor: activeColor,
+                    inactiveTrackColor: AppTheme.border,
+                    thumbColor: activeColor,
+                    overlayColor: activeColor.withValues(alpha: 0.2),
+                    trackHeight: 4,
+                  ),
+                  child: Slider(
+                    value: value,
+                    min: 0,
+                    max: 100,
+                    divisions: 100,
+                    label: '${value.toStringAsFixed(0)}%',
+                    onChanged: onChanged,
+                  ),
+                ),
+                Text(
+                  '${XPCalculator.attributeBand(value.round())}: '
+                  '${XPCalculator.attributeGuideLabel(attribute, value.round())}',
+                  style: const TextStyle(
+                    color: AppTheme.textSecondary,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(width: 8),
           Icon(icon, color: activeColor, size: 20),
+        ],
+      ),
+    );
+  }
+}
+
+class _StrategyPreview extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+
+  const _StrategyPreview({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppTheme.border),
+      ),
+      padding: const EdgeInsets.all(12),
+      child: Row(
+        children: [
+          Icon(icon, color: AppTheme.primary, size: 18),
+          const SizedBox(width: 8),
+          Text(label, style: const TextStyle(color: AppTheme.textSecondary)),
+          const Spacer(),
+          Text(
+            value,
+            style: const TextStyle(
+              color: AppTheme.textPrimary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ],
       ),
     );
@@ -556,7 +660,7 @@ class _LinkRow extends StatelessWidget {
                 ],
               ),
             ),
-            if (trailing != null) trailing!,
+            ?trailing,
           ],
         ),
       ),

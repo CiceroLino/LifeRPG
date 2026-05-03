@@ -228,8 +228,9 @@ class PlayerStatsHeader extends StatelessWidget {
                   rightLabelPadding: const EdgeInsets.only(right: 8),
                   onTapDown: player.energyMode == 'manual'
                       ? (localX, width) {
-                          if (onManualEnergyChanged == null || width <= 0)
+                          if (onManualEnergyChanged == null || width <= 0) {
                             return;
+                          }
                           final ratio = (localX / width).clamp(0.0, 1.0);
                           onManualEnergyChanged!(
                             (ratio * maxHp).round().clamp(0, maxHp),

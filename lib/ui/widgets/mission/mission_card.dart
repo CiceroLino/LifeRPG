@@ -35,20 +35,17 @@ class MissionCard extends StatelessWidget {
     final difficulty = mission.difficulty;
     final fear = mission.fear;
 
-    // Se urgency é alta (4-5), usa vermelho
-    if (urgency >= 4) {
+    // Extreme urgency gets the strongest priority color.
+    if (urgency >= 76) {
       return AppTheme.accentRed;
     }
-    // Se difficulty é alta (4-5), usa laranja
-    if (difficulty >= 4) {
+    if (difficulty >= 76) {
       return const Color(0xFFFF9800); // Orange
     }
-    // Se fear é alta (4-5), usa azul
-    if (fear >= 4) {
+    if (fear >= 76) {
       return AppTheme.primary;
     }
-    // Padrão: amarelo para urgência média
-    if (urgency >= 3) {
+    if (urgency >= 51) {
       return AppTheme.accentAmber;
     }
     // Padrão: cinza para baixa prioridade

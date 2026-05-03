@@ -20,7 +20,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 4,
+      version: 5,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
       },
@@ -69,9 +69,9 @@ class DatabaseHelper {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT NOT NULL,
         description TEXT,
-        difficulty INTEGER DEFAULT 1 CHECK(difficulty BETWEEN 1 AND 5),
-        urgency INTEGER DEFAULT 1 CHECK(urgency BETWEEN 1 AND 5),
-        fear INTEGER DEFAULT 1 CHECK(fear BETWEEN 1 AND 5),
+        difficulty INTEGER DEFAULT 10 CHECK(difficulty BETWEEN 0 AND 100),
+        urgency INTEGER DEFAULT 10 CHECK(urgency BETWEEN 0 AND 100),
+        fear INTEGER DEFAULT 10 CHECK(fear BETWEEN 0 AND 100),
         energy_required INTEGER DEFAULT 1 CHECK(energy_required BETWEEN 1 AND 5),
         xp_reward INTEGER DEFAULT 10,
         reward_points INTEGER DEFAULT 5,
@@ -134,6 +134,177 @@ class DatabaseHelper {
     if (oldVersion < 4) {
       await _createMissionCompletionHistoryTables(db);
     }
+    if (oldVersion < 5) {
+      await _migrateMissionAttributesToPercent(db);
+    }
+  }
+
+  Future<void> _migrateMissionAttributesToPercent(Database db) async {
+    await db.execute('''
+      CREATE TABLE mission_skills_v5 AS
+      SELECT mission_id, skill_id FROM mission_skills
+    ''');
+    await db.execute('''
+      CREATE TABLE mission_completion_events_v5 AS
+      SELECT * FROM mission_completion_events
+    ''');
+    await db.execute('''
+      CREATE TABLE mission_completion_skill_rewards_v5 AS
+      SELECT * FROM mission_completion_skill_rewards
+    ''');
+
+    await db.execute('DROP TABLE mission_completion_skill_rewards');
+    await db.execute('DROP TABLE mission_completion_events');
+    await db.execute('DROP TABLE mission_skills');
+    await db.execute('ALTER TABLE missions RENAME TO missions_v4');
+
+    await db.execute('''
+      CREATE TABLE missions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        description TEXT,
+        difficulty INTEGER DEFAULT 10 CHECK(difficulty BETWEEN 0 AND 100),
+        urgency INTEGER DEFAULT 10 CHECK(urgency BETWEEN 0 AND 100),
+        fear INTEGER DEFAULT 10 CHECK(fear BETWEEN 0 AND 100),
+        energy_required INTEGER DEFAULT 1 CHECK(energy_required BETWEEN 1 AND 5),
+        xp_reward INTEGER DEFAULT 10,
+        reward_points INTEGER DEFAULT 5,
+        status TEXT DEFAULT 'active',
+        due_date TEXT,
+        estimated_duration INTEGER,
+        is_recurring INTEGER DEFAULT 0,
+        recurrence_type TEXT,
+        recurrence_interval INTEGER,
+        last_completed_at TEXT,
+        streak INTEGER DEFAULT 0,
+        parent_mission_id INTEGER,
+        order_index INTEGER DEFAULT 0,
+        icon TEXT,
+        emoji TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        completed_at TEXT,
+        FOREIGN KEY(parent_mission_id) REFERENCES missions(id) ON DELETE CASCADE
+      )
+    ''');
+
+    await db.execute('''
+      INSERT INTO missions (
+        id,
+        title,
+        description,
+        difficulty,
+        urgency,
+        fear,
+        energy_required,
+        xp_reward,
+        reward_points,
+        status,
+        due_date,
+        estimated_duration,
+        is_recurring,
+        recurrence_type,
+        recurrence_interval,
+        last_completed_at,
+        streak,
+        parent_mission_id,
+        order_index,
+        icon,
+        emoji,
+        created_at,
+        updated_at,
+        completed_at
+      )
+      SELECT
+        id,
+        title,
+        description,
+        CASE WHEN difficulty BETWEEN 1 AND 5 THEN difficulty * 20 ELSE difficulty END,
+        CASE WHEN urgency BETWEEN 1 AND 5 THEN urgency * 20 ELSE urgency END,
+        CASE WHEN fear BETWEEN 1 AND 5 THEN fear * 20 ELSE fear END,
+        energy_required,
+        xp_reward,
+        reward_points,
+        status,
+        due_date,
+        estimated_duration,
+        is_recurring,
+        recurrence_type,
+        recurrence_interval,
+        last_completed_at,
+        streak,
+        parent_mission_id,
+        order_index,
+        icon,
+        emoji,
+        created_at,
+        updated_at,
+        completed_at
+      FROM missions_v4
+    ''');
+
+    await db.execute('DROP TABLE missions_v4');
+    await db.execute('CREATE INDEX idx_missions_status ON missions(status)');
+    await db.execute(
+      'CREATE INDEX idx_missions_parent ON missions(parent_mission_id)',
+    );
+
+    await db.execute('''
+      CREATE TABLE mission_skills (
+        mission_id INTEGER NOT NULL,
+        skill_id INTEGER NOT NULL,
+        PRIMARY KEY(mission_id, skill_id),
+        FOREIGN KEY(mission_id) REFERENCES missions(id) ON DELETE CASCADE,
+        FOREIGN KEY(skill_id) REFERENCES skills(id) ON DELETE CASCADE
+      )
+    ''');
+    await db.execute('''
+      INSERT INTO mission_skills (mission_id, skill_id)
+      SELECT mission_id, skill_id FROM mission_skills_v5
+    ''');
+    await db.execute('DROP TABLE mission_skills_v5');
+
+    await _createMissionCompletionHistoryTables(db);
+    await db.execute('''
+      INSERT INTO mission_completion_events (
+        id,
+        mission_id,
+        mission_title_snapshot,
+        xp_granted,
+        reward_points_granted,
+        completed_at,
+        recurrence_type,
+        resulting_streak
+      )
+      SELECT
+        id,
+        mission_id,
+        mission_title_snapshot,
+        xp_granted,
+        reward_points_granted,
+        completed_at,
+        recurrence_type,
+        resulting_streak
+      FROM mission_completion_events_v5
+    ''');
+    await db.execute('''
+      INSERT INTO mission_completion_skill_rewards (
+        id,
+        event_id,
+        skill_id,
+        skill_name_snapshot,
+        xp_granted
+      )
+      SELECT
+        id,
+        event_id,
+        skill_id,
+        skill_name_snapshot,
+        xp_granted
+      FROM mission_completion_skill_rewards_v5
+    ''');
+    await db.execute('DROP TABLE mission_completion_events_v5');
+    await db.execute('DROP TABLE mission_completion_skill_rewards_v5');
   }
 
   Future<void> _createMissionCompletionHistoryTables(
