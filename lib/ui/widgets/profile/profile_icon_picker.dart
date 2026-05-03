@@ -23,8 +23,8 @@ const List<String> _profileSvgIcons = [
   'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/darkzaitzev/apothecary.svg',
   // Elementos / Objetos
   'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/brain.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/shield.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/fire.svg',
+  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/edged-shield.svg',
+  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/fireball.svg',
   'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/compass.svg',
   'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/light-bulb.svg',
   'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/bookmark.svg',

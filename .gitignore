@@ -44,9 +44,6 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-// Temporary ignore
-
-assets
 
 # FVM Version Cache
 .fvm/

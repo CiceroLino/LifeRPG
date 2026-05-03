@@ -77,10 +77,41 @@ flutter:
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg
   assets:
-    - assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/
-    - assets/game-icons.net.svg/icons/ffffff/transparent/1x1/delapouite/
-    - assets/game-icons.net.svg/icons/ffffff/transparent/1x1/darkzaitzev/
-    - assets/game-icons.net.svg/icons/ffffff/transparent/1x1/skoll/
+    - assets/game-icons.net.svg/icons/ffffff/transparent/1x1/darkzaitzev/apothecary.svg
+    - assets/game-icons.net.svg/icons/ffffff/transparent/1x1/darkzaitzev/hooded-assassin.svg
+    - assets/game-icons.net.svg/icons/ffffff/transparent/1x1/darkzaitzev/hooded-figure.svg
+    - assets/game-icons.net.svg/icons/ffffff/transparent/1x1/darkzaitzev/ninja-head.svg
+    - assets/game-icons.net.svg/icons/ffffff/transparent/1x1/delapouite/black-knight-helm.svg
+    - assets/game-icons.net.svg/icons/ffffff/transparent/1x1/delapouite/character.svg
+    - assets/game-icons.net.svg/icons/ffffff/transparent/1x1/delapouite/chart.svg
+    - assets/game-icons.net.svg/icons/ffffff/transparent/1x1/delapouite/chest.svg
+    - assets/game-icons.net.svg/icons/ffffff/transparent/1x1/delapouite/crosshair.svg
+    - assets/game-icons.net.svg/icons/ffffff/transparent/1x1/delapouite/gamepad.svg
+    - assets/game-icons.net.svg/icons/ffffff/transparent/1x1/delapouite/info.svg
+    - assets/game-icons.net.svg/icons/ffffff/transparent/1x1/delapouite/knight-banner.svg
+    - assets/game-icons.net.svg/icons/ffffff/transparent/1x1/delapouite/person.svg
+    - assets/game-icons.net.svg/icons/ffffff/transparent/1x1/delapouite/present.svg
+    - assets/game-icons.net.svg/icons/ffffff/transparent/1x1/delapouite/settings-knobs.svg
+    - assets/game-icons.net.svg/icons/ffffff/transparent/1x1/delapouite/shop.svg
+    - assets/game-icons.net.svg/icons/ffffff/transparent/1x1/delapouite/shopping-bag.svg
+    - assets/game-icons.net.svg/icons/ffffff/transparent/1x1/delapouite/skills.svg
+    - assets/game-icons.net.svg/icons/ffffff/transparent/1x1/delapouite/weight-lifting-up.svg
+    - assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/angel-outfit.svg
+    - assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/angel-wings.svg
+    - assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/archery-target.svg
+    - assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/aura.svg
+    - assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/bookmark.svg
+    - assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/brain.svg
+    - assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/compass.svg
+    - assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/edged-shield.svg
+    - assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/feathered-wing.svg
+    - assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/fireball.svg
+    - assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/gear-hammer.svg
+    - assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/light-bulb.svg
+    - assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/locked-chest.svg
+    - assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/overdrive.svg
+    - assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/treasure-map.svg
+    - assets/game-icons.net.svg/icons/ffffff/transparent/1x1/skoll/open-treasure-chest.svg
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
