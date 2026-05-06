@@ -20,7 +20,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 5,
+      version: 6,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
       },
@@ -110,6 +110,7 @@ class DatabaseHelper {
     ''');
 
     await _createMissionCompletionHistoryTables(db);
+    await _createRewardInventoryTables(db);
 
     await _insertDefaultPlayer(db);
     await _insertDefaultSkills(db);
@@ -136,6 +137,9 @@ class DatabaseHelper {
     }
     if (oldVersion < 5) {
       await _migrateMissionAttributesToPercent(db);
+    }
+    if (oldVersion < 6) {
+      await _createRewardInventoryTables(db);
     }
   }
 
@@ -347,6 +351,62 @@ class DatabaseHelper {
     );
   }
 
+  Future<void> _createRewardInventoryTables(DatabaseExecutor db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS rewards (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        description TEXT DEFAULT '',
+        price_rp INTEGER NOT NULL CHECK(price_rp >= 0),
+        is_unlimited_stock INTEGER DEFAULT 1,
+        stock_remaining INTEGER,
+        icon TEXT,
+        is_active INTEGER DEFAULT 1,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS inventory_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        reward_id INTEGER,
+        name TEXT NOT NULL,
+        description TEXT DEFAULT '',
+        icon TEXT,
+        quantity INTEGER NOT NULL DEFAULT 1 CHECK(quantity > 0),
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(reward_id) REFERENCES rewards(id) ON DELETE SET NULL
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS reward_redemptions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        reward_id INTEGER,
+        inventory_item_id INTEGER,
+        reward_name_snapshot TEXT NOT NULL,
+        reward_description_snapshot TEXT DEFAULT '',
+        reward_icon_snapshot TEXT,
+        price_paid_rp INTEGER NOT NULL,
+        redeemed_at TEXT NOT NULL,
+        FOREIGN KEY(reward_id) REFERENCES rewards(id) ON DELETE SET NULL,
+        FOREIGN KEY(inventory_item_id) REFERENCES inventory_items(id) ON DELETE SET NULL
+      )
+    ''');
+
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_rewards_active ON rewards(is_active)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_inventory_reward ON inventory_items(reward_id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_redemptions_reward ON reward_redemptions(reward_id)',
+    );
+  }
+
   Future<Map<String, dynamic>> getAllDataForBackup() async {
     final db = await database;
 
@@ -358,6 +418,9 @@ class DatabaseHelper {
     final completionSkillRewardsMaps = await db.query(
       'mission_completion_skill_rewards',
     );
+    final rewardsMaps = await db.query('rewards');
+    final inventoryItemsMaps = await db.query('inventory_items');
+    final rewardRedemptionsMaps = await db.query('reward_redemptions');
 
     return {
       'version': '1.0',
@@ -368,6 +431,9 @@ class DatabaseHelper {
       'mission_skills': missionSkillsMaps,
       'mission_completion_events': completionEventsMaps,
       'mission_completion_skill_rewards': completionSkillRewardsMaps,
+      'rewards': rewardsMaps,
+      'inventory_items': inventoryItemsMaps,
+      'reward_redemptions': rewardRedemptionsMaps,
     };
   }
 
@@ -389,6 +455,9 @@ class DatabaseHelper {
   Future<void> factoryReset() async {
     final db = await database;
     await db.transaction((txn) async {
+      await txn.delete('reward_redemptions');
+      await txn.delete('inventory_items');
+      await txn.delete('rewards');
       await txn.delete('mission_completion_skill_rewards');
       await txn.delete('mission_completion_events');
       await txn.delete('mission_skills');
@@ -404,6 +473,9 @@ class DatabaseHelper {
     final db = await database;
 
     await db.transaction((txn) async {
+      await txn.delete('reward_redemptions');
+      await txn.delete('inventory_items');
+      await txn.delete('rewards');
       await txn.delete('mission_completion_skill_rewards');
       await txn.delete('mission_completion_events');
       await txn.delete('mission_skills');
@@ -455,6 +527,30 @@ class DatabaseHelper {
           await txn.insert(
             'mission_completion_skill_rewards',
             reward as Map<String, dynamic>,
+          );
+        }
+      }
+
+      final rewards = data['rewards'] as List<dynamic>?;
+      if (rewards != null) {
+        for (final reward in rewards) {
+          await txn.insert('rewards', reward as Map<String, dynamic>);
+        }
+      }
+
+      final inventoryItems = data['inventory_items'] as List<dynamic>?;
+      if (inventoryItems != null) {
+        for (final item in inventoryItems) {
+          await txn.insert('inventory_items', item as Map<String, dynamic>);
+        }
+      }
+
+      final rewardRedemptions = data['reward_redemptions'] as List<dynamic>?;
+      if (rewardRedemptions != null) {
+        for (final redemption in rewardRedemptions) {
+          await txn.insert(
+            'reward_redemptions',
+            redemption as Map<String, dynamic>,
           );
         }
       }

@@ -1,0 +1,89 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
+
+import 'package:liferpg/data/models/player.dart';
+import 'package:liferpg/data/models/reward.dart';
+import 'package:liferpg/providers/inventory_provider.dart';
+import 'package:liferpg/providers/player_provider.dart';
+import 'package:liferpg/providers/reward_provider.dart';
+import 'package:liferpg/ui/screens/rewards/reward_form_screen.dart';
+import 'package:liferpg/ui/screens/rewards/rewards_screen.dart';
+
+class FakeRewardProvider extends RewardProvider {
+  final List<Reward> fakeRewards;
+
+  FakeRewardProvider(this.fakeRewards);
+
+  @override
+  List<Reward> get rewards => fakeRewards;
+
+  @override
+  bool get isLoading => false;
+
+  @override
+  Future<void> loadRewards() async {}
+}
+
+class FakePlayerProvider extends PlayerProvider {
+  @override
+  Player? get player => Player(rewardPoints: 80);
+
+  @override
+  Future<void> loadPlayer() async {}
+}
+
+class FakeInventoryProvider extends InventoryProvider {
+  @override
+  Future<void> loadItems() async {}
+}
+
+void main() {
+  testWidgets('shows registered reward price, stock, and purchase button', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<RewardProvider>.value(
+            value: FakeRewardProvider([
+              Reward(
+                id: 1,
+                name: 'Cinema',
+                priceRp: 30,
+                isUnlimitedStock: false,
+                stockRemaining: 2,
+              ),
+            ]),
+          ),
+          ChangeNotifierProvider<PlayerProvider>.value(
+            value: FakePlayerProvider(),
+          ),
+          ChangeNotifierProvider<InventoryProvider>.value(
+            value: FakeInventoryProvider(),
+          ),
+        ],
+        child: const MaterialApp(home: Scaffold(body: RewardsScreen())),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Cinema'), findsOneWidget);
+    expect(find.text('30 RP'), findsOneWidget);
+    expect(find.text('Estoque: 2'), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, 'Comprar'), findsOneWidget);
+  });
+
+  testWidgets('reward form shows fields for a new reward', (tester) async {
+    await tester.pumpWidget(
+      ChangeNotifierProvider<RewardProvider>.value(
+        value: FakeRewardProvider(const []),
+        child: const MaterialApp(home: RewardFormScreen()),
+      ),
+    );
+
+    expect(find.text('Nova recompensa'), findsOneWidget);
+    expect(find.byKey(const Key('reward-name-field')), findsOneWidget);
+    expect(find.byKey(const Key('reward-price-field')), findsOneWidget);
+  });
+}

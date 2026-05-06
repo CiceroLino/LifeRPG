@@ -8,6 +8,8 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'core/theme/app_theme.dart';
 import 'providers/mission_provider.dart';
 import 'providers/player_provider.dart';
+import 'providers/inventory_provider.dart';
+import 'providers/reward_provider.dart';
 import 'providers/skill_provider.dart';
 import 'providers/settings_provider.dart';
 import 'l10n/app_localizations.dart';
@@ -32,6 +34,8 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => PlayerProvider()..loadPlayer()),
+        ChangeNotifierProvider(create: (_) => RewardProvider()..loadRewards()),
+        ChangeNotifierProvider(create: (_) => InventoryProvider()..loadItems()),
         ChangeNotifierProvider(
           create: (_) => MissionProvider()..loadMissions(),
         ),
@@ -54,11 +58,7 @@ class MyApp extends StatelessWidget {
               GlobalWidgetsLocalizations.delegate,
               GlobalCupertinoLocalizations.delegate,
             ],
-            supportedLocales: const [
-              Locale('en'),
-              Locale('pt'),
-              Locale('es'),
-            ],
+            supportedLocales: const [Locale('en'), Locale('pt'), Locale('es')],
             home: const MainScreen(),
             debugShowCheckedModeBanner: false,
           );

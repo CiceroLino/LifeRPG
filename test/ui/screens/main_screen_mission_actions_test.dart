@@ -6,7 +6,9 @@ import 'package:liferpg/data/models/mission.dart';
 import 'package:liferpg/data/models/player.dart';
 import 'package:liferpg/data/models/skill.dart';
 import 'package:liferpg/providers/mission_provider.dart';
+import 'package:liferpg/providers/inventory_provider.dart';
 import 'package:liferpg/providers/player_provider.dart';
+import 'package:liferpg/providers/reward_provider.dart';
 import 'package:liferpg/providers/settings_provider.dart';
 import 'package:liferpg/providers/skill_provider.dart';
 import 'package:liferpg/ui/screens/main_screen.dart';
@@ -78,6 +80,16 @@ class FakeSettingsProvider extends SettingsProvider {
   Future<void> initialize() async {}
 }
 
+class FakeRewardProvider extends RewardProvider {
+  @override
+  Future<void> loadRewards() async {}
+}
+
+class FakeInventoryProvider extends InventoryProvider {
+  @override
+  Future<void> loadItems() async {}
+}
+
 void main() {
   Future<void> pumpMain(
     WidgetTester tester,
@@ -92,6 +104,12 @@ void main() {
           ),
           ChangeNotifierProvider<PlayerProvider>.value(
             value: FakePlayerProvider(),
+          ),
+          ChangeNotifierProvider<RewardProvider>.value(
+            value: FakeRewardProvider(),
+          ),
+          ChangeNotifierProvider<InventoryProvider>.value(
+            value: FakeInventoryProvider(),
           ),
           ChangeNotifierProvider<SettingsProvider>.value(
             value: FakeSettingsProvider(),

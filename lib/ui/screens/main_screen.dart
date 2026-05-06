@@ -7,6 +7,7 @@ import 'missions/missions_list_screen.dart';
 import 'missions/mission_form_screen.dart';
 import 'map/map_screen.dart';
 import 'rewards/rewards_screen.dart';
+import 'rewards/reward_form_screen.dart';
 import 'inventory/inventory_screen.dart';
 import 'skills/skills_view.dart';
 import 'statistics/statistics_screen.dart';
@@ -18,7 +19,9 @@ import '../widgets/common/app_drawer.dart';
 import '../widgets/common/liferpg_app_bar.dart';
 import '../widgets/player/player_stats_header.dart';
 import '../../providers/mission_provider.dart';
+import '../../providers/inventory_provider.dart';
 import '../../providers/player_provider.dart';
+import '../../providers/reward_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/skill_provider.dart';
 
@@ -43,6 +46,8 @@ class _MainScreenState extends State<MainScreen> {
       if (mounted) {
         context.read<PlayerProvider>().loadPlayer();
         context.read<SkillProvider>().loadSkills();
+        context.read<RewardProvider>().loadRewards();
+        context.read<InventoryProvider>().loadItems();
         _syncEnergyAutoRefreshTimer();
       }
     });
@@ -387,14 +392,15 @@ class _MainScreenState extends State<MainScreen> {
         );
       case 2:
         return FloatingActionButton(
-          onPressed: () {},
+          onPressed: () {
+            Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (_) => const RewardFormScreen()));
+          },
           child: const Icon(Icons.add),
         );
       case 3:
-        return FloatingActionButton(
-          onPressed: () {},
-          child: const Icon(Icons.add),
-        );
+        return null;
       case 4:
         return FloatingActionButton(
           onPressed: () {},
