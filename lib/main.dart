@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import 'dart:io' show Platform;
 
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
-import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
+import 'core/platform/database_platform.dart';
 import 'core/theme/app_theme.dart';
 import 'providers/mission_provider.dart';
 import 'providers/player_provider.dart';
@@ -18,10 +17,7 @@ import 'ui/screens/main_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
-    sqfliteFfiInit();
-    databaseFactory = databaseFactoryFfi;
-  }
+  await configureDatabasePlatform();
 
   runApp(const MyApp());
 }

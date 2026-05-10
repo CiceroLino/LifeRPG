@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_svg/flutter_svg.dart';
-import 'package:file_picker/file_picker.dart';
-import 'dart:io';
-import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' as path;
 
+import '../../../core/platform/custom_avatar_storage.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../providers/player_provider.dart';
+import '../../widgets/common/avatar_image.dart';
 import '../../widgets/profile/profile_icon_picker.dart';
 
 /// Tela de perfil do jogador com layout de edição fiel ao design original.
@@ -98,43 +95,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     player.avatarPath!.isNotEmpty
                                 ? ClipRRect(
                                     borderRadius: BorderRadius.circular(8),
-                                    child: player.avatarPath!.endsWith('.svg')
-                                        ? SvgPicture.asset(
-                                            player.avatarPath!,
-                                            fit: BoxFit.contain,
-                                            colorFilter: const ColorFilter.mode(
-                                              AppTheme.textPrimary,
-                                              BlendMode.srcIn,
-                                            ),
-                                            placeholderBuilder: (_) =>
-                                                _buildAvatarPlaceholder(),
-                                            errorBuilder:
-                                                (_, error, stackTrace) =>
-                                                    _buildAvatarPlaceholder(),
-                                          )
-                                        : player.avatarPath!.startsWith('/') ||
-                                              player.avatarPath!.startsWith(
-                                                'file://',
-                                              )
-                                        ? Image.file(
-                                            File(
-                                              player.avatarPath!.replaceFirst(
-                                                'file://',
-                                                '',
-                                              ),
-                                            ),
-                                            fit: BoxFit.cover,
-                                            errorBuilder:
-                                                (_, error, stackTrace) =>
-                                                    _buildAvatarPlaceholder(),
-                                          )
-                                        : Image.asset(
-                                            player.avatarPath!,
-                                            fit: BoxFit.cover,
-                                            errorBuilder:
-                                                (_, error, stackTrace) =>
-                                                    _buildAvatarPlaceholder(),
-                                          ),
+                                    child: buildAvatarImage(
+                                      player.avatarPath!,
+                                      placeholderBuilder:
+                                          _buildAvatarPlaceholder,
+                                      fit: BoxFit.cover,
+                                    ),
                                   )
                                 : _buildAvatarPlaceholder(),
                           ),
@@ -177,66 +143,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                           child: TextButton(
                             onPressed: () async {
-                              // Abre o explorador de arquivos para selecionar um ícone customizado
-                              final result = await FilePicker.platform
-                                  .pickFiles(
-                                    type: FileType.image,
-                                    allowedExtensions: [
-                                      'png',
-                                      'jpg',
-                                      'jpeg',
-                                      'svg',
-                                      'gif',
-                                      'webp',
-                                    ],
-                                  );
-
-                              if (result != null &&
-                                  result.files.single.path != null &&
-                                  mounted) {
-                                final filePath = result.files.single.path!;
-
-                                // Copia o arquivo para o diretório de documentos do app
-                                try {
-                                  final appDir =
-                                      await getApplicationDocumentsDirectory();
-                                  final customIconsDir = Directory(
-                                    path.join(appDir.path, 'custom_icons'),
-                                  );
-                                  if (!await customIconsDir.exists()) {
-                                    await customIconsDir.create(
-                                      recursive: true,
-                                    );
-                                  }
-
-                                  final fileName = path.basename(filePath);
-                                  final destPath = path.join(
-                                    customIconsDir.path,
-                                    fileName,
-                                  );
-                                  final sourceFile = File(filePath);
-                                  final destFile = await sourceFile.copy(
-                                    destPath,
-                                  );
-
-                                  // Salva o caminho do arquivo copiado
-                                  final updatedPlayer = player.copyWith(
-                                    avatarPath: destFile.path,
-                                  );
-                                  await playerProvider.updatePlayer(
-                                    updatedPlayer,
-                                  );
-                                } catch (e) {
-                                  if (!mounted) return;
-                                  ScaffoldMessenger.of(
-                                    this.context,
-                                  ).showSnackBar(
-                                    SnackBar(
-                                      content: Text('Erro ao salvar ícone: $e'),
-                                      backgroundColor: AppTheme.accentRed,
-                                    ),
-                                  );
+                              try {
+                                final avatarPath =
+                                    await pickAndStoreCustomAvatar();
+                                if (avatarPath == null || !mounted) {
+                                  return;
                                 }
+
+                                final updatedPlayer = player.copyWith(
+                                  avatarPath: avatarPath,
+                                );
+                                await playerProvider.updatePlayer(
+                                  updatedPlayer,
+                                );
+                              } catch (e) {
+                                if (!mounted) return;
+                                ScaffoldMessenger.of(this.context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Erro ao salvar ícone: $e'),
+                                    backgroundColor: AppTheme.accentRed,
+                                  ),
+                                );
                               }
                             },
                             style: TextButton.styleFrom(

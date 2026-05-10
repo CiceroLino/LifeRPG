@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:intl/intl.dart';
-import 'dart:io';
-import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/player.dart';
 import '../../../core/utils/energy_schedule_calculator.dart';
 import '../../../core/utils/xp_calculator.dart';
+import '../common/avatar_image.dart';
 
 class PlayerStatsHeader extends StatelessWidget {
   final Player player;
@@ -305,56 +304,11 @@ class PlayerStatsHeader extends StatelessWidget {
 
   /// Constrói a imagem do avatar suportando assets e arquivos customizados
   Widget _buildAvatarImage(String avatarPath) {
-    // Se for um caminho absoluto (arquivo customizado)
-    if (avatarPath.startsWith('/') || avatarPath.startsWith('file://')) {
-      try {
-        final filePath = avatarPath.replaceFirst('file://', '');
-        final file = File(filePath);
-        if (file.existsSync()) {
-          if (filePath.endsWith('.svg')) {
-            return SvgPicture.file(
-              file,
-              fit: BoxFit.cover,
-              colorFilter: const ColorFilter.mode(
-                AppTheme.textPrimary,
-                BlendMode.srcIn,
-              ),
-              placeholderBuilder: (_) => _buildAvatarPlaceholder(),
-              errorBuilder: (_, error, stackTrace) => _buildAvatarPlaceholder(),
-            );
-          } else {
-            return Image.file(
-              file,
-              fit: BoxFit.cover,
-              errorBuilder: (_, error, stackTrace) => _buildAvatarPlaceholder(),
-            );
-          }
-        }
-      } catch (e) {
-        // Se houver erro, retorna placeholder
-        return _buildAvatarPlaceholder();
-      }
-    }
-
-    // Se for um asset (SVG ou imagem)
-    if (avatarPath.endsWith('.svg')) {
-      return SvgPicture.asset(
-        avatarPath,
-        fit: BoxFit.cover,
-        colorFilter: const ColorFilter.mode(
-          AppTheme.textPrimary,
-          BlendMode.srcIn,
-        ),
-        placeholderBuilder: (_) => _buildAvatarPlaceholder(),
-        errorBuilder: (_, error, stackTrace) => _buildAvatarPlaceholder(),
-      );
-    } else {
-      return Image.asset(
-        avatarPath,
-        fit: BoxFit.cover,
-        errorBuilder: (_, error, stackTrace) => _buildAvatarPlaceholder(),
-      );
-    }
+    return buildAvatarImage(
+      avatarPath,
+      placeholderBuilder: _buildAvatarPlaceholder,
+      fit: BoxFit.cover,
+    );
   }
 
   /// Placeholder do avatar
