@@ -87,7 +87,6 @@ class MissionCard extends StatelessWidget {
           iconAsset,
           width: 34,
           height: 34,
-          colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
           placeholderBuilder: (_) =>
               Icon(Icons.task_alt, color: iconColor, size: 24),
           errorBuilder: (_, error, stackTrace) =>
@@ -321,6 +320,22 @@ class MissionCard extends StatelessWidget {
                         const SizedBox(height: 10),
                         const Divider(height: 1, color: AppTheme.border),
                         const SizedBox(height: 10),
+                        if (mission.notes.isNotEmpty) ...[
+                          _ExpandedLoreBlock(
+                            icon: Icons.menu_book_outlined,
+                            label: 'Quest Log',
+                            value: mission.notes,
+                          ),
+                          const SizedBox(height: 8),
+                        ],
+                        if (mission.reminderNote.isNotEmpty) ...[
+                          _ExpandedLoreBlock(
+                            icon: Icons.edit_notifications_outlined,
+                            label: 'Reminder Rune',
+                            value: mission.reminderNote,
+                          ),
+                          const SizedBox(height: 8),
+                        ],
                         Row(
                           children: [
                             Expanded(
@@ -403,6 +418,61 @@ class MissionCard extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _ExpandedLoreBlock extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+
+  const _ExpandedLoreBlock({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: AppTheme.background,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: AppTheme.border),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: AppTheme.primary, size: 16),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    color: AppTheme.textSecondary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    color: AppTheme.textPrimary,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

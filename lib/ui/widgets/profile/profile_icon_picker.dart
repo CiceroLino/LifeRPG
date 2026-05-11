@@ -186,10 +186,6 @@ class _ProfileIconPickerContentState extends State<_ProfileIconPickerContent> {
                         padding: const EdgeInsets.all(12),
                         child: SvgPicture.asset(
                           iconPath,
-                          colorFilter: const ColorFilter.mode(
-                            AppTheme.textPrimary,
-                            BlendMode.srcIn,
-                          ),
                           placeholderBuilder: (_) => const SizedBox(
                             child: Center(
                               child: CircularProgressIndicator(

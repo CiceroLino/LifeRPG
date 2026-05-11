@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
@@ -130,6 +131,37 @@ void main() {
     }
   });
 
+  testWidgets('mission icon picker does not tint SVGs into solid squares', (
+    tester,
+  ) async {
+    await _setLargeSurface(tester);
+    final skillProvider = FakeSkillProvider();
+    final missionProvider = FakeMissionProvider();
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: _providers(
+          skillProvider: skillProvider,
+          missionProvider: missionProvider,
+        ),
+        child: const MaterialApp(home: MissionFormScreen()),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Escolher ícone'),
+      400,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Escolher ícone'));
+    await tester.pumpAndSettle();
+
+    final icons = tester.widgetList<SvgPicture>(find.byType(SvgPicture));
+    expect(icons, isNotEmpty);
+    expect(icons.every((icon) => icon.colorFilter == null), isTrue);
+  });
+
   testWidgets('shows strategy labels and calculated XP preview', (
     tester,
   ) async {
@@ -152,6 +184,11 @@ void main() {
     expect(find.textContaining('Medium'), findsWidgets);
     expect(find.textContaining('XP calculado'), findsOneWidget);
     expect(find.text('3250 XP'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Usar 25 RP'),
+      400,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('Usar 25 RP'), findsOneWidget);
   });
 

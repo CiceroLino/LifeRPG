@@ -26,6 +26,8 @@ void main() {
         longitude: -35.7089,
         reminderAt: DateTime(2026, 5, 11, 17, 30),
         recurrenceDays: const [1, 3, 5],
+        notes: 'Ask the guild master about the next quest.',
+        reminderNote: 'Bring the potion before leaving.',
       ),
     );
 
@@ -36,6 +38,8 @@ void main() {
     expect(mission.longitude, -35.7089);
     expect(mission.reminderAt, DateTime(2026, 5, 11, 17, 30));
     expect(mission.recurrenceDays, [1, 3, 5]);
+    expect(mission.notes, 'Ask the guild master about the next quest.');
+    expect(mission.reminderNote, 'Bring the potion before leaving.');
   });
 
   test(

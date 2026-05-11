@@ -47,10 +47,6 @@ Widget buildAvatarImage(
     return SvgPicture.asset(
       avatarPath,
       fit: fit,
-      colorFilter: const ColorFilter.mode(
-        AppTheme.textPrimary,
-        BlendMode.srcIn,
-      ),
       placeholderBuilder: (_) => placeholderBuilder(),
       errorBuilder: (_, error, stackTrace) => placeholderBuilder(),
     );

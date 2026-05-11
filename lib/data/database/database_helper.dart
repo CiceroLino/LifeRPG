@@ -20,7 +20,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 7,
+      version: 8,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
       },
@@ -69,6 +69,8 @@ class DatabaseHelper {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT NOT NULL,
         description TEXT,
+        notes TEXT DEFAULT '',
+        reminder_note TEXT DEFAULT '',
         difficulty INTEGER DEFAULT 10 CHECK(difficulty BETWEEN 0 AND 100),
         urgency INTEGER DEFAULT 10 CHECK(urgency BETWEEN 0 AND 100),
         fear INTEGER DEFAULT 10 CHECK(fear BETWEEN 0 AND 100),
@@ -150,6 +152,19 @@ class DatabaseHelper {
     if (oldVersion < 7) {
       await _migrateStrategyV7(db);
     }
+    if (oldVersion < 8) {
+      await _migrateMissionNotesV8(db);
+    }
+  }
+
+  Future<void> _migrateMissionNotesV8(Database db) async {
+    await _addColumnIfMissing(db, 'missions', 'notes', 'TEXT DEFAULT ""');
+    await _addColumnIfMissing(
+      db,
+      'missions',
+      'reminder_note',
+      'TEXT DEFAULT ""',
+    );
   }
 
   Future<void> _migrateStrategyV7(Database db) async {
@@ -198,6 +213,8 @@ class DatabaseHelper {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT NOT NULL,
         description TEXT,
+        notes TEXT DEFAULT '',
+        reminder_note TEXT DEFAULT '',
         difficulty INTEGER DEFAULT 10 CHECK(difficulty BETWEEN 0 AND 100),
         urgency INTEGER DEFAULT 10 CHECK(urgency BETWEEN 0 AND 100),
         fear INTEGER DEFAULT 10 CHECK(fear BETWEEN 0 AND 100),

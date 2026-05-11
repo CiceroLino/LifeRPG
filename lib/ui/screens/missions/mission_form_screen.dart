@@ -32,6 +32,8 @@ class _MissionFormScreenState extends State<MissionFormScreen> {
 
   final _titleController = TextEditingController();
   final _descController = TextEditingController();
+  final _notesController = TextEditingController();
+  final _reminderNoteController = TextEditingController();
   final _durationController = TextEditingController(text: '30');
 
   int _rewardPoints = 5;
@@ -64,6 +66,8 @@ class _MissionFormScreenState extends State<MissionFormScreen> {
   void dispose() {
     _titleController.dispose();
     _descController.dispose();
+    _notesController.dispose();
+    _reminderNoteController.dispose();
     _durationController.dispose();
     super.dispose();
   }
@@ -96,9 +100,20 @@ class _MissionFormScreenState extends State<MissionFormScreen> {
             const SizedBox(height: 12),
             TextFormField(
               controller: _descController,
-              decoration: const InputDecoration(labelText: 'Detalhes / Notas'),
+              decoration: const InputDecoration(labelText: 'Descrição curta'),
               minLines: 2,
               maxLines: 4,
+            ),
+            const SizedBox(height: 16),
+            _Section(title: 'Quest Log'),
+            TextFormField(
+              controller: _notesController,
+              decoration: const InputDecoration(
+                labelText: 'Notas da missão',
+                prefixIcon: Icon(Icons.menu_book_outlined),
+              ),
+              minLines: 3,
+              maxLines: 6,
             ),
             const SizedBox(height: 16),
             _Section(title: 'Parâmetros (XP)'),
@@ -221,6 +236,16 @@ class _MissionFormScreenState extends State<MissionFormScreen> {
               ),
               onPressed: _pickReminder,
             ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _reminderNoteController,
+              decoration: const InputDecoration(
+                labelText: 'Reminder Rune',
+                prefixIcon: Icon(Icons.edit_notifications_outlined),
+              ),
+              minLines: 2,
+              maxLines: 4,
+            ),
             const SizedBox(height: 16),
             _Section(title: 'Local'),
             OutlinedButton.icon(
@@ -301,10 +326,6 @@ class _MissionFormScreenState extends State<MissionFormScreen> {
                 normalizeMissionIconAsset(_iconAsset),
                 width: 20,
                 height: 20,
-                colorFilter: const ColorFilter.mode(
-                  Colors.white,
-                  BlendMode.srcIn,
-                ),
                 placeholderBuilder: (_) => const SizedBox(
                   width: 20,
                   height: 20,
@@ -454,6 +475,8 @@ class _MissionFormScreenState extends State<MissionFormScreen> {
     final mission = Mission(
       title: _titleController.text.trim(),
       description: _descController.text.trim(),
+      notes: _notesController.text.trim(),
+      reminderNote: _reminderNoteController.text.trim(),
       difficulty: _difficulty.round(),
       urgency: _urgency.round(),
       fear: _fear.round(),
@@ -567,10 +590,6 @@ class _MissionFormScreenState extends State<MissionFormScreen> {
                   padding: const EdgeInsets.all(10),
                   child: SvgPicture.asset(
                     asset,
-                    colorFilter: const ColorFilter.mode(
-                      Colors.white,
-                      BlendMode.srcIn,
-                    ),
                     placeholderBuilder: (_) => const SizedBox(
                       child: Center(
                         child: CircularProgressIndicator(strokeWidth: 2),

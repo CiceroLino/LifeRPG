@@ -2,6 +2,8 @@ class Mission {
   final int? id;
   final String title;
   final String description;
+  final String notes;
+  final String reminderNote;
   final int difficulty;
   final int urgency;
   final int fear;
@@ -34,6 +36,8 @@ class Mission {
     this.id,
     required this.title,
     this.description = '',
+    this.notes = '',
+    this.reminderNote = '',
     this.difficulty = 10,
     this.urgency = 10,
     this.fear = 10,
@@ -69,6 +73,8 @@ class Mission {
       'id': id,
       'title': title,
       'description': description,
+      'notes': notes,
+      'reminder_note': reminderNote,
       'difficulty': difficulty,
       'urgency': urgency,
       'fear': fear,
@@ -105,6 +111,8 @@ class Mission {
       id: map['id'] as int?,
       title: map['title'] as String,
       description: map['description'] as String? ?? '',
+      notes: map['notes'] as String? ?? '',
+      reminderNote: map['reminder_note'] as String? ?? '',
       difficulty: map['difficulty'] as int? ?? 1,
       urgency: map['urgency'] as int? ?? 1,
       fear: map['fear'] as int? ?? 1,
@@ -160,6 +168,8 @@ class Mission {
     int? id,
     String? title,
     String? description,
+    String? notes,
+    String? reminderNote,
     int? difficulty,
     int? urgency,
     int? fear,
@@ -192,6 +202,8 @@ class Mission {
       id: id ?? this.id,
       title: title ?? this.title,
       description: description ?? this.description,
+      notes: notes ?? this.notes,
+      reminderNote: reminderNote ?? this.reminderNote,
       difficulty: difficulty ?? this.difficulty,
       urgency: urgency ?? this.urgency,
       fear: fear ?? this.fear,

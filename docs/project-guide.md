@@ -57,7 +57,7 @@ Providers principais:
 
 Arquivo do banco: `liferpg.db`.
 
-Versão atual do schema: `7`.
+Versão atual do schema: `8`.
 
 Tabelas principais:
 
@@ -78,6 +78,7 @@ Notas de migração:
 - A versão 5 migrou `difficulty`, `urgency` e `fear` de missões da escala antiga 1-5 para a escala atual 0-100, multiplicando valores 1-5 por 20.
 - A versão 6 adicionou recompensas, inventário e histórico de resgates.
 - A versão 7 adicionou local, lembrete e dias de recorrência em missões, além de drops configuráveis e histórico de rolagens.
+- A versão 8 adicionou notas de missão e texto livre de lembrete.
 - Foreign keys são habilitadas em `onConfigure`.
 
 Backup/restore:
@@ -176,6 +177,8 @@ Campos importantes:
 - Recompensas dropadas por missão são configuradas em `mission_reward_drops` e tratadas como itens concedidos além de XP/RP.
 - `dueDate`: usada por filtros e avanço de recorrência.
 - `reminderAt`: agenda notificação local para a missão.
+- `notes`: notas livres do Quest Log da missão.
+- `reminderNote`: texto livre para lembretes RPG-like além do horário agendado.
 - `locationName`, `latitude`, `longitude`: ponto real no mapa vinculado à missão.
 - `isRecurring`, `recurrenceType`, `recurrenceInterval`, `recurrenceDays`: metadados de recorrência.
 - `lastCompletedAt`, `streak`: tracking de recorrência.

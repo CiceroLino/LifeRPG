@@ -29,6 +29,8 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _titleController;
   late TextEditingController _descriptionController;
+  late TextEditingController _notesController;
+  late TextEditingController _reminderNoteController;
 
   double _difficulty = 50;
   double _urgency = 50;
@@ -51,6 +53,10 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
     final m = widget.initial;
     _titleController = TextEditingController(text: m?.title ?? '');
     _descriptionController = TextEditingController(text: m?.description ?? '');
+    _notesController = TextEditingController(text: m?.notes ?? '');
+    _reminderNoteController = TextEditingController(
+      text: m?.reminderNote ?? '',
+    );
     _difficulty = (m?.difficulty ?? 50).toDouble();
     _urgency = (m?.urgency ?? 50).toDouble();
     _fear = (m?.fear ?? 30).toDouble();
@@ -81,6 +87,8 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
   void dispose() {
     _titleController.dispose();
     _descriptionController.dispose();
+    _notesController.dispose();
+    _reminderNoteController.dispose();
     super.dispose();
   }
 
@@ -141,6 +149,24 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
                   decoration: const InputDecoration(labelText: 'Details'),
                   minLines: 2,
                   maxLines: 4,
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Quest Log',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _notesController,
+                  decoration: const InputDecoration(
+                    labelText: 'Mission notes',
+                    prefixIcon: Icon(Icons.menu_book_outlined),
+                  ),
+                  minLines: 3,
+                  maxLines: 6,
                 ),
                 const SizedBox(height: 20),
                 const Text(
@@ -230,6 +256,16 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
                       : _reminderAt!.toLocal().toString().substring(0, 16),
                   leadingIcon: Icons.notifications_outlined,
                   onTap: _pickReminder,
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _reminderNoteController,
+                  decoration: const InputDecoration(
+                    labelText: 'Reminder Rune',
+                    prefixIcon: Icon(Icons.edit_notifications_outlined),
+                  ),
+                  minLines: 2,
+                  maxLines: 4,
                 ),
                 const Divider(height: 16),
                 _LinkRow(
@@ -578,6 +614,8 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
       id: base?.id,
       title: _titleController.text.trim(),
       description: _descriptionController.text.trim(),
+      notes: _notesController.text.trim(),
+      reminderNote: _reminderNoteController.text.trim(),
       difficulty: _difficulty.round(),
       urgency: _urgency.round(),
       fear: _fear.round(),
