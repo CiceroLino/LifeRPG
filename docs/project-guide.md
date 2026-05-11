@@ -1,48 +1,50 @@
-# LifeRPG Project Guide
+# Guia do Projeto LifeRPG
 
-This guide is for humans and coding agents working on LifeRPG. Read it before changing project behavior so you do not need to rediscover the rules from the codebase.
+Este guia é para humanos e agentes de código trabalhando no LifeRPG. Leia antes de mudar comportamento para não precisar redescobrir as regras pelo código.
 
-If this guide conflicts with code, treat the code as the current truth and update this file as part of the change.
+Se este guia conflitar com o código, trate o código como a verdade atual e atualize este arquivo como parte da mudança.
 
-## Product Model
+## Modelo do Produto
 
-LifeRPG is a Flutter app that turns real-life tasks into RPG progression.
+LifeRPG é um app Flutter que transforma tarefas reais em progressão de RPG.
 
-- Missions are tasks.
-- Completing missions grants player XP and Reward Points.
-- Skills receive XP when linked missions are completed.
-- Rewards are shop items bought with Reward Points.
-- Purchased rewards become inventory items.
-- Energy is displayed as HP and can be manual or schedule-based.
+- Missões são tarefas.
+- Completar missões concede XP, Moedas/RP e pode conceder recompensas.
+- Skills recebem XP quando as missões vinculadas são completadas.
+- Recompensas são itens usáveis comprados na loja ou dropados por missões.
+- Recompensas obtidas viram itens no inventário, onde podem ser consumidas.
+- Energia é exibida como HP e diminui/aumenta conforme tempo acordado e tempo dormindo, ou por ajuste manual.
 
-The app is local-first. Data lives in SQLite through `sqflite`/`sqflite_common_ffi`; settings live in `SharedPreferences`; import/export works through platform-specific backup services.
+Referência de produto: o raciocínio de missões, atributos, RP, recompensas e HP segue a linha do artigo "LifeRPG Strategy Guide (v1.0.0)", de kolayāna, adaptado ao código atual deste app.
 
-## Architecture
+O app é local-first. Os dados vivem em SQLite via `sqflite`/`sqflite_common_ffi`; configurações vivem em `SharedPreferences`; importação/exportação usam serviços específicos por plataforma.
 
-The app follows a simple layered structure:
+## Arquitetura
 
-- `lib/ui`: screens and widgets. UI should compose providers and render state.
-- `lib/providers`: `ChangeNotifier` state and application-facing operations.
-- `lib/services`: transactional business workflows that touch multiple tables.
-- `lib/data/repositories`: database access for one aggregate or persistence area.
-- `lib/data/models`: immutable-ish data models with `toMap`, `fromMap`, `copyWith`.
-- `lib/data/database/database_helper.dart`: schema, migrations, backup/restore, reset helpers.
-- `lib/core/utils`: pure calculators and business helpers.
-- `lib/core/theme/app_theme.dart`: design tokens and Material theme.
+O app segue uma estrutura simples em camadas:
 
-Important ownership rule: do not duplicate business calculations in UI. Reuse utilities such as `XPCalculator`, `RewardPointAdvisor`, and `EnergyScheduleCalculator`.
+- `lib/ui`: telas e widgets. A UI deve compor providers e renderizar estado.
+- `lib/providers`: estado `ChangeNotifier` e operações expostas para a aplicação.
+- `lib/services`: fluxos de negócio transacionais que tocam múltiplas tabelas.
+- `lib/data/repositories`: acesso ao banco para um agregado ou área de persistência.
+- `lib/data/models`: modelos de dados com `toMap`, `fromMap`, `copyWith`.
+- `lib/data/database/database_helper.dart`: schema, migrações, backup/restore e auxiliares de reset.
+- `lib/core/utils`: calculadoras puras e auxiliares de negócio.
+- `lib/core/theme/app_theme.dart`: tokens de design e tema Material.
 
-## Runtime Setup
+Regra importante de responsabilidade: não duplique cálculos de negócio na UI. Reuse utilitários como `XPCalculator`, `RewardPointAdvisor` e `EnergyScheduleCalculator`.
+
+## Setup em Runtime
 
 `lib/main.dart`:
 
-- Calls `configureDatabasePlatform()` before `runApp`.
-- Registers providers with `MultiProvider`.
-- Eagerly loads player, rewards, inventory, missions, skills, and settings.
-- Forces `ThemeMode.dark`.
-- Supports locales `en`, `pt`, and `es`.
+- Chama `configureDatabasePlatform()` antes de `runApp`.
+- Registra providers com `MultiProvider`.
+- Carrega imediatamente player, recompensas, inventário, missões, skills e configurações.
+- Força `ThemeMode.dark`.
+- Suporta locales `en`, `pt` e `es`.
 
-Primary providers:
+Providers principais:
 
 - `PlayerProvider`
 - `MissionProvider`
@@ -51,41 +53,41 @@ Primary providers:
 - `InventoryProvider`
 - `SettingsProvider`
 
-## Database
+## Banco de Dados
 
-Database file: `liferpg.db`.
+Arquivo do banco: `liferpg.db`.
 
-Current schema version: `6`.
+Versão atual do schema: `6`.
 
-Core tables:
+Tabelas principais:
 
-- `player`: singleton player row, enforced with `id INTEGER PRIMARY KEY CHECK (id = 1)`.
-- `skills`: skill progression.
-- `missions`: mission/task records.
-- `mission_skills`: many-to-many join between missions and skills.
-- `mission_completion_events`: history snapshots for mission completions.
-- `mission_completion_skill_rewards`: per-skill XP history snapshots.
-- `rewards`: shop reward definitions.
-- `inventory_items`: owned reward items.
-- `reward_redemptions`: purchase history snapshots.
+- `player`: linha única do jogador, garantida por `id INTEGER PRIMARY KEY CHECK (id = 1)`.
+- `skills`: progressão de skills.
+- `missions`: registros de missões/tarefas.
+- `mission_skills`: relacionamento many-to-many entre missões e skills.
+- `mission_completion_events`: registros históricos de conclusões de missão.
+- `mission_completion_skill_rewards`: registros históricos de XP por skill.
+- `rewards`: definições de recompensas da loja.
+- `inventory_items`: itens possuídos.
+- `reward_redemptions`: registros históricos de compras.
 
-Migration notes:
+Notas de migração:
 
-- Version 5 migrated mission `difficulty`, `urgency`, and `fear` from the old 1-5 scale to the current 0-100 percent scale by multiplying values 1-5 by 20.
-- Version 6 added rewards, inventory, and redemption history.
-- Foreign keys are enabled in `onConfigure`.
+- A versão 5 migrou `difficulty`, `urgency` e `fear` de missões da escala antiga 1-5 para a escala atual 0-100, multiplicando valores 1-5 por 20.
+- A versão 6 adicionou recompensas, inventário e histórico de resgates.
+- Foreign keys são habilitadas em `onConfigure`.
 
 Backup/restore:
 
-- `DatabaseHelper.getAllDataForBackup()` exports all core tables with `version` and `timestamp`.
-- `DatabaseHelper.restoreData()` clears existing data and inserts the supplied backup payload inside a transaction.
-- Restore assumes backup rows match the current schema.
+- `DatabaseHelper.getAllDataForBackup()` exporta todas as tabelas principais com `version` e `timestamp`.
+- `DatabaseHelper.restoreData()` limpa os dados existentes e insere o payload de backup dentro de uma transação.
+- Restore assume que as linhas do backup são compatíveis com o schema atual.
 
-## Player Rules
+## Regras do Player
 
-Model: `lib/data/models/player.dart`.
+Modelo: `lib/data/models/player.dart`.
 
-Defaults:
+Padrões:
 
 - `id`: `1`
 - `name`: `Player`
@@ -95,264 +97,295 @@ Defaults:
 - `rewardPoints`: `0`
 - `currentEnergy`: `100`
 - `energyMode`: `manual`
-- `themeMode`: `light`, although the app currently runs dark mode.
+- `themeMode`: `light`, embora o app atualmente rode em dark mode.
 
-`PlayerProvider` exposes current XP, level, XP needed for next level, XP inside current level, and progress to next level.
+`PlayerProvider` expõe XP atual, nível, XP necessário para o próximo nível, XP dentro do nível atual e progresso até o próximo nível.
 
-Manual energy:
+Energia manual:
 
-- Only valid in `energyMode == 'manual'`.
-- `setManualEnergy` clamps values to `0..100`.
+- Só é válida em `energyMode == 'manual'`.
+- `setManualEnergy` limita valores a `0..100`.
 
-Auto energy:
+Energia automática:
 
-- `energyMode` must be `auto`.
-- `wakeUpTime` and `sleepTime` must be parseable `HH:mm` strings.
-- The visible energy value is computed in `PlayerStatsHeader` using `EnergyScheduleCalculator`.
+- `energyMode` precisa ser `auto`.
+- `wakeUpTime` e `sleepTime` precisam ser strings `HH:mm` parseáveis.
+- O valor visível de energia é calculado em `PlayerStatsHeader` usando `EnergyScheduleCalculator`.
 
-## XP And Levels
+## XP e Níveis
 
-Owner: `lib/core/utils/xp_calculator.dart`.
+Dono: `lib/core/utils/xp_calculator.dart`.
 
-Level curve:
+Curva de nível:
 
-- XP required for the next level is `currentLevel * 100`.
-- Level starts at `1`.
-- Total XP is cumulative.
-- XP inside the current level is `totalXP - XP required by previous levels`.
+- XP necessário para o próximo nível é `currentLevel * 100`.
+- O nível começa em `1`.
+- XP total é cumulativo.
+- XP dentro do nível atual é `totalXP - XP exigido pelos níveis anteriores`.
 
-Examples:
+Exemplos:
 
-- Level 1 needs 100 XP to reach level 2.
-- Level 2 needs 200 more XP.
-- Level 3 needs 300 more XP.
+- Nível 1 precisa de 100 XP para chegar ao nível 2.
+- Nível 2 precisa de mais 200 XP.
+- Nível 3 precisa de mais 300 XP.
 
-Mission XP formula:
+Fórmula de XP da missão:
 
 ```text
 xp = difficulty * urgency * (1 + fear / 100)
 ```
 
-Rules:
+Regras:
 
-- `difficulty`, `urgency`, and `fear` are clamped to `0..100`.
-- If `difficulty == 0` or `urgency == 0`, XP is `0`.
-- `fear` is a multiplier, not a blocker.
-- Result is rounded to the nearest integer.
+- `difficulty`, `urgency` e `fear` são limitados a `0..100`.
+- Se `difficulty == 0` ou `urgency == 0`, o XP é `0`.
+- `fear` é um multiplicador, não um bloqueador.
+- O resultado é arredondado para o inteiro mais próximo.
+- Evite desenhar fluxos que incentivem atributos em `0`, porque dificuldade e urgência acima de zero são a base para a missão conceder XP.
 
-Mission attribute bands:
+Bandas dos atributos de missão:
 
 - `0..25`: Low
 - `26..50`: Medium
 - `51..75`: High
 - `76..100`: Extreme
 
-Use `XPCalculator.attributeGuideLabel` for the human-readable strategy labels shown next to sliders.
+Use `XPCalculator.attributeGuideLabel` para os rótulos estratégicos exibidos junto aos sliders.
 
-## Mission Rules
+Guia estratégico dos atributos:
 
-Model: `lib/data/models/mission.dart`.
+- Difficulty mede o esforço da tarefa, de trivial/beginner até extreme/transformational.
+- Urgency mede pressão temporal ou prioridade, de optional/non-urgent até immediate/critical.
+- Fear mede aversão, incerteza ou ansiedade, de negligible/eustress até dread/mortal.
+- O app agrupa a escala em Low, Medium, High e Extreme, mas a UI pode mostrar rótulos mais granulares para ajudar o usuário a calibrar valores de forma consistente.
 
-Important fields:
+## Regras de Missão
 
-- `status`: currently `active`, `completed`, or `archived`.
-- `difficulty`, `urgency`, `fear`: percent scale `0..100`.
-- `energyRequired`: database constrained to `1..5`, but it is not currently consumed by completion logic.
-- `xpReward`: stored XP amount granted on completion.
-- `rewardPoints`: stored RP amount granted on completion.
-- `dueDate`: used by filters and recurrence advancement.
-- `isRecurring`, `recurrenceType`, `recurrenceInterval`: recurrence metadata. `recurrenceInterval` exists but is not currently used by completion logic.
-- `lastCompletedAt`, `streak`: recurrence tracking.
-- `parentMissionId`: subtasks; cascade deleted with parent mission.
-- `skillIds`: loaded through `mission_skills`, not stored in the `missions` table.
+Modelo: `lib/data/models/mission.dart`.
 
-Mission creation:
+Campos importantes:
 
-- The form defaults to difficulty 50, urgency 50, fear 30.
-- XP is previewed with `XPCalculator.calculateMissionXP`.
-- Duration input is clamped to `0..60` minutes.
-- Recurrence values from UI: `once`, `continuous`, `daily`, `weekly`, `monthly`, `yearly`.
-- `once` is saved as `isRecurring = false` and `recurrenceType = null`.
-- Any other recurrence is saved as `isRecurring = true` and `recurrenceType` set to that value.
-- A mission may be created as already completed; this sets `status = completed` and `completedAt = now`, but does not grant completion rewards through `MissionCompletionService`.
+- `status`: atualmente `active`, `completed` ou `archived`.
+- `difficulty`, `urgency`, `fear`: escala percentual `0..100`.
+- `energyRequired`: banco restringe a `1..5`, mas a lógica de conclusão ainda não consome energia.
+- `xpReward`: quantidade de XP armazenada e concedida na conclusão.
+- `rewardPoints`: quantidade de RP armazenada e concedida na conclusão.
+- Recompensas dropadas por missão devem ser tratadas como itens concedidos além de XP/RP, quando o fluxo existir.
+- `dueDate`: usada por filtros e avanço de recorrência.
+- `isRecurring`, `recurrenceType`, `recurrenceInterval`: metadados de recorrência. `recurrenceInterval` existe, mas a conclusão ainda não usa.
+- `lastCompletedAt`, `streak`: tracking de recorrência.
+- `parentMissionId`: subtarefas; são deletadas em cascade junto com a missão pai.
+- `skillIds`: carregado via `mission_skills`, não armazenado na tabela `missions`.
 
-Skill linking:
+Criação de missão:
+
+- O formulário inicia com difficulty 50, urgency 50, fear 30.
+- XP é pré-visualizado com `XPCalculator.calculateMissionXP`.
+- Duração é limitada a `0..60` minutos.
+- Valores de recorrência da UI: `once`, `continuous`, `daily`, `weekly`, `monthly`, `yearly`.
+- `once` é salvo como `isRecurring = false` e `recurrenceType = null`.
+- Qualquer outra recorrência é salva como `isRecurring = true` e `recurrenceType` com o valor escolhido.
+- Uma missão pode ser criada já concluída; isso define `status = completed` e `completedAt = now`, mas não concede recompensas por `MissionCompletionService`.
+- Uma missão só deve ter uma missão pai, mas pode ter várias missões filhas. Missões filhas representam partes executáveis de um projeto maior.
+
+Vínculo com skills:
 
 - Use `MissionRepository.linkSkills`.
-- Updating links deletes existing rows for the mission and inserts the supplied list.
-- Be careful when updating a mission with an empty `skillIds` list: `MissionProvider.updateMission` currently only relinks when the list is non-empty, so clearing all links may require repository-level handling.
+- Atualizar vínculos apaga as linhas existentes da missão e insere a lista recebida.
+- Cuidado ao atualizar uma missão com `skillIds` vazio: `MissionProvider.updateMission` atualmente só relinka quando a lista não está vazia, então limpar todos os vínculos pode exigir tratamento no repository.
 
-## Mission Completion Rules
+## Regras de Conclusão de Missão
 
-Owner: `lib/services/mission_completion_service.dart`.
+Dono: `lib/services/mission_completion_service.dart`.
 
-Always complete missions through `MissionProvider.completeMission` or `MissionProvider.updateMissionStatus(id, 'completed')`. Do not call `MissionRepository.complete` for user-facing completion flows because it only flips mission status and bypasses XP/RP/history/skill rewards.
+Sempre conclua missões por `MissionProvider.completeMission` ou `MissionProvider.updateMissionStatus(id, 'completed')`. Não use `MissionRepository.complete` em fluxos visíveis ao usuário, porque ele só altera status e ignora XP/RP/histórico/recompensas de skill.
 
-Completion is transactional:
+A conclusão é transacional:
 
-1. Load mission and linked skill IDs.
-2. Block duplicate completions when applicable.
-3. Insert `mission_completion_events`.
-4. Grant skill XP and insert `mission_completion_skill_rewards`.
-5. Grant player XP/RP and recalculate player level.
-6. Update mission status or recurrence state.
+1. Carrega a missão e os IDs de skills vinculadas.
+2. Bloqueia conclusões duplicadas quando aplicável.
+3. Insere `mission_completion_events`.
+4. Concede XP às skills e insere `mission_completion_skill_rewards`.
+5. Concede XP/RP ao player e recalcula o nível.
+6. Atualiza status da missão ou estado de recorrência.
 
-Duplicate rules:
+Regras de duplicidade:
 
-- Non-recurring mission: blocked if already `completed`.
-- Recurring mission with `recurrenceType == 'continuous'`: never duplicate-blocked.
-- Other recurring mission: blocked when `dueDate != null && dueDate.isAfter(now)`.
+- Missão não recorrente: bloqueia se já estiver `completed`.
+- Missão recorrente com `recurrenceType == 'continuous'`: nunca bloqueia duplicidade.
+- Outras missões recorrentes: bloqueia quando `dueDate != null && dueDate.isAfter(now)`.
 
-Rewards granted:
+Recompensas concedidas:
 
-- Player receives exactly `mission.xpReward` and `mission.rewardPoints`.
-- Player level is recalculated from total XP.
-- Linked skills split mission XP evenly with `(xpReward / skillIds.length).round()`.
-- Skill XP uses a per-skill level track: while `currentXP >= level * 100`, subtract `level * 100` and increment level.
+- O player recebe exatamente `mission.xpReward` e `mission.rewardPoints`.
+- O nível do player é recalculado a partir do XP total.
+- Skills vinculadas dividem o XP da missão igualmente com `(xpReward / skillIds.length).round()`.
+- XP de skill usa progressão por skill: enquanto `currentXP >= level * 100`, subtrai `level * 100` e incrementa o nível.
+- Quando a implementação de drops por missão estiver ativa, o drop deve ser registrado de forma transacional junto da conclusão, gerando item de inventário e histórico auditável.
 
-Mission status after completion:
+Status da missão após conclusão:
 
-- Non-recurring mission becomes `completed`, `completedAt = now`.
-- Recurring mission remains `active`, sets `lastCompletedAt = now`, increments `streak`, clears `completedAt`, and advances `dueDate`.
-- Continuous recurring mission keeps the same `dueDate`.
-- Daily/weekly/monthly/yearly recurrence advances from the old due date until it is after `now`.
-- Unknown recurrence types behave like daily.
+- Missão não recorrente vira `completed`, `completedAt = now`.
+- Missão recorrente permanece `active`, define `lastCompletedAt = now`, incrementa `streak`, limpa `completedAt` e avança `dueDate`.
+- Missão recorrente contínua mantém o mesmo `dueDate`.
+- Recorrência diária/semanal/mensal/anual avança a partir do due date antigo até ficar depois de `now`.
+- Tipos de recorrência desconhecidos se comportam como daily.
 
-Completion result statuses:
+Status do resultado de conclusão:
 
-- `completed`: non-recurring mission completed.
-- `recurringAdvanced`: recurring mission advanced to a future due date.
-- `recurringCompleted`: continuous recurring mission completed.
-- `duplicateBlocked`: no rewards granted.
+- `completed`: missão não recorrente concluída.
+- `recurringAdvanced`: missão recorrente avançada para uma data futura.
+- `recurringCompleted`: missão recorrente contínua concluída.
+- `duplicateBlocked`: nenhuma recompensa concedida.
 
-## Mission Filtering And Sorting
+## Filtros e Ordenação de Missões
 
-Owner: `lib/providers/mission_provider.dart`.
+Dono: `lib/providers/mission_provider.dart`.
 
-Default state:
+Estado padrão:
 
-- Sort: `recent`.
-- Filter: `all`.
-- Completed missions hidden unless `showCompleted == true`.
+- Ordenação: `recent`.
+- Filtro: `all`.
+- Missões concluídas ficam ocultas, salvo quando `showCompleted == true`.
 
-Filters:
+Filtros:
 
-- `plan`: active missions without `dueDate`.
-- `all`: all missions except hidden completed.
-- `next`: active missions with `dueDate >= now`.
-- `today`: active missions due from today at 00:00 until tomorrow at 00:00.
-- `tomorrow`: active missions due from tomorrow at 00:00 until the following day.
-- `overdue`: active missions with `dueDate` before today at 00:00.
+- `plan`: missões ativas sem `dueDate`.
+- `all`: todas as missões exceto concluídas ocultas.
+- `next`: missões ativas com `dueDate >= now`.
+- `today`: missões ativas vencendo de hoje 00:00 até amanhã 00:00.
+- `tomorrow`: missões ativas vencendo de amanhã 00:00 até o dia seguinte.
+- `overdue`: missões ativas com `dueDate` antes de hoje 00:00.
 
-Search:
+Busca:
 
-- Trims the query.
-- Matches lowercase title or description.
+- Faz `trim` da busca.
+- Compara título e descrição em letras minúsculas.
 
-Skill filter:
+Filtro de skill:
 
-- A mission matches when any linked skill ID is in the selected set.
+- Uma missão passa quando qualquer skill ID vinculado está no conjunto selecionado.
 
-Sorts:
+Ordenações:
 
-- `recent`: newest `createdAt` first.
-- `oldest`: oldest `createdAt` first.
-- `difficultyDesc`: highest difficulty first.
-- `priorityDesc`: compares `(urgency * 100) + (fear * 10) + difficulty`.
-- `rewardDesc`: highest Reward Points first.
+- `recent`: `createdAt` mais novo primeiro.
+- `oldest`: `createdAt` mais antigo primeiro.
+- `difficultyDesc`: maior difficulty primeiro.
+- `priorityDesc`: compara `(urgency * 100) + (fear * 10) + difficulty`.
+- `rewardDesc`: mais Reward Points primeiro.
 
 ## Reward Points
 
-Owner: `lib/core/utils/reward_point_advisor.dart`.
+Dono: `lib/core/utils/reward_point_advisor.dart`.
 
-Recommended RP for missions:
+RP funciona como moeda de recompensa. Missões concedem RP para motivar progresso; recompensas custam RP na loja e, ao serem adquiridas ou dropadas, viram itens consumíveis no inventário.
 
-- Standalone daily mission: `1`.
-- Child mission that is daily or weekly: `1`.
-- Standalone by XP:
+RP recomendado para missões:
+
+- Missão avulsa diária: `1`.
+- Missão filha diária ou semanal: `1`.
+- Missão avulsa por XP:
   - `<= 100`: 5 RP
-  - `<= 1,000`: 10 RP
-  - `<= 10,000`: 25 RP
-  - `<= 100,000`: 50 RP
-  - `<= 1,000,000`: 75 RP
-  - `> 1,000,000`: 100 RP
-- Child mission by XP:
-  - `<= 1,000`: 5 RP
-  - `<= 10,000`: 10 RP
-  - `<= 100,000`: 25 RP
-  - `<= 1,000,000`: 50 RP
-  - `> 1,000,000`: 75 RP
+  - `<= 1.000`: 10 RP
+  - `<= 10.000`: 25 RP
+  - `<= 100.000`: 50 RP
+  - `<= 1.000.000`: 75 RP
+  - `> 1.000.000`: 100 RP
+- Missão filha por XP:
+  - `<= 1.000`: 5 RP
+  - `<= 10.000`: 10 RP
+  - `<= 100.000`: 25 RP
+  - `<= 1.000.000`: 50 RP
+  - `> 1.000.000`: 75 RP
 
-Negative XP is treated as `0` for recommendation.
+XP negativo é tratado como `0` para recomendação.
 
-## Rewards, Shop, And Inventory
+## Recompensas, Loja e Inventário
 
-Models:
+Modelos:
 
 - `Reward`
 - `InventoryItem`
 - `RewardRedemption`
 
-Repository: `lib/data/repositories/reward_repository.dart`.
+Repositório: `lib/data/repositories/reward_repository.dart`.
 
-Reward fields:
+Campos de recompensa:
 
-- `priceRp` must be non-negative in the database.
-- `isUnlimitedStock` controls stock behavior.
-- `stockRemaining` is stored as null for unlimited rewards.
-- `isActive` archives rewards instead of deleting them from purchase history.
+- `priceRp` precisa ser não negativo no banco.
+- `isUnlimitedStock` controla comportamento de estoque.
+- `stockRemaining` é armazenado como null para recompensas ilimitadas.
+- `isActive` arquiva recompensas em vez de deletar do histórico de compras.
 
-Purchase flow is transactional:
+Modelo estratégico de preço:
 
-1. Require active reward.
-2. If finite stock, require stock remaining > 0.
-3. Require player RP >= price.
-4. Subtract player RP.
-5. Decrement finite stock.
-6. Create or increment an inventory item keyed by `reward_id`.
-7. Insert redemption snapshot.
+- Recompensas representam itens ou permissões reais que o usuário pode "comprar" com RP.
+- Para recompensas com custo financeiro real, a referência estratégica é `ceilToUsefulCurrencyUnit(cost) * modifier / stock`.
+- Arredonde o custo real para a próxima unidade prática da moeda antes de aplicar o modificador.
+- Tipo I: ajuda missões futuras e não desvia atenção/energia de missões, modificador `0.5`.
+- Tipo II: ajuda missões futuras, mas desvia atenção/energia, modificador `1`.
+- Tipo III: não ajuda missões futuras e não desvia atenção/energia, modificador `1`.
+- Tipo IV: não ajuda missões futuras e desvia atenção/energia, modificador `2`.
+- `stock` divide o preço quando uma compra real gera múltiplas unidades consumíveis.
 
-Provider-facing errors:
+Fluxo de compra é transacional:
 
-- Insufficient RP: `RP insuficiente para comprar esta recompensa.`
-- Out of stock: `Recompensa sem estoque disponível.`
-- Unavailable reward: `Recompensa indisponível.`
+1. Exige recompensa ativa.
+2. Se o estoque for finito, exige estoque restante > 0.
+3. Exige RP do player >= preço.
+4. Subtrai RP do player.
+5. Decrementa estoque finito.
+6. Cria ou incrementa um item de inventário pela chave `reward_id`.
+7. Insere registro histórico de resgate.
 
-Inventory:
+Erros expostos pelo provider:
 
-- `InventoryRepository.consumeItem` deletes the item when quantity is `1`.
-- Otherwise it decrements quantity and updates `updated_at`.
-- Inventory items are sorted by `updated_at DESC`.
+- RP insuficiente: `RP insuficiente para comprar esta recompensa.`
+- Sem estoque: `Recompensa sem estoque disponível.`
+- Recompensa indisponível: `Recompensa indisponível.`
 
-## Energy Rules
+Inventário:
 
-Owner: `lib/core/utils/energy_schedule_calculator.dart`.
+- `InventoryRepository.consumeItem` deleta o item quando a quantidade é `1`.
+- Caso contrário, decrementa a quantidade e atualiza `updated_at`.
+- Itens de inventário são ordenados por `updated_at DESC`.
+- Consumo de item é o ponto onde a recompensa deixa de estar disponível para uso. Não trate inventário apenas como histórico de compras.
 
-Manual mode:
+## Regras de Energia
 
-- Stored value is `player.currentEnergy`.
-- UI allows tap/drag on the energy bar to set `0..100`.
+Dono: `lib/core/utils/energy_schedule_calculator.dart`.
 
-Auto mode:
+Energia deve ser pensada e exibida como HP:
 
-- Requires valid `wakeUpTime` and `sleepTime`.
-- If either time is invalid or the awake duration is zero, result is not configured and energy is `0`.
-- During awake time, energy drains linearly from 100 to 0.
-- During sleep time, energy charges linearly from 0 to 100.
-- Schedules may cross midnight.
-- `MainScreen` refreshes auto energy display every minute while player energy mode is auto.
+- O HP ajuda o usuário a calibrar quanto consegue executar em um dia.
+- Em modo automático, o HP é derivado do ciclo acordado/dormindo, não de custo de missão.
+- Em modo manual, o usuário informa diretamente seu estado atual de energia.
 
-UI label:
+Modo manual:
 
-- Manual mode shows `manual`.
-- Auto mode without configured times shows `set schedule`.
-- Configured auto mode shows time left until sleep or wake.
+- O valor armazenado é `player.currentEnergy`.
+- A UI permite tap/drag na barra de energia para definir `0..100`.
 
-## Settings And Reset
+Modo automático:
 
-Owner: `lib/providers/settings_provider.dart`.
+- Exige `wakeUpTime` e `sleepTime` válidos.
+- Se algum horário for inválido ou a duração acordado for zero, o resultado fica não configurado e energia é `0`.
+- Durante o período acordado, HP drena linearmente de 100 para 0.
+- Durante o sono, HP recarrega linearmente de 0 para 100.
+- Agendas podem atravessar a meia-noite.
+- `MainScreen` atualiza a energia automática a cada minuto enquanto o player está em modo auto.
 
-SharedPreferences keys:
+Rótulo da UI:
+
+- Modo manual mostra `manual`.
+- Modo auto sem horários configurados mostra `set schedule`.
+- Modo auto configurado mostra tempo restante até dormir ou acordar.
+
+## Configurações e Reset
+
+Dono: `lib/providers/settings_provider.dart`.
+
+Chaves de `SharedPreferences`:
 
 - `language`
 - `sound_effects_enabled`
@@ -362,36 +395,36 @@ SharedPreferences keys:
 - `use_24_hour_format`
 - `show_xp_bar`
 
-Defaults:
+Padrões:
 
-- Language: `en`
-- Sound effects: false
-- Notification sounds: true
-- Notifications: true
-- Start week on Monday: false
-- 24-hour format: false
-- Show XP bar: true
+- Idioma: `en`
+- Efeitos sonoros: false
+- Sons de notificação: true
+- Notificações: true
+- Semana começa na segunda: false
+- Formato 24h: false
+- Mostrar barra de XP: true
 
-Reset behavior:
+Comportamento de reset:
 
-- `resetCharacter()` resets player XP, level, RP, energy, energy mode, wake/sleep times.
-- `factoryReset()` deletes user data from reward, inventory, completion history, mission, skill, and player tables; then reinserts the default player and default skills; then clears preferences and reloads defaults.
+- `resetCharacter()` reseta XP, nível, RP, energia, modo de energia e horários de acordar/dormir do player.
+- `factoryReset()` deleta dados de recompensas, inventário, histórico de conclusão, missões, skills e player; reinsere o player padrão e as skills padrão; limpa preferências e recarrega padrões.
 
-Default skills:
+Skills padrão:
 
-- Inteligência, blue `#2196F3`
-- Força, red `#F44336`
-- Saúde, green `#4CAF50`
-- Social, orange `#FF9800`
-- Criatividade, purple `#9C27B0`
+- Inteligência, azul `#2196F3`
+- Força, vermelho `#F44336`
+- Saúde, verde `#4CAF50`
+- Social, laranja `#FF9800`
+- Criatividade, roxo `#9C27B0`
 
-The database currently stores the Portuguese names with accents. Keep user-facing defaults localized intentionally if you change them.
+O banco atualmente armazena os nomes em português com acentos. Mantenha defaults visíveis ao usuário localizados intencionalmente se alterá-los.
 
-## Navigation And Screens
+## Navegação e Telas
 
-`MainScreen` owns top-level navigation with an `IndexedStack`.
+`MainScreen` controla a navegação de topo com um `IndexedStack`.
 
-Drawer order:
+Ordem do drawer:
 
 1. Missions
 2. Map
@@ -404,9 +437,9 @@ Drawer order:
 9. Settings
 10. Help
 
-`PlayerStatsHeader` is hidden for Skills, Settings, and Help. It shows tabs only on Missions.
+`PlayerStatsHeader` fica oculto em Skills, Settings e Help. Ele mostra tabs somente em Missions.
 
-Mission tabs map to filters:
+Tabs de missões mapeiam para filtros:
 
 1. PLAN -> `MissionFilterMode.plan`
 2. ALL -> `MissionFilterMode.all`
@@ -415,26 +448,26 @@ Mission tabs map to filters:
 5. TODAY -> `MissionFilterMode.today`
 6. TOMORROW -> `MissionFilterMode.tomorrow`
 
-App bar actions are contextual:
+Ações da app bar são contextuais:
 
-- Missions: stats toggle, search, add mission, show completed, sort, skill filter.
-- Profile: stats toggle, edit, reset avatar, share profile.
-- Statistics: stats toggle, calendar, export data, clear history.
+- Missions: alternar stats, busca, adicionar missão, mostrar concluídas, ordenar, filtro por skill.
+- Profile: alternar stats, editar, resetar avatar, compartilhar perfil.
+- Statistics: alternar stats, calendário, exportar dados, limpar histórico.
 
-Workspace switching currently only changes in-memory UI state and shows a snackbar. It is not a persisted data partition.
+Troca de workspace atualmente só muda estado em memória da UI e mostra snackbar. Não é uma partição persistida de dados.
 
-## Design System
+## Sistema de Design
 
-Owner: `lib/core/theme/app_theme.dart`.
+Dono: `lib/core/theme/app_theme.dart`.
 
-The app intentionally uses a dense dark RPG dashboard style:
+O app usa intencionalmente um estilo denso de dashboard RPG escuro:
 
-- Dark background, compact controls, functional surfaces.
-- Icons and small labels are preferred over explanatory blocks.
-- Cards should be compact and information-dense.
-- Avoid marketing-page layouts, oversized hero sections, and decorative gradients.
+- Fundo escuro, controles compactos e superfícies funcionais.
+- Ícones e rótulos curtos são preferidos a blocos explicativos.
+- Cards devem ser compactos e densos em informação.
+- Evite layouts de landing page, heroes gigantes e gradientes decorativos.
 
-Core colors:
+Cores principais:
 
 - `background`: `#212121`
 - `surface`: `#303030`
@@ -446,72 +479,72 @@ Core colors:
 - `border`: `#424242`
 - `successGreen`: `#4CAF50`
 
-Theme:
+Tema:
 
 - Material 3.
 - Roboto via `google_fonts`.
-- Dark scaffold background.
-- Compact visual density.
-- Cards use `surface`, border `border`, elevation 2, and radius 12.
-- Inputs are filled with `surface`, border radius 10, and primary focus border.
-- FAB uses primary blue on dark foreground.
+- Fundo escuro no scaffold.
+- Densidade visual compacta.
+- Cards usam `surface`, borda `border`, elevação 2 e raio 12.
+- Inputs são preenchidos com `surface`, raio de borda 10 e borda primária no foco.
+- FAB usa azul primário com foreground escuro.
 
-Common UI patterns:
+Padrões comuns de UI:
 
-- Use `AppTheme` constants instead of ad hoc colors.
-- Use `LifeRPGAppBar` for top-level app bar behavior.
-- Use `AppDrawer` for main navigation.
-- Use `PlayerStatsHeader` for player, XP, RP, and energy summary.
-- Use SVG assets from `assets/game-icons.net.svg/...` for RPG-themed icons.
-- Use `normalizeMissionIconAsset` when rendering saved mission icons.
-- Keep text short and scannable. Many current strings are English even in Portuguese app areas; preserve existing style unless localizing intentionally.
+- Use constantes de `AppTheme` em vez de cores ad hoc.
+- Use `LifeRPGAppBar` para comportamento de app bar em telas de topo.
+- Use `AppDrawer` para navegação principal.
+- Use `PlayerStatsHeader` para resumo de player, XP, RP e energia.
+- Use assets SVG de `assets/game-icons.net.svg/...` para ícones com tema RPG.
+- Use `normalizeMissionIconAsset` ao renderizar ícones salvos de missão.
+- Mantenha textos curtos e escaneáveis. Muitas strings atuais estão em inglês mesmo em áreas do app em português; preserve o estilo local salvo quando a tarefa for localizar intencionalmente.
 
-Mission card visual rules:
+Regras visuais do card de missão:
 
-- Priority strip color:
-  - urgency >= 76: red
-  - difficulty >= 76: orange
-  - fear >= 76: primary blue
+- Cor da faixa de prioridade:
+  - urgency >= 76: vermelho
+  - difficulty >= 76: laranja
+  - fear >= 76: azul primário
   - urgency >= 51: amber
-  - otherwise text secondary
-- Mission icon box is 50x50 with radius 8.
-- Expanded card exposes status dropdown and edit button.
-- Reward Points are shown with a gem icon and amber text.
+  - caso contrário: text secondary
+- Caixa do ícone da missão tem 50x50 com raio 8.
+- Card expandido expõe dropdown de status e botão de editar.
+- Reward Points aparecem com ícone de gem e texto amber.
 
-Player header visual rules:
+Regras visuais do header do player:
 
-- Avatar is 60x60 with radius 8 and border.
-- Level is large gold text.
-- XP and HP bars are stacked, 20px high.
-- HP is red in manual/draining state; auto charging interpolates red to cyan.
-- Mission tabs are uppercase labels in a compact `TabBar`.
+- Avatar tem 60x60 com raio 8 e borda.
+- Level é texto grande dourado.
+- Barras de XP e HP são empilhadas, com 20px de altura.
+- HP é vermelho em modo manual/drenando; carregamento automático interpola de vermelho para ciano.
+- Tabs de missões são rótulos uppercase em um `TabBar` compacto.
 
-## Localization And Text
+## Localização e Textos
 
-The app has generated localization scaffolding, but many visible strings are currently hardcoded in English or Portuguese.
+O app tem estrutura de localização gerada, mas muitas strings visíveis ainda estão hardcoded em inglês ou português.
 
-When adding user-facing text:
+Ao adicionar texto visível ao usuário:
 
-- Follow the local style of the file you are editing.
-- If touching a localized screen, prefer using `AppLocalizations`.
-- Avoid broad localization refactors unless requested.
+- Siga o estilo local do arquivo que está editando.
+- Se tocar uma tela localizada, prefira usar `AppLocalizations`.
+- Evite refactors amplos de localização salvo quando solicitado.
 
-## Platform Notes
+## Notas de Plataforma
 
-Database platform setup lives in `lib/core/platform/database_platform*.dart`.
+Setup de banco por plataforma vive em `lib/core/platform/database_platform*.dart`.
 
-Avatar and backup behavior use platform-specific implementations:
+Avatar e backup usam implementações específicas por plataforma:
 
-- Avatar image/storage helpers in `lib/core/platform/custom_avatar_storage*.dart` and `lib/ui/widgets/common/avatar_image*.dart`.
-- Backup service implementations in `lib/services/backup_service*.dart`.
+- Auxiliares de imagem/storage de avatar em `lib/core/platform/custom_avatar_storage*.dart` e `lib/ui/widgets/common/avatar_image*.dart`.
+- Implementações de backup em `lib/services/backup_service*.dart`.
 
-Web support includes SQLite wasm assets in `web/`.
+Suporte web inclui assets SQLite wasm em `web/`.
 
-## Testing Expectations
+## Expectativas de Teste
 
-Run focused tests for the area you change, then broader tests when risk is high.
+Rode testes focados para a área alterada, depois testes mais amplos quando o risco for alto.
 
-Useful commands:
+Comandos úteis:
 
 ```bash
 flutter analyze
@@ -523,17 +556,17 @@ flutter test test/data/repositories/reward_inventory_repository_test.dart
 flutter test test/providers/mission_provider_test.dart
 ```
 
-Add or update tests when changing:
+Adicione ou atualize testes ao mudar:
 
-- XP or level formulas.
-- Mission completion rewards, recurrence, duplicate blocking, or history.
-- Mission filtering/sorting.
-- Reward purchase, stock, inventory, or redemption history.
-- Energy schedule math or UI energy interactions.
-- Database migrations, backup, restore, reset, or factory reset.
-- Provider behavior that affects visible state or error messages.
+- Fórmulas de XP ou nível.
+- Recompensas de conclusão de missão, recorrência, bloqueio de duplicidade ou histórico.
+- Filtros/ordenação de missão.
+- Compra de recompensa, estoque, inventário ou histórico de resgate.
+- Matemática de agenda de energia ou interações de energia na UI.
+- Migrações de banco, backup, restore, reset ou factory reset.
+- Comportamento de provider que afete estado visível ou mensagens de erro.
 
-Existing focused test files:
+Arquivos de teste focados existentes:
 
 - `test/core/utils/mission_strategy_calculator_test.dart`
 - `test/core/utils/energy_schedule_calculator_test.dart`
@@ -542,42 +575,41 @@ Existing focused test files:
 - `test/data/repositories/reward_inventory_repository_test.dart`
 - `test/providers/mission_provider_test.dart`
 - `test/providers/reward_inventory_provider_test.dart`
-- UI/widget tests under `test/ui/...`
+- Testes de UI/widget em `test/ui/...`
 
-## Known Sharp Edges
+## Pontos de Atenção Conhecidos
 
-- `MissionRepository.complete` bypasses reward and history logic. Avoid it for user-facing completion.
-- `MissionProvider.updateMission` does not clear mission skills when `skillIds` is empty.
-- Creating a mission with `Mission Complete` checked does not grant XP/RP. It only stores completed status.
-- `recurrenceInterval` exists but completion logic ignores it.
-- `energyRequired` exists but mission completion does not consume energy.
-- `themeMode` exists on `Player`, but `MaterialApp` currently forces dark theme.
-- Workspace selection is UI-only and does not isolate data.
-- `RewardRepository.purchaseReward` assumes the player row exists.
-- Backup restore inserts raw rows and assumes compatible schema.
-- Some docs/README descriptions may still refer to older 1-5 mission attributes. Current code uses 0-100 for difficulty, urgency, and fear.
+- `MissionRepository.complete` ignora recompensa e histórico. Evite em conclusão visível ao usuário.
+- `MissionProvider.updateMission` não limpa skills da missão quando `skillIds` está vazio.
+- Criar uma missão com `Mission Complete` marcado não concede XP/RP. Apenas salva status concluído.
+- `recurrenceInterval` existe, mas a lógica de conclusão ignora.
+- `energyRequired` existe, mas conclusão de missão não consome energia.
+- `themeMode` existe em `Player`, mas `MaterialApp` atualmente força dark theme.
+- Seleção de workspace é apenas UI e não isola dados.
+- `RewardRepository.purchaseReward` assume que a linha do player existe.
+- Restore de backup insere linhas cruas e assume schema compatível.
 
-## How To Extend Safely
+## Como Estender com Segurança
 
-When adding a new rule:
+Ao adicionar uma nova regra:
 
-1. Put pure math in `lib/core/utils`.
-2. Put transactional multi-table workflows in `lib/services`.
-3. Keep database access in repositories.
-4. Expose state and errors through providers.
-5. Keep UI widgets thin and reusable.
-6. Add focused tests beside the existing test area.
-7. Update this guide when the behavior becomes part of the project contract.
+1. Coloque matemática pura em `lib/core/utils`.
+2. Coloque fluxos transacionais multi-tabela em `lib/services`.
+3. Mantenha acesso ao banco em repositories.
+4. Exponha estado e erros por providers.
+5. Mantenha widgets de UI finos e reutilizáveis.
+6. Adicione testes focados junto da área de teste existente.
+7. Atualize este guia quando o comportamento virar contrato do projeto.
 
-When adding a new screen:
+Ao adicionar uma nova tela:
 
-1. Add screen under `lib/ui/screens/<area>/`.
-2. Reuse `AppTheme`, app bar/drawer patterns, and compact dark styling.
-3. Add provider or repository APIs only if existing ones do not already cover the workflow.
-4. Add widget tests for user-visible interactions.
+1. Adicione a tela em `lib/ui/screens/<area>/`.
+2. Reuse `AppTheme`, padrões de app bar/drawer e estilo escuro compacto.
+3. Adicione APIs de provider ou repository só se as existentes não cobrirem o fluxo.
+4. Adicione testes de widget para interações visíveis ao usuário.
 
-When adding a new dependency or using a library API:
+Ao adicionar uma nova dependência ou usar API de biblioteca:
 
-1. Use `ctx7` first for current docs.
-2. Prefer existing dependencies before adding new packages.
-3. Update `pubspec.yaml`, run `flutter pub get`, and commit `pubspec.lock` changes.
+1. Use `ctx7` primeiro para documentação atual.
+2. Prefira dependências existentes antes de adicionar pacotes novos.
+3. Atualize `pubspec.yaml`, rode `flutter pub get` e inclua mudanças de `pubspec.lock`.

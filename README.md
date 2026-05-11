@@ -34,8 +34,10 @@ O app funciona como um RPG onde:
 - **XP (Experiência)** = Progresso do jogador
 - **Level** = Nível do jogador baseado no XP acumulado
 - **Skills** = Habilidades que podem ser desenvolvidas
-- **Reward Points** = Moeda virtual para recompensas
-- **Energy** = Energia do jogador (HP)
+- **Reward Points / Moedas** = Moeda virtual recebida por missões e usada na loja
+- **Recompensas** = Itens usáveis comprados na loja ou dropados por missões
+- **Inventário** = Onde recompensas obtidas ficam disponíveis para consumo
+- **Energy / HP** = Energia do jogador, drenando enquanto acordado e recarregando durante o sono no modo automático
 
 ---
 
@@ -190,6 +192,9 @@ class Player {
   final int rewardPoints;          // Pontos de recompensa
   final String? avatarPath;        // Caminho do avatar
   final int currentEnergy;         // Energia atual (HP)
+  final String energyMode;         // 'manual' ou 'auto'
+  final String? wakeUpTime;        // Horário de acordar no modo auto
+  final String? sleepTime;         // Horário de dormir no modo auto
   final String themeMode;          // Modo de tema
   final DateTime createdAt;        // Data de criação
   final DateTime updatedAt;        // Última atualização
@@ -199,7 +204,7 @@ class Player {
 **Características:**
 - Singleton: Apenas um jogador pode existir (id = 1)
 - Level é calculado automaticamente baseado no `totalXP`
-- `currentEnergy` representa a energia/HP do jogador
+- `currentEnergy` representa HP manual; em modo auto, o HP visível é calculado por `wakeUpTime`/`sleepTime`
 
 ### 2. Mission (Missão)
 
@@ -210,9 +215,9 @@ class Mission {
   final int? id;                   // ID único (null se nova)
   final String title;              // Título da missão
   final String description;       // Descrição detalhada
-  final int difficulty;            // Dificuldade (1-5)
-  final int urgency;              // Urgência (1-5)
-  final int fear;                 // Medo/Ansiedade (1-5)
+  final int difficulty;            // Dificuldade (0-100)
+  final int urgency;              // Urgência (0-100)
+  final int fear;                 // Medo/Ansiedade (0-100)
   final int energyRequired;       // Energia necessária (1-5)
   final int xpReward;             // XP ganho ao completar
   final int rewardPoints;         // Pontos de recompensa
@@ -234,6 +239,7 @@ class Mission {
 - Pode ser recorrente (diária, semanal, etc)
 - Relacionamento many-to-many com Skills
 - Atributos gamificados (difficulty, urgency, fear)
+- Difficulty, Urgency e Fear seguem escala percentual: Low 0-25, Medium 26-50, High 51-75, Extreme 76-100
 
 ### 3. Skill (Habilidade)
 
@@ -291,6 +297,13 @@ Singleton que gerencia a conexão com o banco SQLite.
 4. **Tabela `mission_skills`** (Junction Table)
    - Relacionamento many-to-many entre missions e skills
    - Foreign keys para ambas as tabelas
+
+5. **Tabelas de conclusão e recompensas**
+   - `mission_completion_events` registra conclusões de missão
+   - `mission_completion_skill_rewards` registra XP concedido às skills
+   - `rewards` define itens de loja/recompensas
+   - `inventory_items` guarda recompensas obtidas e consumíveis
+   - `reward_redemptions` registra compras/resgates
 
 ### Repositórios
 
@@ -558,13 +571,17 @@ User toca em MissionCard
     ↓
 MissionProvider.completeMission()
     ↓
-MissionRepository.complete()
+MissionCompletionService executa transação
     ↓
-PlayerRepository.addXP()
+Registra histórico de conclusão
     ↓
-PlayerRepository.addRewardPoints()
+Player recebe XP e Reward Points/Moedas
     ↓
-SkillRepository.addXP() (para cada skill)
+Skills vinculadas recebem XP
+    ↓
+Missão muda status ou avança recorrência
+    ↓
+Drops de recompensa geram itens de inventário quando implementados
     ↓
 Providers notificam listeners
     ↓
@@ -658,7 +675,26 @@ XP necessário para nível N = N * 100
 
 Skills usam fórmula similar, mas com cálculo independente:
 - Cada skill tem seu próprio `currentXP` e `level`
-- XP é distribuído proporcionalmente quando missões são completadas
+- XP é distribuído entre as skills vinculadas quando missões são completadas
+
+### Missões e Recompensas
+
+Ao completar uma missão pelo fluxo de provider/service:
+- O jogador recebe XP e Reward Points/Moedas.
+- Skills vinculadas recebem XP da missão.
+- Missões recorrentes avançam para a próxima ocorrência quando aplicável.
+- Recompensas dropadas por missão devem virar itens de inventário quando esse fluxo estiver ativo.
+
+Recompensas são itens ou permissões que o usuário compra na loja com RP/Moedas ou recebe como drop. Depois de obtidas, ficam no inventário e podem ser consumidas. O consumo decrementa a quantidade do item ou remove o item quando a quantidade chega a zero.
+
+### Energia / HP
+
+A barra de energia é tratada como HP:
+- No modo manual, o usuário ajusta o valor atual diretamente.
+- No modo automático, horários de acordar e dormir definem o ciclo.
+- Durante o tempo acordado, HP drena de 100 para 0.
+- Durante o sono, HP recarrega de 0 para 100.
+- O app atualiza a visualização automática a cada minuto.
 
 ---
 
@@ -700,38 +736,22 @@ Skills usam fórmula similar, mas com cálculo independente:
 
 ### Funcionalidades Pendentes
 
-1. **Filtros de Missões**
-   - Implementar lógica de tabs no `PlayerStatsHeader` (PLAN, ALL, NEXT, OVERDUE, TODAY)
+1. **Drops de Recompensas por Missão**
+   - Definir modelo e histórico para recompensas concedidas automaticamente ao concluir missões
+   - Integrar drops ao inventário na mesma transação da conclusão
 
-2. **Seleção de Skills**
-   - Completar seletor de skills no `MissionEditorScreen`
-
-3. **Seleção de Parent Mission**
-   - Implementar dropdown para missões pai
-
-4. **Icon Picker**
-   - Integrar `IconPickerDialog` com assets SVG
-
-5. **Telas Placeholder**
-   - Implementar telas reais para: Map, Rewards, Inventory, Statistics, Profile, Shop
-
-6. **Sistema de Recompensas**
-   - Tela de Rewards com itens compráveis
-   - Shop para gastar reward points
-
-7. **Gráfico Radar**
+2. **Gráfico Radar**
    - Completar implementação do RadarChart em `SkillsView`
 
-8. **Sistema de Energia**
-   - Lógica de regeneração de energia
-   - Timer no `PlayerStatsHeader`
+3. **Energia na Priorização**
+   - Usar HP restante como sinal opcional na ordenação sugerida de missões
 
-9. **Missões Recorrentes**
-   - Lógica de recriação automática
-   - Streak tracking
+4. **Missões Recorrentes**
+   - Expandir uso de `recurrenceInterval`
+   - Melhorar feedback de streak
 
-10. **Subtasks**
-    - Implementar criação e visualização de subtasks
+5. **Subtasks**
+   - Refinar criação e visualização de missões filhas
 
 ### Melhorias Técnicas
 
@@ -801,4 +821,3 @@ Skills usam fórmula similar, mas com cálculo independente:
 Este guia cobre os aspectos principais do projeto LifeRPG. Para dúvidas específicas, consulte o código-fonte ou adicione documentação inline conforme necessário.
 
 **Boa sorte no desenvolvimento! 🚀**
-

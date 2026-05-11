@@ -2,15 +2,17 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Add manual and automatic energy modes with schedule-based drain/charge behavior and minute-level UI updates.
+**Goal:** Add manual and automatic HP/energy modes with schedule-based drain/charge behavior and minute-level UI updates.
 
-**Architecture:** Energy mode and schedule are persisted on `player`. Manual mode reads/writes `current_energy`; automatic mode computes energy and color from time windows at render time and repaints every minute. Settings becomes the configuration entry point for mode and schedule.
+**Architecture:** Energy mode and schedule are persisted on `player`. Manual mode reads/writes `current_energy`; automatic mode computes visible HP and color from wake/sleep windows at render time and repaints every minute. Settings becomes the configuration entry point for mode and schedule. Mission completion does not currently spend HP.
 
 **Tech Stack:** Flutter, Provider, sqflite, flutter_test.
 
 ---
 
 ### Task 1: Add pure energy schedule calculation utility
+
+The calculator models the strategy-guide behavior: HP is full at wake time, drains while awake, and recharges while asleep.
 
 **Files:**
 - Create: `lib/core/utils/energy_schedule_calculator.dart`

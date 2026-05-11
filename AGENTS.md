@@ -1,50 +1,59 @@
-# LifeRPG Agent Guide
+# Guia de Agentes do LifeRPG
 
-## Documentation-First Context
+## Contexto Primeiro Pela Documentação
 
-Before changing behavior, read [docs/project-guide.md](docs/project-guide.md). It is the maintained source of truth for:
+Antes de alterar comportamento, leia [docs/project-guide.md](docs/project-guide.md). Esse arquivo é a fonte mantida de contexto para:
 
-- Business rules for missions, XP, levels, skills, energy, rewards, inventory, backup, and reset flows.
-- Design system and UI patterns used by the Flutter app.
-- Architecture boundaries and files that usually own each concern.
-- Testing expectations and high-risk areas.
+- Regras de negócio de missões, XP, níveis, skills, energia, recompensas, inventário, backup e resets.
+- Sistema de design e padrões de UI usados pelo app Flutter.
+- Limites de arquitetura e arquivos que normalmente são donos de cada responsabilidade.
+- Expectativas de teste e áreas de maior risco.
 
-Use this guide to avoid rediscovering project rules from scratch every session. If code and docs diverge, trust the code, then update the guide in the same change.
+Use este guia para não precisar redescobrir as regras do projeto em toda sessão. Se o código e a documentação divergirem, confie no código e atualize a documentação na mesma mudança.
 
-## Current Documentation Lookup Rule
+Linha de raciocínio do produto:
 
-Use the `ctx7` CLI to fetch current documentation whenever the user asks about a library, framework, SDK, API, CLI tool, or cloud service, including Flutter, Dart, Provider, sqflite, shared_preferences, file_picker, share_plus, or any other dependency.
+- Missões são tarefas.
+- Completar missões concede XP, Moedas/RP e pode conceder recompensas.
+- Skills recebem XP quando missões vinculadas são completadas.
+- Recompensas são itens usáveis comprados na loja ou dropados por missões.
+- Inventário é onde recompensas obtidas são consumidas.
+- Energia é exibida como HP e varia pelo ciclo acordado/dormindo ou por ajuste manual.
 
-Do not use it for refactoring, writing scripts from scratch, debugging business logic, code review, or general programming concepts.
+## Regra Para Consultar Documentação Atual
 
-Steps:
+Use o CLI `ctx7` para buscar documentação atual sempre que o usuário perguntar sobre uma biblioteca, framework, SDK, API, ferramenta de CLI ou serviço de nuvem, incluindo Flutter, Dart, Provider, sqflite, shared_preferences, file_picker, share_plus ou qualquer outra dependência.
 
-1. Resolve the library:
+Não use para refatoração, scripts escritos do zero, depuração de regra de negócio, revisão de código ou conceitos gerais de programação.
+
+Passos:
+
+1. Resolva a biblioteca:
 
    ```bash
-   npx ctx7@latest library <name> "<user's full question>"
+   npx ctx7@latest library <name> "<pergunta completa do usuário>"
    ```
 
-2. Pick the best `/org/project` match by exact name, description relevance, snippet count, source reputation, and benchmark score.
-3. Fetch docs:
+2. Escolha o melhor resultado `/org/project` por nome exato, relevância da descrição, quantidade de exemplos, reputação da fonte e pontuação de benchmark.
+3. Busque a documentação:
 
    ```bash
-   npx ctx7@latest docs <libraryId> "<user's full question>"
+   npx ctx7@latest docs <libraryId> "<pergunta completa do usuário>"
    ```
 
-Do not run more than 3 ctx7 commands per question. If ctx7 fails with a quota error, tell the user and suggest `npx ctx7@latest login` or setting `CONTEXT7_API_KEY`.
+Não rode mais de 3 comandos `ctx7` por pergunta. Se o `ctx7` falhar por quota, informe o usuário e sugira `npx ctx7@latest login` ou configurar `CONTEXT7_API_KEY`.
 
-## Project Commands
+## Comandos do Projeto
 
-- Install deps: `flutter pub get`
-- Static analysis: `flutter analyze`
-- Tests: `flutter test`
-- Focused test: `flutter test test/path/to_test.dart`
-- Run app: `flutter run`
+- Instalar dependências: `flutter pub get`
+- Análise estática: `flutter analyze`
+- Testes: `flutter test`
+- Teste focado: `flutter test test/path/to_test.dart`
+- Rodar o app: `flutter run`
 
-## Working Rules
+## Regras de Trabalho
 
-- Keep business rules in services, repositories, providers, or core utils. UI should call existing APIs instead of duplicating calculations.
-- Add or update focused tests when changing reward, XP, recurrence, energy, inventory, migration, backup, or filtering behavior.
-- Preserve user data semantics. Database migrations must be additive or explicitly migrate old data.
-- Prefer existing `AppTheme` constants and shared widgets before adding new visual styles.
+- Mantenha regras de negócio em services, repositories, providers ou core utils. A UI deve chamar APIs existentes em vez de duplicar cálculos.
+- Adicione ou atualize testes focados ao mudar recompensas, XP, recorrência, energia, inventário, migrações, backup ou filtros.
+- Preserve a semântica dos dados do usuário. Migrações de banco devem ser aditivas ou migrar dados antigos explicitamente.
+- Prefira constantes de `AppTheme` e widgets compartilhados existentes antes de criar novos estilos visuais.

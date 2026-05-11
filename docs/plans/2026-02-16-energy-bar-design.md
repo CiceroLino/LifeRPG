@@ -4,18 +4,23 @@
 
 ## Goal
 Implement two user-selectable energy behaviors in settings:
-- Manual mode: user controls current energy by interacting with the bar.
-- Automatic mode: energy follows time schedule (wake/sleep), draining while awake and charging while asleep.
+- Manual mode: user controls current HP/energy by interacting with the bar.
+- Automatic mode: HP follows time schedule (wake/sleep), draining while awake and charging while asleep.
 
 ## Requirements Confirmed
 - Mode selector in settings: Manual vs Automatic.
 - Automatic mode uses wake and sleep times.
-- On wake time, energy is full.
+- On wake time, HP is full.
 - During awake period, energy drains from 100% to 0% linearly.
 - During sleep period, energy charges from 0% to 100% linearly.
 - In automatic mode, manual clicks on energy bar are blocked.
 - Sleep phase color shifts from red toward cyan.
 - Auto refresh cadence: once per minute.
+
+## Product Context
+- Energy is presented to the user as HP, matching the LifeRPG strategy framing.
+- The bar helps the user reason about how much can be done in the day.
+- Automatic mode derives HP from awake/asleep time. Mission completion does not currently spend HP.
 
 ## Existing State (Current Code)
 - Data model and DB already include `current_energy`, `energy_mode`, `wake_up_time`, `sleep_time`.
@@ -25,7 +30,7 @@ Implement two user-selectable energy behaviors in settings:
 ## Proposed Architecture
 - Persist mode and schedule in `player` record via `PlayerProvider`/`PlayerRepository`.
 - Keep manual mode persisted in DB (`current_energy`).
-- In auto mode, compute energy dynamically from current time + schedule at render time (no periodic DB writes).
+- In auto mode, compute HP dynamically from current time + schedule at render time (no periodic DB writes).
 - Trigger UI repaint every minute from `MainScreen` when mode is auto.
 
 ## Business Rules
