@@ -57,6 +57,11 @@ class AppDrawer extends StatelessWidget {
             'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/delapouite/shopping-bag.svg',
       ),
       const _DrawerItem(
+        label: 'Pomodoro',
+        asset:
+            'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/hourglass.svg',
+      ),
+      const _DrawerItem(
         label: 'Settings',
         asset:
             'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/delapouite/settings-knobs.svg',

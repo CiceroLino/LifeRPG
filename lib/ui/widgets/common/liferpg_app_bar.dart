@@ -500,8 +500,9 @@ class LifeRPGAppBar extends StatelessWidget implements PreferredSizeWidget {
       (5, 'Statistics', Icons.query_stats),
       (6, 'Profile', Icons.person_outline),
       (7, 'Shop', Icons.storefront_outlined),
-      (8, 'Settings', Icons.settings_outlined),
-      (9, 'Help', Icons.help_outline),
+      (8, 'Pomodoro', Icons.hourglass_bottom_outlined),
+      (9, 'Settings', Icons.settings_outlined),
+      (10, 'Help', Icons.help_outline),
     ];
 
     showDialog(

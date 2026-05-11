@@ -8,6 +8,7 @@ import 'package:liferpg/data/models/skill.dart';
 import 'package:liferpg/providers/mission_provider.dart';
 import 'package:liferpg/providers/inventory_provider.dart';
 import 'package:liferpg/providers/player_provider.dart';
+import 'package:liferpg/providers/pomodoro_provider.dart';
 import 'package:liferpg/providers/reward_provider.dart';
 import 'package:liferpg/providers/settings_provider.dart';
 import 'package:liferpg/providers/skill_provider.dart';
@@ -105,6 +106,9 @@ void main() {
           ChangeNotifierProvider<PlayerProvider>.value(
             value: FakePlayerProvider(),
           ),
+          ChangeNotifierProvider<PomodoroProvider>.value(
+            value: PomodoroProvider(),
+          ),
           ChangeNotifierProvider<RewardProvider>.value(
             value: FakeRewardProvider(),
           ),
@@ -164,5 +168,16 @@ void main() {
     await tester.tap(find.text('TOMORROW'));
     await tester.pump();
     expect(missionProvider.lastFilterMode, MissionFilterMode.tomorrow);
+  });
+
+  testWidgets('navigation dialog exposes Pomodoro focus quest', (tester) async {
+    final missionProvider = FakeMissionProvider();
+    await pumpMain(tester, missionProvider);
+
+    await tester.tap(find.text('LifeRPG'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text('Pomodoro'), findsOneWidget);
   });
 }

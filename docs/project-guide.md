@@ -14,6 +14,7 @@ LifeRPG é um app Flutter que transforma tarefas reais em progressão de RPG.
 - Recompensas são itens usáveis comprados na loja ou dropados por missões.
 - Recompensas obtidas viram itens no inventário, onde podem ser consumidas.
 - Energia é exibida como HP e diminui/aumenta conforme tempo acordado e tempo dormindo, ou por ajuste manual.
+- Pomodoro é tratado como Focus Quest: uma sessão de foco com duração limitada que concede XP ao player.
 
 Referência de produto: o raciocínio de missões, atributos, RP, recompensas e HP segue a linha do artigo "LifeRPG Strategy Guide (v1.0.0)", de kolayāna, adaptado ao código atual deste app.
 
@@ -48,6 +49,7 @@ Providers principais:
 
 - `PlayerProvider`
 - `MissionProvider`
+- `PomodoroProvider`
 - `SkillProvider`
 - `RewardProvider`
 - `InventoryProvider`
@@ -57,7 +59,7 @@ Providers principais:
 
 Arquivo do banco: `liferpg.db`.
 
-Versão atual do schema: `8`.
+Versão atual do schema: `9`.
 
 Tabelas principais:
 
@@ -72,6 +74,7 @@ Tabelas principais:
 - `reward_redemptions`: registros históricos de compras.
 - `mission_reward_drops`: drops configurados por missão.
 - `mission_completion_reward_drops`: rolagens históricas de drops na conclusão.
+- `focus_sessions`: histórico de sessões Pomodoro/Focus Quest concluídas.
 
 Notas de migração:
 
@@ -79,6 +82,7 @@ Notas de migração:
 - A versão 6 adicionou recompensas, inventário e histórico de resgates.
 - A versão 7 adicionou local, lembrete e dias de recorrência em missões, além de drops configuráveis e histórico de rolagens.
 - A versão 8 adicionou notas de missão e texto livre de lembrete.
+- A versão 9 adicionou sessões Pomodoro/Focus Quest com XP concedido por minuto focado.
 - Foreign keys são habilitadas em `onConfigure`.
 
 Backup/restore:
@@ -162,6 +166,24 @@ Guia estratégico dos atributos:
 - Urgency mede pressão temporal ou prioridade, de optional/non-urgent até immediate/critical.
 - Fear mede aversão, incerteza ou ansiedade, de negligible/eustress até dread/mortal.
 - O app agrupa a escala em Low, Medium, High e Extreme, mas a UI pode mostrar rótulos mais granulares para ajudar o usuário a calibrar valores de forma consistente.
+
+## Regras de Pomodoro / Focus Quest
+
+Donos:
+
+- `lib/services/focus_session_service.dart`
+- `lib/providers/pomodoro_provider.dart`
+- `lib/data/repositories/focus_session_repository.dart`
+
+Regras:
+
+- Pomodoro aparece como uma tela do painel com o nome visual `Focus Quest`.
+- A duração configurável vai de `1` a `240` minutos; a UI oferece presets e slider de `5` a `240` minutos.
+- `240` minutos é o limite absoluto: sessões acima de 4 horas devem ser rejeitadas ou limitadas antes da conclusão.
+- Uma sessão concluída concede `1 XP` por minuto focado ao player.
+- Concluir a sessão cria uma linha em `focus_sessions` com duração planejada, duração concluída, XP concedido, início e conclusão.
+- Pomodoro não completa missão automaticamente e não concede RP, moedas, drops ou XP de skill.
+- A tela deve recarregar o `PlayerProvider` após a conclusão para refletir XP e nível imediatamente no header.
 
 ## Regras de Missão
 

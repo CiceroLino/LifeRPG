@@ -20,7 +20,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 8,
+      version: 9,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
       },
@@ -119,6 +119,7 @@ class DatabaseHelper {
     await _createMissionCompletionHistoryTables(db);
     await _createRewardInventoryTables(db);
     await _createMissionRewardDropTables(db);
+    await _createFocusSessionTables(db);
 
     await _insertDefaultPlayer(db);
     await _insertDefaultSkills(db);
@@ -154,6 +155,9 @@ class DatabaseHelper {
     }
     if (oldVersion < 8) {
       await _migrateMissionNotesV8(db);
+    }
+    if (oldVersion < 9) {
+      await _createFocusSessionTables(db);
     }
   }
 
@@ -494,6 +498,24 @@ class DatabaseHelper {
     );
   }
 
+  Future<void> _createFocusSessionTables(DatabaseExecutor db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS focus_sessions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        planned_minutes INTEGER NOT NULL CHECK(planned_minutes BETWEEN 1 AND 240),
+        completed_minutes INTEGER NOT NULL CHECK(completed_minutes BETWEEN 1 AND 240),
+        xp_granted INTEGER NOT NULL DEFAULT 0,
+        status TEXT NOT NULL DEFAULT 'completed',
+        started_at TEXT NOT NULL,
+        completed_at TEXT NOT NULL
+      )
+    ''');
+
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_focus_sessions_completed_at ON focus_sessions(completed_at)',
+    );
+  }
+
   Future<Map<String, dynamic>> getAllDataForBackup() async {
     final db = await database;
 
@@ -512,6 +534,7 @@ class DatabaseHelper {
     final completionRewardDropsMaps = await db.query(
       'mission_completion_reward_drops',
     );
+    final focusSessionsMaps = await db.query('focus_sessions');
 
     return {
       'version': '1.0',
@@ -527,6 +550,7 @@ class DatabaseHelper {
       'reward_redemptions': rewardRedemptionsMaps,
       'mission_reward_drops': missionRewardDropsMaps,
       'mission_completion_reward_drops': completionRewardDropsMaps,
+      'focus_sessions': focusSessionsMaps,
     };
   }
 
@@ -549,6 +573,7 @@ class DatabaseHelper {
     final db = await database;
     await db.transaction((txn) async {
       await txn.delete('reward_redemptions');
+      await txn.delete('focus_sessions');
       await txn.delete('mission_completion_reward_drops');
       await txn.delete('mission_reward_drops');
       await txn.delete('inventory_items');
@@ -569,6 +594,7 @@ class DatabaseHelper {
 
     await db.transaction((txn) async {
       await txn.delete('reward_redemptions');
+      await txn.delete('focus_sessions');
       await txn.delete('mission_completion_reward_drops');
       await txn.delete('mission_reward_drops');
       await txn.delete('inventory_items');
@@ -670,6 +696,13 @@ class DatabaseHelper {
             'mission_completion_reward_drops',
             drop as Map<String, dynamic>,
           );
+        }
+      }
+
+      final focusSessions = data['focus_sessions'] as List<dynamic>?;
+      if (focusSessions != null) {
+        for (final session in focusSessions) {
+          await txn.insert('focus_sessions', session as Map<String, dynamic>);
         }
       }
     });

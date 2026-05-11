@@ -7,6 +7,7 @@ import 'core/platform/database_platform.dart';
 import 'core/theme/app_theme.dart';
 import 'providers/mission_provider.dart';
 import 'providers/player_provider.dart';
+import 'providers/pomodoro_provider.dart';
 import 'providers/inventory_provider.dart';
 import 'providers/reward_provider.dart';
 import 'providers/skill_provider.dart';
@@ -32,6 +33,7 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => PlayerProvider()..loadPlayer()),
+        ChangeNotifierProvider(create: (_) => PomodoroProvider()),
         ChangeNotifierProvider(create: (_) => RewardProvider()..loadRewards()),
         ChangeNotifierProvider(create: (_) => InventoryProvider()..loadItems()),
         ChangeNotifierProvider(

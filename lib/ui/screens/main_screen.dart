@@ -12,6 +12,7 @@ import 'inventory/inventory_screen.dart';
 import 'skills/skills_view.dart';
 import 'statistics/statistics_screen.dart';
 import 'profile/profile_screen.dart';
+import 'pomodoro/pomodoro_screen.dart';
 import 'shop/shop_screen.dart';
 import 'settings/settings_screen.dart';
 import 'help/help_screen.dart';
@@ -68,13 +69,14 @@ class _MainScreenState extends State<MainScreen> {
     StatisticsScreen(),
     ProfileScreen(),
     ShopScreen(),
+    PomodoroScreen(),
     SettingsScreen(),
     HelpScreen(),
   ];
 
   // Índices que NÃO devem mostrar o header (Skills, Settings e Help)
   bool get _shouldShowHeader =>
-      _currentIndex != 4 && _currentIndex != 8 && _currentIndex != 9;
+      _currentIndex != 4 && _currentIndex != 9 && _currentIndex != 10;
 
   @override
   Widget build(BuildContext context) {
@@ -402,6 +404,8 @@ class _MainScreenState extends State<MainScreen> {
         return null;
       case 4:
         return null;
+      case 8:
+        return null;
       default:
         return null;
     }
@@ -418,6 +422,7 @@ class _MainScreenState extends State<MainScreen> {
       'statistics',
       'profile',
       'shop',
+      'pomodoro',
       'settings',
       'help',
     ];
