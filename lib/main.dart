@@ -42,7 +42,7 @@ class MyApp extends StatelessWidget {
       ],
       child: Consumer<SettingsProvider>(
         builder: (context, settings, _) {
-          Locale locale = Locale(settings.language);
+          final locale = AppLocalizations.localeFromCode(settings.language);
 
           return MaterialApp(
             title: 'LifeRPG',
@@ -56,7 +56,7 @@ class MyApp extends StatelessWidget {
               GlobalWidgetsLocalizations.delegate,
               GlobalCupertinoLocalizations.delegate,
             ],
-            supportedLocales: const [Locale('en'), Locale('pt'), Locale('es')],
+            supportedLocales: AppLocalizations.supportedLocales,
             home: const MainScreen(),
             debugShowCheckedModeBanner: false,
           );

@@ -6,11 +6,22 @@ class AppLocalizations {
   AppLocalizations(this.locale);
 
   static AppLocalizations of(BuildContext context) {
-    return Localizations.of<AppLocalizations>(context, AppLocalizations)!;
+    return Localizations.of<AppLocalizations>(context, AppLocalizations) ??
+        AppLocalizations(
+          Localizations.maybeLocaleOf(context) ?? const Locale('en'),
+        );
   }
 
   static const LocalizationsDelegate<AppLocalizations> delegate =
       _AppLocalizationsDelegate();
+
+  static const supportedLocales = [
+    Locale('en'),
+    Locale('pt', 'BR'),
+    Locale('es'),
+  ];
+
+  static const supportedLanguageCodes = ['en', 'pt_BR', 'es'];
 
   static final Map<String, Map<String, String>> _localizedValues = {
     'en': {
@@ -99,8 +110,12 @@ class AppLocalizations {
       'wake_up_time': 'Wake Up Time',
       'sleep_time': 'Sleep Time',
       'set_time': 'Set Time',
+      'energy_mode_subtitle':
+          'Manual lets you edit energy; automatic follows your schedule',
+      'not_set': 'Not set',
+      'wake_sleep_times_different': 'Wake and sleep times must be different',
     },
-    'pt': {
+    'pt_BR': {
       'app_name': 'LifeRPG',
       'missions': 'Missões',
       'skills': 'Habilidades',
@@ -187,6 +202,11 @@ class AppLocalizations {
       'wake_up_time': 'Hora de Acordar',
       'sleep_time': 'Hora de Dormir',
       'set_time': 'Definir Hora',
+      'energy_mode_subtitle':
+          'Manual permite editar energia; automático segue sua rotina',
+      'not_set': 'Não definido',
+      'wake_sleep_times_different':
+          'Horários de acordar e dormir devem ser diferentes',
     },
     'es': {
       'app_name': 'LifeRPG',
@@ -274,11 +294,35 @@ class AppLocalizations {
       'wake_up_time': 'Hora de Despertar',
       'sleep_time': 'Hora de Dormir',
       'set_time': 'Establecer Hora',
+      'energy_mode_subtitle':
+          'Manual permite editar energía; automático sigue tu horario',
+      'not_set': 'No definido',
+      'wake_sleep_times_different':
+          'Las horas de despertar y dormir deben ser diferentes',
     },
   };
 
   String translate(String key) {
-    return _localizedValues[locale.languageCode]?[key] ?? key;
+    final localeKey = locale.countryCode == null
+        ? locale.languageCode
+        : '${locale.languageCode}_${locale.countryCode}';
+    return _localizedValues[localeKey]?[key] ??
+        _localizedValues[locale.languageCode]?[key] ??
+        _localizedValues['en']?[key] ??
+        key;
+  }
+
+  static Locale localeFromCode(String code) {
+    final normalized = normalizeLanguageCode(code);
+    if (normalized == 'pt_BR') return const Locale('pt', 'BR');
+    return Locale(normalized);
+  }
+
+  static String normalizeLanguageCode(String code) {
+    final normalized = code.replaceAll('-', '_');
+    if (normalized == 'pt') return 'pt_BR';
+    if (supportedLanguageCodes.contains(normalized)) return normalized;
+    return 'en';
   }
 }
 
@@ -288,12 +332,18 @@ class _AppLocalizationsDelegate
 
   @override
   bool isSupported(Locale locale) {
-    return ['en', 'pt', 'es'].contains(locale.languageCode);
+    final localeKey = locale.countryCode == null
+        ? locale.languageCode
+        : '${locale.languageCode}_${locale.countryCode}';
+    return AppLocalizations.supportedLanguageCodes.contains(localeKey);
   }
 
   @override
   Future<AppLocalizations> load(Locale locale) async {
-    return AppLocalizations(locale);
+    final localeKey = locale.countryCode == null
+        ? locale.languageCode
+        : '${locale.languageCode}_${locale.countryCode}';
+    return AppLocalizations(AppLocalizations.localeFromCode(localeKey));
   }
 
   @override

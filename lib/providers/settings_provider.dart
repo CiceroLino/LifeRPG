@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/database/database_helper.dart';
+import '../l10n/app_localizations.dart';
 import '../services/backup_service.dart';
 
 class SettingsProvider extends ChangeNotifier {
@@ -54,7 +55,12 @@ class SettingsProvider extends ChangeNotifier {
   void _loadSettings() {
     if (_prefs == null) return;
 
-    _language = _prefs!.getString(_keyLanguage) ?? 'en';
+    _language = AppLocalizations.normalizeLanguageCode(
+      _prefs!.getString(_keyLanguage) ?? 'en',
+    );
+    if (_prefs!.getString(_keyLanguage) != _language) {
+      _prefs!.setString(_keyLanguage, _language);
+    }
     _soundEffectsEnabled = _prefs!.getBool(_keySoundEffects) ?? false;
     _notificationSoundsEnabled =
         _prefs!.getBool(_keyNotificationSounds) ?? true;
@@ -65,9 +71,10 @@ class SettingsProvider extends ChangeNotifier {
   }
 
   Future<void> setLanguage(String value) async {
-    if (_language == value) return;
-    _language = value;
-    await _prefs?.setString(_keyLanguage, value);
+    final normalized = AppLocalizations.normalizeLanguageCode(value);
+    if (_language == normalized) return;
+    _language = normalized;
+    await _prefs?.setString(_keyLanguage, normalized);
     notifyListeners();
   }
 

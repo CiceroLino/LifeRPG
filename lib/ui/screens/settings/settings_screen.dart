@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../providers/mission_provider.dart';
 import '../../../providers/player_provider.dart';
 import '../../../providers/settings_provider.dart';
@@ -22,6 +23,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     return Consumer2<SettingsProvider, PlayerProvider>(
       builder: (context, settings, playerProvider, _) {
+        final l10n = AppLocalizations.of(context);
         if (settings.isLoading) {
           return const Center(child: CircularProgressIndicator());
         }
@@ -34,88 +36,93 @@ class _SettingsScreenState extends State<SettingsScreen> {
           children: [
             ListView(
               children: [
-                const _SettingsSectionHeader('LANGUAGE'),
+                _SettingsSectionHeader(
+                  l10n.translate('language').toUpperCase(),
+                ),
                 _SettingsActionTile(
-                  title: 'Language',
+                  title: l10n.translate('language'),
                   subtitle: _getLanguageName(settings.language),
                   icon: Icons.language,
                   onTap: () => _showLanguageDialog(context, settings),
                 ),
                 const Divider(height: 1),
-                const _SettingsSectionHeader('SOUNDS'),
+                _SettingsSectionHeader(l10n.translate('sounds')),
                 _SettingsCheckboxTile(
-                  title: 'Sound Effects',
-                  subtitle: 'Play sounds for actions',
+                  title: l10n.translate('sound_effects'),
+                  subtitle: l10n.translate('play_sounds_actions'),
                   value: settings.soundEffectsEnabled,
                   onChanged: (value) =>
                       settings.setSoundEffectsEnabled(value ?? false),
                 ),
                 _SettingsCheckboxTile(
-                  title: 'Notification Sounds',
-                  subtitle: 'Play sounds for notifications',
+                  title: l10n.translate('notification_sounds'),
+                  subtitle: l10n.translate('play_sounds_notifications'),
                   value: settings.notificationSoundsEnabled,
                   onChanged: (value) =>
                       settings.setNotificationSoundsEnabled(value ?? true),
                 ),
                 const Divider(height: 1),
-                const _SettingsSectionHeader('DATA & BACKUP'),
+                _SettingsSectionHeader(l10n.translate('data_backup')),
                 _SettingsActionTile(
-                  title: 'Export Database',
-                  subtitle: 'Save your data to a file',
+                  title: l10n.translate('export_database'),
+                  subtitle: l10n.translate('save_data'),
                   icon: Icons.upload_file,
                   onTap: _isExporting
                       ? null
                       : () async => await _handleExport(context, settings),
                 ),
                 _SettingsActionTile(
-                  title: 'Import Database',
-                  subtitle: 'Restore data from a file',
+                  title: l10n.translate('import_database'),
+                  subtitle: l10n.translate('restore_data'),
                   icon: Icons.download,
                   onTap: _isImporting
                       ? null
                       : () async => await _handleImport(context, settings),
                 ),
                 const Divider(height: 1),
-                const _SettingsSectionHeader('SYSTEM'),
+                _SettingsSectionHeader(l10n.translate('system')),
                 _SettingsCheckboxTile(
-                  title: 'Enable Notifications',
-                  subtitle: 'Receive reminders and alerts',
+                  title: l10n.translate('enable_notifications'),
+                  subtitle: l10n.translate('receive_reminders'),
                   value: settings.notificationsEnabled,
                   onChanged: (value) =>
                       settings.setNotificationsEnabled(value ?? true),
                 ),
                 _SettingsCheckboxTile(
-                  title: 'Start week on Monday',
-                  subtitle: 'Calendar and date formatting',
+                  title: l10n.translate('start_week_monday'),
+                  subtitle: l10n.translate('calendar_formatting'),
                   value: settings.startWeekOnMonday,
                   onChanged: (value) =>
                       settings.setStartWeekOnMonday(value ?? false),
                 ),
                 _SettingsCheckboxTile(
-                  title: '24-Hour Clock',
-                  subtitle: 'Use 24-hour time format',
+                  title: l10n.translate('use_24h_clock'),
+                  subtitle: l10n.translate('use_24h_format'),
                   value: settings.use24HourFormat,
                   onChanged: (value) =>
                       settings.setUse24HourFormat(value ?? false),
                 ),
                 const Divider(height: 1),
-                const _SettingsSectionHeader('INTERFACE'),
+                _SettingsSectionHeader(l10n.translate('interface')),
                 _SettingsCheckboxTile(
-                  title: 'Show XP Bar',
-                  subtitle: 'Display experience bar in header',
+                  title: l10n.translate('show_xp_bar'),
+                  subtitle: l10n.translate('display_xp_bar'),
                   value: settings.showXpBar,
                   onChanged: (value) => settings.setShowXpBar(value ?? true),
                 ),
                 const Divider(height: 1),
-                const _SettingsSectionHeader('ENERGY'),
+                _SettingsSectionHeader(l10n.translate('energy').toUpperCase()),
                 ListTile(
-                  title: const Text(
-                    'Energy Mode',
-                    style: TextStyle(color: AppTheme.textPrimary, fontSize: 16),
+                  title: Text(
+                    l10n.translate('energy_mode'),
+                    style: const TextStyle(
+                      color: AppTheme.textPrimary,
+                      fontSize: 16,
+                    ),
                   ),
-                  subtitle: const Text(
-                    'Manual lets you edit energy; automatic follows your schedule',
-                    style: TextStyle(
+                  subtitle: Text(
+                    l10n.translate('energy_mode_subtitle'),
+                    style: const TextStyle(
                       color: AppTheme.textSecondary,
                       fontSize: 13,
                     ),
@@ -125,9 +132,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     dropdownColor: AppTheme.surface,
                     style: const TextStyle(color: AppTheme.textPrimary),
                     underline: const SizedBox.shrink(),
-                    items: const [
-                      DropdownMenuItem(value: 'manual', child: Text('Manual')),
-                      DropdownMenuItem(value: 'auto', child: Text('Automatic')),
+                    items: [
+                      DropdownMenuItem(
+                        value: 'manual',
+                        child: Text(l10n.translate('manual_mode')),
+                      ),
+                      DropdownMenuItem(
+                        value: 'auto',
+                        child: Text(l10n.translate('automatic_mode')),
+                      ),
                     ],
                     onChanged: (value) async {
                       if (value == null) return;
@@ -137,27 +150,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 if (player.energyMode == 'auto') ...[
                   _SettingsActionTile(
-                    title: 'Wake Up Time',
-                    subtitle: player.wakeUpTime ?? 'Not set',
+                    title: l10n.translate('wake_up_time'),
+                    subtitle: player.wakeUpTime ?? l10n.translate('not_set'),
                     icon: Icons.wb_sunny_outlined,
                     onTap: () async => _pickWakeUpTime(context, playerProvider),
                   ),
                   _SettingsActionTile(
-                    title: 'Sleep Time',
-                    subtitle: player.sleepTime ?? 'Not set',
+                    title: l10n.translate('sleep_time'),
+                    subtitle: player.sleepTime ?? l10n.translate('not_set'),
                     icon: Icons.nightlight_round,
                     onTap: () async => _pickSleepTime(context, playerProvider),
                   ),
                 ],
                 const Divider(height: 1),
-                const _SettingsSectionHeader('RESET'),
+                _SettingsSectionHeader(l10n.translate('reset_section')),
                 _SettingsDangerTile(
-                  title: 'Reset Character Stats',
+                  title: l10n.translate('reset_character'),
                   color: Colors.orange,
                   onTap: () => _showResetCharacterDialog(context, settings),
                 ),
                 _SettingsDangerTile(
-                  title: 'Factory Reset / Wipe All',
+                  title: l10n.translate('factory_reset'),
                   color: AppTheme.accentRed,
                   onTap: () => _showFactoryResetDialog(context, settings),
                 ),
@@ -220,8 +233,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _showScheduleError() {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Wake and sleep times must be different'),
+      SnackBar(
+        content: Text(
+          AppLocalizations.of(context).translate('wake_sleep_times_different'),
+        ),
         backgroundColor: AppTheme.accentRed,
       ),
     );
@@ -253,8 +268,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await settings.exportData();
       if (mounted) {
         ScaffoldMessenger.of(this.context).showSnackBar(
-          const SnackBar(
-            content: Text('Backup created successfully!'),
+          SnackBar(
+            content: Text(
+              AppLocalizations.of(this.context).translate('backup_created'),
+            ),
             backgroundColor: AppTheme.successGreen,
           ),
         );
@@ -263,7 +280,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(this.context).showSnackBar(
           SnackBar(
-            content: Text('Error creating backup: ${e.toString()}'),
+            content: Text(
+              '${AppLocalizations.of(this.context).translate('error_creating_backup')}: ${e.toString()}',
+            ),
             backgroundColor: AppTheme.accentRed,
           ),
         );
@@ -283,27 +302,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppTheme.surface,
-        title: const Text(
-          'Import Backup',
-          style: TextStyle(color: AppTheme.textPrimary),
+        title: Text(
+          AppLocalizations.of(context).translate('import_backup'),
+          style: const TextStyle(color: AppTheme.textPrimary),
         ),
-        content: const Text(
-          'This will replace ALL your current data with the backup file.\n\nAre you sure you want to continue?',
-          style: TextStyle(color: AppTheme.textSecondary),
+        content: Text(
+          AppLocalizations.of(context).translate('replace_all_data'),
+          style: const TextStyle(color: AppTheme.textSecondary),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(color: AppTheme.textSecondary),
+            child: Text(
+              AppLocalizations.of(context).translate('cancel'),
+              style: const TextStyle(color: AppTheme.textSecondary),
             ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text(
-              'Import',
-              style: TextStyle(color: AppTheme.primary),
+            child: Text(
+              AppLocalizations.of(context).translate('import'),
+              style: const TextStyle(color: AppTheme.primary),
             ),
           ),
         ],
@@ -334,20 +353,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
             barrierDismissible: false,
             builder: (context) => AlertDialog(
               backgroundColor: AppTheme.surface,
-              title: const Text(
-                'Restart Required',
-                style: TextStyle(color: AppTheme.textPrimary),
+              title: Text(
+                AppLocalizations.of(context).translate('restart_required'),
+                style: const TextStyle(color: AppTheme.textPrimary),
               ),
-              content: const Text(
-                'Data has been restored successfully.\n\nPlease restart the application to load the restored data.',
-                style: TextStyle(color: AppTheme.textSecondary),
+              content: Text(
+                AppLocalizations.of(context).translate('restart_message'),
+                style: const TextStyle(color: AppTheme.textSecondary),
               ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text(
-                    'OK',
-                    style: TextStyle(color: AppTheme.primary),
+                  child: Text(
+                    AppLocalizations.of(context).translate('ok'),
+                    style: const TextStyle(color: AppTheme.primary),
                   ),
                 ),
               ],
@@ -359,7 +378,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(this.context).showSnackBar(
           SnackBar(
-            content: Text('Error importing backup: ${e.toString()}'),
+            content: Text(
+              '${AppLocalizations.of(this.context).translate('error_importing')}: ${e.toString()}',
+            ),
             backgroundColor: AppTheme.accentRed,
           ),
         );
@@ -376,11 +397,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       case 'en':
         return 'English';
       case 'pt':
-        return 'Português';
+      case 'pt_BR':
+        return 'Português (Brasil)';
       case 'es':
         return 'Español';
-      case 'fr':
-        return 'Français';
       default:
         return 'English';
     }
@@ -391,9 +411,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppTheme.surface,
-        title: const Text(
-          'Select Language',
-          style: TextStyle(color: AppTheme.textPrimary),
+        title: Text(
+          AppLocalizations.of(context).translate('select_language'),
+          style: const TextStyle(color: AppTheme.textPrimary),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -408,11 +428,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
               },
             ),
             _LanguageOption(
-              language: 'pt',
-              name: 'Português',
+              language: 'pt_BR',
+              name: 'Português (Brasil)',
               currentLanguage: settings.language,
               onSelect: () {
-                settings.setLanguage('pt');
+                settings.setLanguage('pt_BR');
                 Navigator.pop(context);
               },
             ),
@@ -422,15 +442,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
               currentLanguage: settings.language,
               onSelect: () {
                 settings.setLanguage('es');
-                Navigator.pop(context);
-              },
-            ),
-            _LanguageOption(
-              language: 'fr',
-              name: 'Français',
-              currentLanguage: settings.language,
-              onSelect: () {
-                settings.setLanguage('fr');
                 Navigator.pop(context);
               },
             ),
@@ -448,20 +459,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppTheme.surface,
-        title: const Text(
-          'Reset Character Stats',
-          style: TextStyle(color: AppTheme.textPrimary),
+        title: Text(
+          AppLocalizations.of(context).translate('reset_character_title'),
+          style: const TextStyle(color: AppTheme.textPrimary),
         ),
-        content: const Text(
-          'This will reset your character\'s level, XP, and stats to default values. Mission and skill data will be preserved.\n\nThis action cannot be undone.',
-          style: TextStyle(color: AppTheme.textSecondary),
+        content: Text(
+          AppLocalizations.of(context).translate('reset_character_message'),
+          style: const TextStyle(color: AppTheme.textSecondary),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(color: AppTheme.textSecondary),
+            child: Text(
+              AppLocalizations.of(context).translate('cancel'),
+              style: const TextStyle(color: AppTheme.textSecondary),
             ),
           ),
           TextButton(
@@ -473,10 +484,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Navigator.pop(context);
               if (!mounted) return;
               ScaffoldMessenger.of(this.context).showSnackBar(
-                const SnackBar(content: Text('Character stats reset')),
+                SnackBar(
+                  content: Text(
+                    AppLocalizations.of(
+                      this.context,
+                    ).translate('character_stats_reset'),
+                  ),
+                ),
               );
             },
-            child: const Text('Reset', style: TextStyle(color: Colors.orange)),
+            child: Text(
+              AppLocalizations.of(context).translate('reset_button'),
+              style: const TextStyle(color: Colors.orange),
+            ),
           ),
         ],
       ),
@@ -491,20 +511,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppTheme.surface,
-        title: const Text(
-          'Factory Reset',
-          style: TextStyle(color: AppTheme.accentRed),
+        title: Text(
+          AppLocalizations.of(context).translate('factory_reset_title'),
+          style: const TextStyle(color: AppTheme.accentRed),
         ),
-        content: const Text(
-          'WARNING: This will permanently delete ALL your data including:\n\n• Character stats\n• All missions\n• All skills\n• Rewards and inventory\n• Settings\n\nThis action CANNOT be undone!',
-          style: TextStyle(color: AppTheme.textSecondary),
+        content: Text(
+          AppLocalizations.of(context).translate('factory_reset_message'),
+          style: const TextStyle(color: AppTheme.textSecondary),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(color: AppTheme.textSecondary),
+            child: Text(
+              AppLocalizations.of(context).translate('cancel'),
+              style: const TextStyle(color: AppTheme.textSecondary),
             ),
           ),
           TextButton(
@@ -520,15 +540,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
               navigator.pop();
               if (!mounted) return;
               ScaffoldMessenger.of(this.context).showSnackBar(
-                const SnackBar(
-                  content: Text('Factory reset completed'),
+                SnackBar(
+                  content: Text(
+                    AppLocalizations.of(
+                      this.context,
+                    ).translate('factory_reset_completed'),
+                  ),
                   backgroundColor: AppTheme.accentRed,
                 ),
               );
             },
-            child: const Text(
-              'WIPE ALL DATA',
-              style: TextStyle(
+            child: Text(
+              AppLocalizations.of(context).translate('wipe_all_data'),
+              style: const TextStyle(
                 color: AppTheme.accentRed,
                 fontWeight: FontWeight.bold,
               ),
