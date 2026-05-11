@@ -3,9 +3,14 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'package:liferpg/data/database/database_helper.dart';
 import 'package:liferpg/data/models/mission.dart';
+import 'package:liferpg/data/models/mission_reward_drop.dart';
+import 'package:liferpg/data/models/reward.dart';
+import 'package:liferpg/data/repositories/inventory_repository.dart';
 import 'package:liferpg/data/repositories/mission_completion_history_repository.dart';
 import 'package:liferpg/data/repositories/mission_repository.dart';
+import 'package:liferpg/data/repositories/mission_reward_drop_repository.dart';
 import 'package:liferpg/data/repositories/player_repository.dart';
+import 'package:liferpg/data/repositories/reward_repository.dart';
 import 'package:liferpg/data/repositories/skill_repository.dart';
 import 'package:liferpg/services/mission_completion_service.dart';
 
@@ -15,6 +20,9 @@ void main() {
   late MissionRepository missions;
   late PlayerRepository players;
   late SkillRepository skills;
+  late RewardRepository rewards;
+  late InventoryRepository inventory;
+  late MissionRewardDropRepository drops;
   late MissionCompletionHistoryRepository history;
   late MissionCompletionService service;
 
@@ -28,6 +36,9 @@ void main() {
     missions = MissionRepository();
     players = PlayerRepository();
     skills = SkillRepository();
+    rewards = RewardRepository();
+    inventory = InventoryRepository();
+    drops = MissionRewardDropRepository();
     history = MissionCompletionHistoryRepository();
     service = MissionCompletionService();
   });
@@ -147,6 +158,79 @@ void main() {
       expect(mission.streak, 1);
     },
   );
+
+  test(
+    'mission completion grants guaranteed reward drops into inventory',
+    () async {
+      final missionId = await insertMission(
+        Mission(title: 'Clean desk', xpReward: 10, rewardPoints: 2),
+      );
+      final rewardId = await rewards.insert(
+        Reward(name: 'Tea break', priceRp: 10, isUnlimitedStock: true),
+      );
+      await drops.replaceForMission(missionId, [
+        MissionRewardDrop(
+          missionId: missionId,
+          rewardId: rewardId,
+          chancePercent: 100,
+          quantity: 2,
+        ),
+      ]);
+
+      final result = await service.completeMission(missionId);
+
+      expect(result.rewardDrops, hasLength(1));
+      expect(result.rewardDrops.single.wasAwarded, isTrue);
+      expect(result.rewardDrops.single.quantity, 2);
+      final item = (await inventory.getAll()).single;
+      expect(item.name, 'Tea break');
+      expect(item.quantity, 2);
+      final events = await history.getAll();
+      expect(events.single.rewardDrops.single.rewardNameSnapshot, 'Tea break');
+      expect(events.single.rewardDrops.single.wasAwarded, isTrue);
+    },
+  );
+
+  test('zero chance drops are recorded but not awarded', () async {
+    final missionId = await insertMission(Mission(title: 'Laundry'));
+    final rewardId = await rewards.insert(Reward(name: 'Cookie', priceRp: 5));
+    await drops.replaceForMission(missionId, [
+      MissionRewardDrop(
+        missionId: missionId,
+        rewardId: rewardId,
+        chancePercent: 0,
+        quantity: 1,
+      ),
+    ]);
+
+    final result = await service.completeMission(missionId);
+
+    expect(result.rewardDrops.single.wasAwarded, isFalse);
+    expect(await inventory.getAll(), isEmpty);
+    expect(
+      (await history.getAll()).single.rewardDrops.single.wasAwarded,
+      isFalse,
+    );
+  });
+
+  test('recurring mission respects recurrence interval', () async {
+    final now = DateTime.now();
+    final missionId = await insertMission(
+      Mission(
+        title: 'Every other day',
+        isRecurring: true,
+        recurrenceType: 'daily',
+        recurrenceInterval: 2,
+        dueDate: now.subtract(const Duration(days: 1)),
+      ),
+    );
+
+    await service.completeMission(missionId);
+
+    final mission = await missions.getWithSkills(missionId);
+    expect(mission.dueDate, isNotNull);
+    expect(mission.dueDate!.difference(now).inHours, greaterThanOrEqualTo(23));
+  });
 
   test('backup and restore preserve mission completion history', () async {
     final missionId = await insertMission(

@@ -13,6 +13,7 @@ class PlayerStatsHeader extends StatelessWidget {
   final int maxHp;
   final ValueChanged<int>? onTabChanged;
   final ValueChanged<int>? onManualEnergyChanged;
+  final VoidCallback? onProfileTap;
   final bool showTabs;
 
   const PlayerStatsHeader({
@@ -21,6 +22,7 @@ class PlayerStatsHeader extends StatelessWidget {
     this.maxHp = 100,
     this.onTabChanged,
     this.onManualEnergyChanged,
+    this.onProfileTap,
     this.showTabs = false,
   });
 
@@ -118,80 +120,83 @@ class PlayerStatsHeader extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           // SEÇÃO SUPERIOR: Info do Jogador
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              children: [
-                // Avatar (Esquerda)
-                _buildAvatar(),
-                const SizedBox(width: 12),
+          InkWell(
+            onTap: onProfileTap,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                children: [
+                  // Avatar (Esquerda)
+                  _buildAvatar(),
+                  const SizedBox(width: 12),
 
-                // Nome e Título (Centro)
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        player.name,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        player.title,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: AppTheme.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Pontos e Nível (Direita)
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Linha Superior: Diamante + Pontos
-                    Row(
+                  // Nome e Título (Centro)
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const FaIcon(
-                          FontAwesomeIcons.gem,
-                          size: 14,
-                          color: AppTheme.textSecondary,
-                        ),
-                        const SizedBox(width: 4),
                         Text(
-                          '${player.rewardPoints}',
+                          player.name,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          player.title,
                           style: const TextStyle(
                             fontSize: 14,
-                            fontWeight: FontWeight.w600,
                             color: AppTheme.textSecondary,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 4),
-                    // Linha Inferior: Nível GIGANTE e AMARELO
-                    Text(
-                      '${player.level}',
-                      style: const TextStyle(
-                        fontSize: 44,
-                        fontWeight: FontWeight.w900,
-                        color: Color(0xFFFFD700), // Gold/Amber
-                        height: 1.0,
-                        letterSpacing: -2,
+                  ),
+
+                  // Pontos e Nível (Direita)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Linha Superior: Diamante + Pontos
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const FaIcon(
+                            FontAwesomeIcons.gem,
+                            size: 14,
+                            color: AppTheme.textSecondary,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${player.rewardPoints}',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.textSecondary,
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                      const SizedBox(height: 4),
+                      // Linha Inferior: Nível GIGANTE e AMARELO
+                      Text(
+                        '${player.level}',
+                        style: const TextStyle(
+                          fontSize: 44,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFFFFD700), // Gold/Amber
+                          height: 1.0,
+                          letterSpacing: -2,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
 

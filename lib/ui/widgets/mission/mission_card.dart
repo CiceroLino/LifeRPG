@@ -15,6 +15,7 @@ class MissionCard extends StatelessWidget {
   final Future<void> Function(String status)? onStatusChanged;
   final VoidCallback? onEdit;
   final double progress; // 0.0 to 1.0
+  final String? timeWarning;
 
   const MissionCard({
     super.key,
@@ -26,6 +27,7 @@ class MissionCard extends StatelessWidget {
     this.onStatusChanged,
     this.onEdit,
     this.progress = 0.0,
+    this.timeWarning,
   });
 
   /// Calcula a cor de prioridade baseada nos atributos da missão
@@ -242,9 +244,7 @@ class MissionCard extends StatelessWidget {
                             child: Text(
                               mission.description.isNotEmpty
                                   ? mission.description
-                                  : mission.estimatedDuration != null
-                                  ? _formatDuration(mission.estimatedDuration)
-                                  : 'No description available',
+                                  : _formatDuration(mission.estimatedDuration),
                               style: const TextStyle(
                                 fontSize: 12,
                                 color: AppTheme.textSecondary,
@@ -276,6 +276,46 @@ class MissionCard extends StatelessWidget {
                           ),
                         ],
                       ),
+
+                      if (timeWarning != null) ...[
+                        const SizedBox(height: 8),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppTheme.accentAmber.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: AppTheme.accentAmber.withValues(
+                                alpha: 0.55,
+                              ),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.hourglass_bottom,
+                                color: AppTheme.accentAmber,
+                                size: 16,
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  timeWarning!,
+                                  style: const TextStyle(
+                                    color: AppTheme.accentAmber,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
 
                       if (isExpanded) ...[
                         const SizedBox(height: 10),

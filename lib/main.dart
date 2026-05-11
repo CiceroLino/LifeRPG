@@ -11,6 +11,7 @@ import 'providers/inventory_provider.dart';
 import 'providers/reward_provider.dart';
 import 'providers/skill_provider.dart';
 import 'providers/settings_provider.dart';
+import 'services/mission_reminder_service.dart';
 import 'l10n/app_localizations.dart';
 import 'ui/screens/main_screen.dart';
 
@@ -18,6 +19,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await configureDatabasePlatform();
+  await MissionReminderService.instance.initialize();
 
   runApp(const MyApp());
 }

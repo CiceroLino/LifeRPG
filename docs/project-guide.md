@@ -32,13 +32,13 @@ O app segue uma estrutura simples em camadas:
 - `lib/core/utils`: calculadoras puras e auxiliares de negócio.
 - `lib/core/theme/app_theme.dart`: tokens de design e tema Material.
 
-Regra importante de responsabilidade: não duplique cálculos de negócio na UI. Reuse utilitários como `XPCalculator`, `RewardPointAdvisor` e `EnergyScheduleCalculator`.
+Regra importante de responsabilidade: não duplique cálculos de negócio na UI. Reuse utilitários como `XPCalculator`, `RewardPointAdvisor`, `DailyTimeBudgetAdvisor` e `EnergyScheduleCalculator`.
 
 ## Setup em Runtime
 
 `lib/main.dart`:
 
-- Chama `configureDatabasePlatform()` antes de `runApp`.
+- Chama `configureDatabasePlatform()` e inicializa `MissionReminderService` antes de `runApp`.
 - Registra providers com `MultiProvider`.
 - Carrega imediatamente player, recompensas, inventário, missões, skills e configurações.
 - Força `ThemeMode.dark`.
@@ -57,7 +57,7 @@ Providers principais:
 
 Arquivo do banco: `liferpg.db`.
 
-Versão atual do schema: `6`.
+Versão atual do schema: `7`.
 
 Tabelas principais:
 
@@ -70,11 +70,14 @@ Tabelas principais:
 - `rewards`: definições de recompensas da loja.
 - `inventory_items`: itens possuídos.
 - `reward_redemptions`: registros históricos de compras.
+- `mission_reward_drops`: drops configurados por missão.
+- `mission_completion_reward_drops`: rolagens históricas de drops na conclusão.
 
 Notas de migração:
 
 - A versão 5 migrou `difficulty`, `urgency` e `fear` de missões da escala antiga 1-5 para a escala atual 0-100, multiplicando valores 1-5 por 20.
 - A versão 6 adicionou recompensas, inventário e histórico de resgates.
+- A versão 7 adicionou local, lembrete e dias de recorrência em missões, além de drops configuráveis e histórico de rolagens.
 - Foreign keys são habilitadas em `onConfigure`.
 
 Backup/restore:
@@ -170,9 +173,11 @@ Campos importantes:
 - `energyRequired`: banco restringe a `1..5`, mas a lógica de conclusão ainda não consome energia.
 - `xpReward`: quantidade de XP armazenada e concedida na conclusão.
 - `rewardPoints`: quantidade de RP armazenada e concedida na conclusão.
-- Recompensas dropadas por missão devem ser tratadas como itens concedidos além de XP/RP, quando o fluxo existir.
+- Recompensas dropadas por missão são configuradas em `mission_reward_drops` e tratadas como itens concedidos além de XP/RP.
 - `dueDate`: usada por filtros e avanço de recorrência.
-- `isRecurring`, `recurrenceType`, `recurrenceInterval`: metadados de recorrência. `recurrenceInterval` existe, mas a conclusão ainda não usa.
+- `reminderAt`: agenda notificação local para a missão.
+- `locationName`, `latitude`, `longitude`: ponto real no mapa vinculado à missão.
+- `isRecurring`, `recurrenceType`, `recurrenceInterval`, `recurrenceDays`: metadados de recorrência.
 - `lastCompletedAt`, `streak`: tracking de recorrência.
 - `parentMissionId`: subtarefas; são deletadas em cascade junto com a missão pai.
 - `skillIds`: carregado via `mission_skills`, não armazenado na tabela `missions`.
@@ -187,6 +192,10 @@ Criação de missão:
 - Qualquer outra recorrência é salva como `isRecurring = true` e `recurrenceType` com o valor escolhido.
 - Uma missão pode ser criada já concluída; isso define `status = completed` e `completedAt = now`, mas não concede recompensas por `MissionCompletionService`.
 - Uma missão só deve ter uma missão pai, mas pode ter várias missões filhas. Missões filhas representam partes executáveis de um projeto maior.
+- Missões com duração e vencimento para hoje podem exibir aviso visual quando o total planejado excede o tempo acordado restante do player em modo auto.
+- O botão de subtarefa no card abre criação com `parentMissionId` já preenchido.
+- Lembretes usam `MissionReminderService` e respeitam a preferência `notificationsEnabled`.
+- Localização usa mapa real com tiles OSM; o usuário pode usar GPS ou tocar no mapa.
 
 Vínculo com skills:
 
@@ -207,7 +216,8 @@ A conclusão é transacional:
 3. Insere `mission_completion_events`.
 4. Concede XP às skills e insere `mission_completion_skill_rewards`.
 5. Concede XP/RP ao player e recalcula o nível.
-6. Atualiza status da missão ou estado de recorrência.
+6. Rola drops configurados, incrementa inventário quando houver sucesso e registra cada rolagem.
+7. Atualiza status da missão ou estado de recorrência.
 
 Regras de duplicidade:
 
@@ -221,7 +231,10 @@ Recompensas concedidas:
 - O nível do player é recalculado a partir do XP total.
 - Skills vinculadas dividem o XP da missão igualmente com `(xpReward / skillIds.length).round()`.
 - XP de skill usa progressão por skill: enquanto `currentXP >= level * 100`, subtrai `level * 100` e incrementa o nível.
-- Quando a implementação de drops por missão estiver ativa, o drop deve ser registrado de forma transacional junto da conclusão, gerando item de inventário e histórico auditável.
+- Drops usam chance percentual `0..100` e quantidade mínima `1`.
+- Chance `0` nunca concede item; chance `100` sempre concede item.
+- Toda rolagem de drop é registrada em `mission_completion_reward_drops`, inclusive falhas.
+- Drops concedidos criam ou incrementam `inventory_items` pela chave `reward_id`.
 
 Status da missão após conclusão:
 
@@ -229,6 +242,8 @@ Status da missão após conclusão:
 - Missão recorrente permanece `active`, define `lastCompletedAt = now`, incrementa `streak`, limpa `completedAt` e avança `dueDate`.
 - Missão recorrente contínua mantém o mesmo `dueDate`.
 - Recorrência diária/semanal/mensal/anual avança a partir do due date antigo até ficar depois de `now`.
+- `recurrenceInterval` é respeitado por recorrência diária, semanal, mensal e anual.
+- `recurrenceDays` pode guiar a próxima data em recorrência semanal.
 - Tipos de recorrência desconhecidos se comportam como daily.
 
 Status do resultado de conclusão:
@@ -307,8 +322,11 @@ Modelos:
 - `Reward`
 - `InventoryItem`
 - `RewardRedemption`
+- `MissionRewardDrop`
+- `MissionCompletionRewardDrop`
 
 Repositório: `lib/data/repositories/reward_repository.dart`.
+Drops de missão: `lib/data/repositories/mission_reward_drop_repository.dart`.
 
 Campos de recompensa:
 
@@ -350,6 +368,12 @@ Inventário:
 - Caso contrário, decrementa a quantidade e atualiza `updated_at`.
 - Itens de inventário são ordenados por `updated_at DESC`.
 - Consumo de item é o ponto onde a recompensa deixa de estar disponível para uso. Não trate inventário apenas como histórico de compras.
+
+Shop e Rewards:
+
+- `RewardsScreen` administra recompensas: cria, edita e arquiva itens disponíveis.
+- `ShopScreen` é a loja real: compra recompensas ativas com RP e envia para inventário.
+- Drops de missão usam as mesmas recompensas cadastradas para gerar itens no inventário sem compra.
 
 ## Regras de Energia
 
@@ -454,7 +478,9 @@ Ações da app bar são contextuais:
 - Profile: alternar stats, editar, resetar avatar, compartilhar perfil.
 - Statistics: alternar stats, calendário, exportar dados, limpar histórico.
 
-Troca de workspace atualmente só muda estado em memória da UI e mostra snackbar. Não é uma partição persistida de dados.
+O título `LifeRPG` da app bar abre navegação alternativa entre telas. Ele não deve abrir workspace nem sugerir partição persistida de dados.
+
+`StatisticsScreen` usa dados reais de `mission_completion_events` para sumarizar os últimos sete dias. Não use gráficos com dados aleatórios nessa tela.
 
 ## Sistema de Design
 
@@ -495,6 +521,7 @@ Padrões comuns de UI:
 - Use `LifeRPGAppBar` para comportamento de app bar em telas de topo.
 - Use `AppDrawer` para navegação principal.
 - Use `PlayerStatsHeader` para resumo de player, XP, RP e energia.
+- Use `GameSnackBar` para eventos de feedback principais, principalmente conclusão de missão, compra, drop, backup e erros relevantes.
 - Use assets SVG de `assets/game-icons.net.svg/...` para ícones com tema RPG.
 - Use `normalizeMissionIconAsset` ao renderizar ícones salvos de missão.
 - Mantenha textos curtos e escaneáveis. Muitas strings atuais estão em inglês mesmo em áreas do app em português; preserve o estilo local salvo quando a tarefa for localizar intencionalmente.
@@ -518,6 +545,7 @@ Regras visuais do header do player:
 - Barras de XP e HP são empilhadas, com 20px de altura.
 - HP é vermelho em modo manual/drenando; carregamento automático interpola de vermelho para ciano.
 - Tabs de missões são rótulos uppercase em um `TabBar` compacto.
+- O bloco com avatar, nome e título do player deve ser clicável e navegar para personalização/perfil.
 
 ## Localização e Textos
 
@@ -570,8 +598,11 @@ Arquivos de teste focados existentes:
 
 - `test/core/utils/mission_strategy_calculator_test.dart`
 - `test/core/utils/energy_schedule_calculator_test.dart`
+- `test/core/utils/daily_time_budget_advisor_test.dart`
 - `test/services/mission_completion_service_test.dart`
 - `test/data/database/mission_attribute_migration_test.dart`
+- `test/data/database/mission_v7_strategy_migration_test.dart`
+- `test/data/repositories/mission_reward_drop_repository_test.dart`
 - `test/data/repositories/reward_inventory_repository_test.dart`
 - `test/providers/mission_provider_test.dart`
 - `test/providers/reward_inventory_provider_test.dart`
@@ -582,10 +613,8 @@ Arquivos de teste focados existentes:
 - `MissionRepository.complete` ignora recompensa e histórico. Evite em conclusão visível ao usuário.
 - `MissionProvider.updateMission` não limpa skills da missão quando `skillIds` está vazio.
 - Criar uma missão com `Mission Complete` marcado não concede XP/RP. Apenas salva status concluído.
-- `recurrenceInterval` existe, mas a lógica de conclusão ignora.
 - `energyRequired` existe, mas conclusão de missão não consome energia.
 - `themeMode` existe em `Player`, mas `MaterialApp` atualmente força dark theme.
-- Seleção de workspace é apenas UI e não isola dados.
 - `RewardRepository.purchaseReward` assume que a linha do player existe.
 - Restore de backup insere linhas cruas e assume schema compatível.
 

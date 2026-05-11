@@ -1,172 +1,274 @@
 import 'package:flutter/material.dart';
-import 'dart:math' as math;
 
 import '../../../core/theme/app_theme.dart';
+import '../../../data/models/mission_completion_event.dart';
+import '../../../data/repositories/mission_completion_history_repository.dart';
 
-/// Tela de estatísticas com gráfico de linhas.
-/// Header persistente (PlayerStatsHeader) é gerenciado pelo MainScreen.
-class StatisticsScreen extends StatelessWidget {
+class StatisticsScreen extends StatefulWidget {
   const StatisticsScreen({super.key});
 
   @override
+  State<StatisticsScreen> createState() => _StatisticsScreenState();
+}
+
+class _StatisticsScreenState extends State<StatisticsScreen> {
+  final MissionCompletionHistoryRepository _historyRepository =
+      MissionCompletionHistoryRepository();
+  late Future<List<_DailyStats>> _statsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _statsFuture = _loadStats();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Container(
-      color: AppTheme.background,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Título "Last 7 Days" centralizado
-            const Center(
-              child: Text(
+    return FutureBuilder<List<_DailyStats>>(
+      future: _statsFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final stats = snapshot.data ?? const <_DailyStats>[];
+        final totals = _DailyStats.sum(stats);
+
+        return RefreshIndicator(
+          onRefresh: () async {
+            setState(() {
+              _statsFuture = _loadStats();
+            });
+            await _statsFuture;
+          },
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              const Text(
                 'Last 7 Days',
                 style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
                   color: AppTheme.textPrimary,
                 ),
               ),
-            ),
-            const SizedBox(height: 24),
-            // Container para o gráfico
-            Container(
-              width: double.infinity,
-              height: 300,
-              decoration: BoxDecoration(
-                color: AppTheme.surface,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppTheme.border, width: 1),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  _SummaryTile(
+                    icon: Icons.flag_outlined,
+                    label: 'Missões',
+                    value: totals.completed.toString(),
+                  ),
+                  _SummaryTile(
+                    icon: Icons.stars_outlined,
+                    label: 'XP',
+                    value: totals.xp.toString(),
+                  ),
+                  _SummaryTile(
+                    icon: Icons.diamond_outlined,
+                    label: 'RP',
+                    value: totals.rp.toString(),
+                  ),
+                  _SummaryTile(
+                    icon: Icons.inventory_2_outlined,
+                    label: 'Drops',
+                    value: totals.drops.toString(),
+                  ),
+                ],
               ),
-              padding: const EdgeInsets.all(16),
-              child: _LineChartPlaceholder(),
-            ),
-          ],
-        ),
+              const SizedBox(height: 18),
+              Container(
+                decoration: BoxDecoration(
+                  color: AppTheme.surface,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppTheme.border),
+                ),
+                padding: const EdgeInsets.all(14),
+                child: Column(children: stats.map(_DailyStatsRow.new).toList()),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<List<_DailyStats>> _loadStats() async {
+    final history = await _historyRepository.getAll();
+    final now = DateTime.now();
+    final start = DateTime(
+      now.year,
+      now.month,
+      now.day,
+    ).subtract(const Duration(days: 6));
+    final days = List.generate(7, (index) {
+      final date = start.add(Duration(days: index));
+      return _DailyStats(date: date);
+    });
+
+    for (final event in history) {
+      final eventDay = DateTime(
+        event.completedAt.year,
+        event.completedAt.month,
+        event.completedAt.day,
+      );
+      final index = eventDay.difference(start).inDays;
+      if (index < 0 || index >= days.length) continue;
+      days[index] = days[index].add(event);
+    }
+
+    return days;
+  }
+}
+
+class _DailyStats {
+  final DateTime date;
+  final int completed;
+  final int xp;
+  final int rp;
+  final int drops;
+
+  const _DailyStats({
+    required this.date,
+    this.completed = 0,
+    this.xp = 0,
+    this.rp = 0,
+    this.drops = 0,
+  });
+
+  _DailyStats add(MissionCompletionEvent event) {
+    return _DailyStats(
+      date: date,
+      completed: completed + 1,
+      xp: xp + event.xpGranted,
+      rp: rp + event.rewardPointsGranted,
+      drops: drops + event.rewardDrops.where((drop) => drop.wasAwarded).length,
+    );
+  }
+
+  static _DailyStats sum(List<_DailyStats> values) {
+    return values.fold(
+      _DailyStats(date: DateTime.now()),
+      (sum, day) => _DailyStats(
+        date: sum.date,
+        completed: sum.completed + day.completed,
+        xp: sum.xp + day.xp,
+        rp: sum.rp + day.rp,
+        drops: sum.drops + day.drops,
       ),
     );
   }
 }
 
-/// Placeholder de gráfico de linhas com eixos X e Y minimalistas
-class _LineChartPlaceholder extends StatelessWidget {
+class _SummaryTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+
+  const _SummaryTile({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
   @override
   Widget build(BuildContext context) {
-    return CustomPaint(painter: _LineChartPainter(), child: Container());
+    return Container(
+      width: 150,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppTheme.border),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: AppTheme.primary, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  value,
+                  style: const TextStyle(
+                    color: AppTheme.textPrimary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 18,
+                  ),
+                ),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    color: AppTheme.textSecondary,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
-class _LineChartPainter extends CustomPainter {
+class _DailyStatsRow extends StatelessWidget {
+  final _DailyStats stats;
+
+  const _DailyStatsRow(this.stats);
+
   @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = AppTheme.border
-      ..strokeWidth = 1.0
-      ..style = PaintingStyle.stroke;
+  Widget build(BuildContext context) {
+    final label =
+        '${stats.date.day.toString().padLeft(2, '0')}/'
+        '${stats.date.month.toString().padLeft(2, '0')}';
+    final maxScore = [
+      stats.completed,
+      stats.xp ~/ 10,
+      stats.rp,
+      stats.drops,
+    ].reduce((value, element) => value > element ? value : element);
+    final progress = maxScore == 0 ? 0.0 : (maxScore / 10).clamp(0.0, 1.0);
 
-    final textStyle = TextStyle(color: AppTheme.textSecondary, fontSize: 10);
-
-    final textPainter = TextPainter(textDirection: TextDirection.ltr);
-
-    // Desenha eixo Y (vertical, à esquerda)
-    final yAxisX = 40.0;
-    canvas.drawLine(
-      Offset(yAxisX, 20),
-      Offset(yAxisX, size.height - 30),
-      paint,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 48,
+            child: Text(
+              label,
+              style: const TextStyle(color: AppTheme.textSecondary),
+            ),
+          ),
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: progress,
+                minHeight: 10,
+                backgroundColor: AppTheme.background,
+                valueColor: const AlwaysStoppedAnimation(AppTheme.primary),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          SizedBox(
+            width: 136,
+            child: Text(
+              '${stats.completed} M | ${stats.xp} XP | ${stats.rp} RP',
+              textAlign: TextAlign.end,
+              style: const TextStyle(
+                color: AppTheme.textSecondary,
+                fontSize: 12,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
-
-    // Desenha eixo X (horizontal, na parte inferior)
-    final xAxisY = size.height - 30;
-    canvas.drawLine(
-      Offset(yAxisX, xAxisY),
-      Offset(size.width - 20, xAxisY),
-      paint,
-    );
-
-    // Labels do eixo Y (quantidade)
-    final maxY = 100;
-    final ySteps = 5;
-    final yStepValue = maxY / ySteps;
-    final yAxisHeight = size.height - 50;
-
-    for (int i = 0; i <= ySteps; i++) {
-      final value = (ySteps - i) * yStepValue;
-      final y = 20 + (i * (yAxisHeight / ySteps));
-
-      // Linha de grade horizontal
-      if (i < ySteps) {
-        final gridPaint = Paint()
-          ..color = AppTheme.border.withValues(alpha: 0.3)
-          ..strokeWidth = 0.5;
-        canvas.drawLine(
-          Offset(yAxisX, y),
-          Offset(size.width - 20, y),
-          gridPaint,
-        );
-      }
-
-      // Label do valor
-      textPainter.text = TextSpan(
-        text: value.toInt().toString(),
-        style: textStyle,
-      );
-      textPainter.layout();
-      textPainter.paint(
-        canvas,
-        Offset(yAxisX - textPainter.width - 8, y - textPainter.height / 2),
-      );
-    }
-
-    // Labels do eixo X (dias)
-    final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    final chartWidth = size.width - 60;
-    final xStep = chartWidth / (days.length - 1);
-
-    for (int i = 0; i < days.length; i++) {
-      final x = yAxisX + (i * xStep);
-
-      // Label do dia
-      textPainter.text = TextSpan(text: days[i], style: textStyle);
-      textPainter.layout();
-      textPainter.paint(canvas, Offset(x - textPainter.width / 2, xAxisY + 8));
-    }
-
-    // Desenha linha de dados (placeholder com valores aleatórios)
-    final linePaint = Paint()
-      ..color = AppTheme.primary
-      ..strokeWidth = 2.0
-      ..style = PaintingStyle.stroke;
-
-    final random = math.Random(42); // Seed fixa para valores consistentes
-    final points = <Offset>[];
-
-    for (int i = 0; i < days.length; i++) {
-      final x = yAxisX + (i * xStep);
-      final value = 20 + random.nextDouble() * 60; // Valor entre 20 e 80
-      final y = 20 + ((maxY - value) / maxY) * yAxisHeight;
-      points.add(Offset(x, y));
-    }
-
-    // Desenha a linha conectando os pontos
-    if (points.length > 1) {
-      final path = Path();
-      path.moveTo(points[0].dx, points[0].dy);
-      for (int i = 1; i < points.length; i++) {
-        path.lineTo(points[i].dx, points[i].dy);
-      }
-      canvas.drawPath(path, linePaint);
-
-      // Desenha os pontos
-      final pointPaint = Paint()
-        ..color = AppTheme.primary
-        ..style = PaintingStyle.fill;
-      for (final point in points) {
-        canvas.drawCircle(point, 4, pointPaint);
-      }
-    }
   }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

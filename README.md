@@ -167,10 +167,15 @@ lib/
 - **fl_chart** (^1.1.1) - Gráficos (RadarChart, etc)
 - **flutter_animate** (^4.5.2) - Animações
 - **percent_indicator** (^4.2.5) - Indicadores de progresso
+- **flutter_map** (^8.3.0) - Mapa real para missões com localização
+- **latlong2** (^0.9.1) - Coordenadas geográficas do mapa
 
 ### Utilitários
 - **intl** (^0.20.2) - Internacionalização e formatação
 - **uuid** (^4.5.2) - Geração de UUIDs
+- **geolocator** (^14.0.2) - Permissão e posição atual para missões no mapa
+- **flutter_local_notifications** (^21.0.0) - Lembretes locais de missões
+- **timezone** (^0.11.0) - Agendamento de notificações por horário local
 
 ### Desenvolvimento
 - **flutter_lints** (^6.0.0) - Linting e análise de código
@@ -223,9 +228,14 @@ class Mission {
   final int rewardPoints;         // Pontos de recompensa
   final String status;            // 'active', 'completed', 'archived'
   final DateTime? dueDate;        // Data de vencimento
+  final DateTime? reminderAt;     // Lembrete local
+  final String? locationName;     // Nome do local
+  final double? latitude;         // Latitude do local da missão
+  final double? longitude;        // Longitude do local da missão
   final int? estimatedDuration;   // Duração estimada (minutos)
   final bool isRecurring;         // É recorrente?
   final String? recurrenceType;   // 'daily', 'weekly', 'monthly', etc
+  final List<int> recurrenceDays; // Dias semanais opcionais
   final int? parentMissionId;     // ID da missão pai (subtasks)
   final String? icon;             // Caminho do ícone SVG
   final String? emoji;            // Emoji alternativo
@@ -237,7 +247,9 @@ class Mission {
 **Características:**
 - Suporta hierarquia (missões pai/filho para subtasks)
 - Pode ser recorrente (diária, semanal, etc)
+- Pode ter lembrete local e localização real exibida no mapa
 - Relacionamento many-to-many com Skills
+- Pode ter drops de recompensas, que viram itens no inventário ao completar a missão
 - Atributos gamificados (difficulty, urgency, fear)
 - Difficulty, Urgency e Fear seguem escala percentual: Low 0-25, Medium 26-50, High 51-75, Extreme 76-100
 
@@ -736,22 +748,17 @@ A barra de energia é tratada como HP:
 
 ### Funcionalidades Pendentes
 
-1. **Drops de Recompensas por Missão**
-   - Definir modelo e histórico para recompensas concedidas automaticamente ao concluir missões
-   - Integrar drops ao inventário na mesma transação da conclusão
-
-2. **Gráfico Radar**
+1. **Gráfico Radar**
    - Completar implementação do RadarChart em `SkillsView`
 
-3. **Energia na Priorização**
+2. **Energia na Priorização**
    - Usar HP restante como sinal opcional na ordenação sugerida de missões
 
-4. **Missões Recorrentes**
-   - Expandir uso de `recurrenceInterval`
+3. **Missões Recorrentes**
    - Melhorar feedback de streak
 
-5. **Subtasks**
-   - Refinar criação e visualização de missões filhas
+4. **Subtasks**
+   - Refinar visualização de missões filhas em árvores mais profundas
 
 ### Melhorias Técnicas
 

@@ -7,10 +7,7 @@ import '../../../core/theme/app_theme.dart';
 class RewardPickerDialog extends StatefulWidget {
   final int initialValue;
 
-  const RewardPickerDialog({
-    super.key,
-    this.initialValue = 10,
-  });
+  const RewardPickerDialog({super.key, this.initialValue = 10});
 
   @override
   State<RewardPickerDialog> createState() => _RewardPickerDialogState();
@@ -44,10 +41,11 @@ class _RewardPickerDialogState extends State<RewardPickerDialog> {
   }
 
   void _onKnobChanged(double angle) {
-    final normalizedAngle = (angle % (2 * math.pi) + 2 * math.pi) % (2 * math.pi);
+    final normalizedAngle =
+        (angle % (2 * math.pi) + 2 * math.pi) % (2 * math.pi);
     final progress = normalizedAngle / (2 * math.pi);
     final newValue = (_minValue + progress * (_maxValue - _minValue)).round();
-    
+
     setState(() {
       _currentValue = newValue.clamp(_minValue, _maxValue);
     });
@@ -57,9 +55,7 @@ class _RewardPickerDialogState extends State<RewardPickerDialog> {
   Widget build(BuildContext context) {
     return Dialog(
       backgroundColor: AppTheme.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -292,11 +288,7 @@ class _ValueDisplay extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 4),
-          Container(
-            height: 2,
-            width: 100,
-            color: AppTheme.primary,
-          ),
+          Container(height: 2, width: 100, color: AppTheme.primary),
         ],
       ),
     );

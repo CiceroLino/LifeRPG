@@ -16,6 +16,7 @@ import 'shop/shop_screen.dart';
 import 'settings/settings_screen.dart';
 import 'help/help_screen.dart';
 import '../widgets/common/app_drawer.dart';
+import '../widgets/common/game_snack_bar.dart';
 import '../widgets/common/liferpg_app_bar.dart';
 import '../widgets/player/player_stats_header.dart';
 import '../../providers/mission_provider.dart';
@@ -36,7 +37,6 @@ class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
   bool _isStatsExpanded = true;
   bool _showCompleted = false;
-  String _workspace = 'personal';
   Timer? _energyAutoRefreshTimer;
 
   @override
@@ -102,7 +102,7 @@ class _MainScreenState extends State<MainScreen> {
           ).push(MaterialPageRoute(builder: (_) => const MissionFormScreen()));
         },
         onSortChanged: (sortValue) => _applySort(sortValue),
-        onWorkspaceChanged: _setWorkspace,
+        onNavigateToScreen: (index) => setState(() => _currentIndex = index),
         onResetAvatar: _resetAvatar,
         onShareProfile: _shareProfile,
         onExportData: _exportData,
@@ -121,6 +121,7 @@ class _MainScreenState extends State<MainScreen> {
                 PlayerStatsHeader(
                   player: playerProvider.player!,
                   onManualEnergyChanged: (value) => _setManualEnergy(value),
+                  onProfileTap: _goToProfile,
                   showTabs: _currentIndex == 0,
                   onTabChanged: _setMissionTabFilter,
                 ),
@@ -242,21 +243,10 @@ class _MainScreenState extends State<MainScreen> {
       lastDate: now.add(const Duration(days: 365 * 3)),
     );
     if (!mounted || picked == null) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Data selecionada: ${picked.toIso8601String().split('T').first}',
-        ),
-      ),
-    );
-  }
-
-  void _setWorkspace(String workspace) {
-    setState(() {
-      _workspace = workspace;
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Workspace alterado para $_workspace.')),
+    GameSnackBar.show(
+      context,
+      title: 'Calendar',
+      message: 'Data selecionada: ${picked.toIso8601String().split('T').first}',
     );
   }
 
@@ -266,8 +256,11 @@ class _MainScreenState extends State<MainScreen> {
     if (player == null) return;
     await playerProvider.updatePlayer(player.copyWith(avatarPath: null));
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Avatar resetado com sucesso.')),
+    GameSnackBar.show(
+      context,
+      title: 'Profile',
+      message: 'Avatar resetado com sucesso.',
+      type: GameSnackBarType.success,
     );
   }
 
@@ -283,17 +276,23 @@ class _MainScreenState extends State<MainScreen> {
     final settings = context.read<SettingsProvider>();
     await settings.exportData();
     if (!mounted) return;
-    ScaffoldMessenger.of(
+    GameSnackBar.show(
       context,
-    ).showSnackBar(const SnackBar(content: Text('Exportação concluída.')));
+      title: 'Backup',
+      message: 'Exportação concluída.',
+      type: GameSnackBarType.success,
+    );
   }
 
   Future<void> _clearHistory() async {
     await context.read<MissionProvider>().clearCompletedMissions();
     if (!mounted) return;
-    ScaffoldMessenger.of(
+    GameSnackBar.show(
       context,
-    ).showSnackBar(const SnackBar(content: Text('Histórico limpo.')));
+      title: 'History',
+      message: 'Histórico limpo.',
+      type: GameSnackBarType.success,
+    );
   }
 
   Future<void> _openSkillsFilterSheet() async {
@@ -402,10 +401,7 @@ class _MainScreenState extends State<MainScreen> {
       case 3:
         return null;
       case 4:
-        return FloatingActionButton(
-          onPressed: () {},
-          child: const Icon(Icons.add),
-        );
+        return null;
       default:
         return null;
     }

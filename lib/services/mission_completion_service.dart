@@ -1,8 +1,12 @@
 import 'package:sqflite/sqflite.dart';
+import 'dart:math';
 
 import '../core/utils/xp_calculator.dart';
 import '../data/database/database_helper.dart';
+import '../data/models/inventory_item.dart';
 import '../data/models/mission.dart';
+import '../data/models/mission_reward_drop.dart';
+import '../data/models/reward.dart';
 
 enum MissionCompletionStatus {
   completed,
@@ -17,6 +21,7 @@ class MissionCompletionResult {
   final int xpGranted;
   final int rewardPointsGranted;
   final List<MissionSkillRewardResult> skillRewards;
+  final List<MissionCompletionRewardDrop> rewardDrops;
 
   MissionCompletionResult({
     required this.mission,
@@ -24,9 +29,13 @@ class MissionCompletionResult {
     required this.xpGranted,
     required this.rewardPointsGranted,
     this.skillRewards = const [],
+    this.rewardDrops = const [],
   });
 
-  bool get grantedRewards => xpGranted > 0 || rewardPointsGranted > 0;
+  bool get grantedRewards =>
+      xpGranted > 0 ||
+      rewardPointsGranted > 0 ||
+      rewardDrops.any((drop) => drop.wasAwarded);
 }
 
 class MissionSkillRewardResult {
@@ -43,6 +52,9 @@ class MissionSkillRewardResult {
 
 class MissionCompletionService {
   final DatabaseHelper _dbHelper = DatabaseHelper();
+  final Random _random;
+
+  MissionCompletionService({Random? random}) : _random = random ?? Random();
 
   Future<MissionCompletionResult> completeMission(int missionId) async {
     final db = await _dbHelper.database;
@@ -87,6 +99,13 @@ class MissionCompletionService {
         now: now,
       );
 
+      final rewardDrops = await _rollRewardDrops(
+        txn,
+        eventId: eventId,
+        missionId: missionId,
+        now: now,
+      );
+
       final updatedMission = await _updateMissionAfterCompletion(
         txn,
         mission,
@@ -100,6 +119,7 @@ class MissionCompletionService {
         xpGranted: mission.xpReward,
         rewardPointsGranted: mission.rewardPoints,
         skillRewards: skillRewards,
+        rewardDrops: rewardDrops,
       );
     });
   }
@@ -221,6 +241,102 @@ class MissionCompletionService {
     return rewards;
   }
 
+  Future<List<MissionCompletionRewardDrop>> _rollRewardDrops(
+    DatabaseExecutor db, {
+    required int eventId,
+    required int missionId,
+    required DateTime now,
+  }) async {
+    final dropMaps = await db.query(
+      'mission_reward_drops',
+      where: 'mission_id = ?',
+      whereArgs: [missionId],
+      orderBy: 'id ASC',
+    );
+    final results = <MissionCompletionRewardDrop>[];
+
+    for (final dropMap in dropMaps) {
+      final drop = MissionRewardDrop.fromMap(dropMap);
+      final rewardMaps = await db.query(
+        'rewards',
+        where: 'id = ? AND is_active = 1',
+        whereArgs: [drop.rewardId],
+        limit: 1,
+      );
+      if (rewardMaps.isEmpty) continue;
+
+      final reward = Reward.fromMap(rewardMaps.first);
+      final wasAwarded = _isDropAwarded(drop.chancePercent);
+      final inventoryItemId = wasAwarded
+          ? await _createOrIncrementInventoryItem(
+              db,
+              reward: reward,
+              quantity: drop.quantity,
+              now: now,
+            )
+          : null;
+
+      final result = MissionCompletionRewardDrop(
+        eventId: eventId,
+        rewardId: reward.id!,
+        inventoryItemId: inventoryItemId,
+        rewardNameSnapshot: reward.name,
+        quantity: drop.quantity,
+        chancePercent: drop.chancePercent,
+        wasAwarded: wasAwarded,
+      );
+      await db.insert('mission_completion_reward_drops', result.toMap());
+      results.add(result);
+    }
+
+    return results;
+  }
+
+  bool _isDropAwarded(int chancePercent) {
+    if (chancePercent <= 0) return false;
+    if (chancePercent >= 100) return true;
+    return _random.nextInt(100) < chancePercent;
+  }
+
+  Future<int> _createOrIncrementInventoryItem(
+    DatabaseExecutor db, {
+    required Reward reward,
+    required int quantity,
+    required DateTime now,
+  }) async {
+    final existing = await db.query(
+      'inventory_items',
+      where: 'reward_id = ?',
+      whereArgs: [reward.id],
+      limit: 1,
+    );
+    final nowText = now.toIso8601String();
+
+    if (existing.isNotEmpty) {
+      final item = InventoryItem.fromMap(existing.first);
+      await db.update(
+        'inventory_items',
+        {'quantity': item.quantity + quantity, 'updated_at': nowText},
+        where: 'id = ?',
+        whereArgs: [item.id],
+      );
+      return item.id!;
+    }
+
+    return db.insert(
+      'inventory_items',
+      InventoryItem(
+        rewardId: reward.id,
+        name: reward.name,
+        description: reward.description,
+        icon: reward.icon,
+        quantity: quantity,
+        createdAt: now,
+        updatedAt: now,
+      ).toMap(),
+    );
+  }
+
   Future<Mission> _updateMissionAfterCompletion(
     DatabaseExecutor db,
     Mission mission,
@@ -277,20 +393,42 @@ class MissionCompletionService {
     DateTime? dueDate = mission.dueDate ?? now;
     var guard = 0;
     while (!dueDate!.isAfter(now) && guard < 1000) {
-      dueDate = _addRecurrenceInterval(dueDate, mission.recurrenceType);
+      dueDate = _addRecurrenceInterval(
+        dueDate,
+        mission.recurrenceType,
+        mission.recurrenceInterval,
+        mission.recurrenceDays,
+      );
       guard++;
     }
     return dueDate;
   }
 
-  DateTime _addRecurrenceInterval(DateTime date, String? recurrenceType) {
+  DateTime _addRecurrenceInterval(
+    DateTime date,
+    String? recurrenceType,
+    int? recurrenceInterval,
+    List<int> recurrenceDays,
+  ) {
+    final interval = recurrenceInterval == null || recurrenceInterval < 1
+        ? 1
+        : recurrenceInterval;
     switch (recurrenceType) {
       case 'weekly':
-        return date.add(const Duration(days: 7));
+        if (recurrenceDays.isNotEmpty) {
+          var next = date.add(const Duration(days: 1));
+          var guard = 0;
+          while (!recurrenceDays.contains(next.weekday) && guard < 14) {
+            next = next.add(const Duration(days: 1));
+            guard++;
+          }
+          return next;
+        }
+        return date.add(Duration(days: 7 * interval));
       case 'monthly':
         return DateTime(
           date.year,
-          date.month + 1,
+          date.month + interval,
           date.day,
           date.hour,
           date.minute,
@@ -300,7 +438,7 @@ class MissionCompletionService {
         );
       case 'yearly':
         return DateTime(
-          date.year + 1,
+          date.year + interval,
           date.month,
           date.day,
           date.hour,
@@ -311,7 +449,7 @@ class MissionCompletionService {
         );
       case 'daily':
       default:
-        return date.add(const Duration(days: 1));
+        return date.add(Duration(days: interval));
     }
   }
 

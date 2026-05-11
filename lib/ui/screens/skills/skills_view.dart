@@ -42,10 +42,7 @@ class SkillsView extends StatelessWidget {
                 }
 
                 return TabBarView(
-                  children: [
-                    _buildAllList(skills),
-                    _buildTopChart(skills),
-                  ],
+                  children: [_buildAllList(skills), _buildTopChart(skills)],
                 );
               },
             ),
@@ -61,18 +58,11 @@ class SkillsView extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.warning,
-              size: 64,
-              color: AppTheme.textPrimary,
-            ),
+            Icon(Icons.warning, size: 64, color: AppTheme.textPrimary),
             SizedBox(height: 16),
             Text(
               'No skills yet',
-              style: TextStyle(
-                fontSize: 16,
-                color: AppTheme.textSecondary,
-              ),
+              style: TextStyle(fontSize: 16, color: AppTheme.textSecondary),
             ),
           ],
         ),
@@ -94,18 +84,11 @@ class SkillsView extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.warning,
-              size: 64,
-              color: AppTheme.textPrimary,
-            ),
+            Icon(Icons.warning, size: 64, color: AppTheme.textPrimary),
             SizedBox(height: 16),
             Text(
               'You need at least 3 skills to view chart.',
-              style: TextStyle(
-                fontSize: 16,
-                color: AppTheme.textSecondary,
-              ),
+              style: TextStyle(fontSize: 16, color: AppTheme.textSecondary),
             ),
           ],
         ),
@@ -120,4 +103,3 @@ class SkillsView extends StatelessWidget {
     );
   }
 }
-

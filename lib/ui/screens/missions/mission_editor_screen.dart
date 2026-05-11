@@ -6,9 +6,14 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/reward_point_advisor.dart';
 import '../../../core/utils/xp_calculator.dart';
 import '../../../data/models/mission.dart';
+import '../../../data/models/mission_reward_drop.dart';
+import '../../../data/models/reward.dart';
 import '../../../data/models/skill.dart';
+import '../../../data/repositories/mission_reward_drop_repository.dart';
 import '../../../providers/mission_provider.dart';
+import '../../../providers/reward_provider.dart';
 import '../../../providers/skill_provider.dart';
+import '../../screens/map/location_picker_screen.dart';
 
 class MissionEditorScreen extends StatefulWidget {
   final Mission? initial;
@@ -30,10 +35,15 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
   double _fear = 30;
 
   DateTime? _dueDate;
+  DateTime? _reminderAt;
   String _recurrence = 'once';
   int? _parentMissionId;
   int _rewardPoints = 0;
   Set<int> _selectedSkillIds = {};
+  MissionLocationSelection? _location;
+  List<MissionRewardDrop> _rewardDrops = [];
+  final MissionRewardDropRepository _dropRepository =
+      MissionRewardDropRepository();
 
   @override
   void initState() {
@@ -45,15 +55,25 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
     _urgency = (m?.urgency ?? 50).toDouble();
     _fear = (m?.fear ?? 30).toDouble();
     _dueDate = m?.dueDate;
+    _reminderAt = m?.reminderAt;
     _recurrence = m?.recurrenceType ?? 'once';
     _parentMissionId = m?.parentMissionId;
     _rewardPoints = m?.rewardPoints ?? 0;
     _selectedSkillIds = {...(m?.skillIds ?? const <int>[])};
+    if (m?.latitude != null && m?.longitude != null) {
+      _location = MissionLocationSelection(
+        name: m?.locationName ?? 'Local da missão',
+        latitude: m!.latitude!,
+        longitude: m.longitude!,
+      );
+    }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       context.read<SkillProvider>().loadSkills();
       context.read<MissionProvider>().loadMissions();
+      context.read<RewardProvider>().loadRewards();
+      _loadRewardDrops();
     });
   }
 
@@ -67,6 +87,7 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
   @override
   Widget build(BuildContext context) {
     final skillProvider = context.watch<SkillProvider>();
+    final rewardProvider = context.watch<RewardProvider>();
     final missionProvider = context.watch<MissionProvider>();
     final allMissions = missionProvider.missions;
     final availableParentMissions = allMissions
@@ -201,6 +222,31 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
                   leadingIcon: Icons.repeat,
                   onTap: _pickRecurrence,
                 ),
+                const Divider(height: 16),
+                _LinkRow(
+                  label: 'Reminder',
+                  value: _reminderAt == null
+                      ? 'Not set'
+                      : _reminderAt!.toLocal().toString().substring(0, 16),
+                  leadingIcon: Icons.notifications_outlined,
+                  onTap: _pickReminder,
+                ),
+                const Divider(height: 16),
+                _LinkRow(
+                  label: 'Location',
+                  value: _locationLabel,
+                  leadingIcon: Icons.location_on_outlined,
+                  onTap: _pickLocation,
+                ),
+                if (_location != null)
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      onPressed: () => setState(() => _location = null),
+                      icon: const Icon(Icons.clear),
+                      label: const Text('Limpar local'),
+                    ),
+                  ),
                 const SizedBox(height: 24),
                 const Text(
                   'Reward',
@@ -240,6 +286,21 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
                       ),
                     ],
                   ),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Reward Drops',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                _EditorRewardDrops(
+                  drops: _rewardDrops,
+                  rewards: rewardProvider.rewards,
+                  onAdd: _pickRewardDrop,
+                  onRemove: (drop) => setState(() => _rewardDrops.remove(drop)),
                 ),
               ],
             ),
@@ -304,6 +365,68 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
     if (value != null) {
       setState(() => _recurrence = value);
     }
+  }
+
+  Future<void> _pickReminder() async {
+    final now = DateTime.now();
+    final date = await showDatePicker(
+      context: context,
+      initialDate: _reminderAt ?? _dueDate ?? now,
+      firstDate: now,
+      lastDate: now.add(const Duration(days: 365 * 5)),
+    );
+    if (!mounted || date == null) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_reminderAt ?? now),
+    );
+    if (!mounted || time == null) return;
+    setState(() {
+      _reminderAt = DateTime(
+        date.year,
+        date.month,
+        date.day,
+        time.hour,
+        time.minute,
+      );
+    });
+  }
+
+  Future<void> _pickLocation() async {
+    final result = await Navigator.of(context).push<MissionLocationSelection>(
+      MaterialPageRoute(
+        builder: (_) => LocationPickerScreen(initialLocation: _location),
+      ),
+    );
+    if (!mounted || result == null) return;
+    setState(() => _location = result);
+  }
+
+  Future<void> _loadRewardDrops() async {
+    final missionId = widget.initial?.id;
+    if (missionId == null) return;
+    final drops = await _dropRepository.getByMissionId(missionId);
+    if (!mounted) return;
+    setState(() => _rewardDrops = drops);
+  }
+
+  Future<void> _pickRewardDrop() async {
+    final rewards = context.read<RewardProvider>().rewards;
+    final result = await showDialog<MissionRewardDrop>(
+      context: context,
+      builder: (context) => _EditorRewardDropDialog(rewards: rewards),
+    );
+    if (result == null) return;
+    setState(() => _rewardDrops = [..._rewardDrops, result]);
+  }
+
+  String get _locationLabel {
+    final location = _location;
+    if (location == null) return 'Not set';
+    final name = location.name;
+    if (name != null && name.trim().isNotEmpty) return name;
+    return '${location.latitude.toStringAsFixed(4)}, '
+        '${location.longitude.toStringAsFixed(4)}';
   }
 
   String _recurrenceLabel(String value) {
@@ -448,7 +571,7 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
     });
   }
 
-  void _save() {
+  Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     final base = widget.initial;
     final mission = Mission(
@@ -463,6 +586,7 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
       rewardPoints: _rewardPoints,
       status: base?.status ?? 'active',
       dueDate: _dueDate,
+      reminderAt: _reminderAt,
       estimatedDuration: base?.estimatedDuration,
       isRecurring: _recurrence != 'once',
       recurrenceType: _recurrence == 'once' ? null : _recurrence,
@@ -476,11 +600,186 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
       createdAt: base?.createdAt,
       updatedAt: DateTime.now(),
       completedAt: base?.completedAt,
+      locationName: _location?.name,
+      latitude: _location?.latitude,
+      longitude: _location?.longitude,
       skillIds: _selectedSkillIds.toList(),
     );
 
+    if (mission.id != null) {
+      await _dropRepository.replaceForMission(
+        mission.id!,
+        _rewardDrops
+            .map((drop) => drop.copyWith(missionId: mission.id!))
+            .toList(),
+      );
+    }
+
     widget.onSave?.call(mission);
+    if (!mounted) return;
     Navigator.pop(context, mission);
+  }
+}
+
+class _EditorRewardDrops extends StatelessWidget {
+  final List<MissionRewardDrop> drops;
+  final List<Reward> rewards;
+  final VoidCallback onAdd;
+  final ValueChanged<MissionRewardDrop> onRemove;
+
+  const _EditorRewardDrops({
+    required this.drops,
+    required this.rewards,
+    required this.onAdd,
+    required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final rewardById = {
+      for (final reward in rewards)
+        if (reward.id != null) reward.id!: reward,
+    };
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (drops.isEmpty)
+          const Text(
+            'Nenhum drop vinculado.',
+            style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+          )
+        else
+          ...drops.map((drop) {
+            final reward = rewardById[drop.rewardId];
+            return ListTile(
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.auto_awesome, color: AppTheme.primary),
+              title: Text(reward?.name ?? 'Reward #${drop.rewardId}'),
+              subtitle: Text(
+                '${drop.chancePercent}% de chance | qtd. ${drop.quantity}',
+              ),
+              trailing: IconButton(
+                tooltip: 'Remover drop',
+                onPressed: () => onRemove(drop),
+                icon: const Icon(Icons.close),
+              ),
+            );
+          }),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: OutlinedButton.icon(
+            onPressed: rewards.isEmpty ? null : onAdd,
+            icon: const Icon(Icons.add),
+            label: Text(
+              rewards.isEmpty
+                  ? 'Cadastre uma recompensa antes'
+                  : 'Adicionar drop',
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _EditorRewardDropDialog extends StatefulWidget {
+  final List<Reward> rewards;
+
+  const _EditorRewardDropDialog({required this.rewards});
+
+  @override
+  State<_EditorRewardDropDialog> createState() =>
+      _EditorRewardDropDialogState();
+}
+
+class _EditorRewardDropDialogState extends State<_EditorRewardDropDialog> {
+  int? _rewardId;
+  double _chance = 25;
+  final _quantityController = TextEditingController(text: '1');
+
+  @override
+  void initState() {
+    super.initState();
+    _rewardId = widget.rewards.isEmpty ? null : widget.rewards.first.id;
+  }
+
+  @override
+  void dispose() {
+    _quantityController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Drop da missão'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          DropdownButtonFormField<int>(
+            initialValue: _rewardId,
+            decoration: const InputDecoration(labelText: 'Recompensa'),
+            items: widget.rewards
+                .where((reward) => reward.id != null)
+                .map(
+                  (reward) => DropdownMenuItem(
+                    value: reward.id,
+                    child: Text(reward.name),
+                  ),
+                )
+                .toList(),
+            onChanged: (value) => setState(() => _rewardId = value),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              const Text('Chance'),
+              Expanded(
+                child: Slider(
+                  value: _chance,
+                  min: 0,
+                  max: 100,
+                  divisions: 20,
+                  label: '${_chance.round()}%',
+                  onChanged: (value) => setState(() => _chance = value),
+                ),
+              ),
+              SizedBox(width: 42, child: Text('${_chance.round()}%')),
+            ],
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _quantityController,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(labelText: 'Quantidade'),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancelar'),
+        ),
+        TextButton(
+          onPressed: _rewardId == null
+              ? null
+              : () {
+                  Navigator.pop(
+                    context,
+                    MissionRewardDrop(
+                      missionId: 0,
+                      rewardId: _rewardId!,
+                      chancePercent: _chance.round(),
+                      quantity:
+                          int.tryParse(_quantityController.text.trim()) ?? 1,
+                    ),
+                  );
+                },
+          child: const Text('Adicionar'),
+        ),
+      ],
+    );
   }
 }
 

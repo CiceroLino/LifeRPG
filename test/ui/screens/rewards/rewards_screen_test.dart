@@ -2,10 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
-import 'package:liferpg/data/models/player.dart';
 import 'package:liferpg/data/models/reward.dart';
-import 'package:liferpg/providers/inventory_provider.dart';
-import 'package:liferpg/providers/player_provider.dart';
 import 'package:liferpg/providers/reward_provider.dart';
 import 'package:liferpg/ui/screens/rewards/reward_form_screen.dart';
 import 'package:liferpg/ui/screens/rewards/rewards_screen.dart';
@@ -25,21 +22,8 @@ class FakeRewardProvider extends RewardProvider {
   Future<void> loadRewards() async {}
 }
 
-class FakePlayerProvider extends PlayerProvider {
-  @override
-  Player? get player => Player(rewardPoints: 80);
-
-  @override
-  Future<void> loadPlayer() async {}
-}
-
-class FakeInventoryProvider extends InventoryProvider {
-  @override
-  Future<void> loadItems() async {}
-}
-
 void main() {
-  testWidgets('shows registered reward price, stock, and purchase button', (
+  testWidgets('shows registered reward price, stock, and admin actions', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -56,12 +40,6 @@ void main() {
               ),
             ]),
           ),
-          ChangeNotifierProvider<PlayerProvider>.value(
-            value: FakePlayerProvider(),
-          ),
-          ChangeNotifierProvider<InventoryProvider>.value(
-            value: FakeInventoryProvider(),
-          ),
         ],
         child: const MaterialApp(home: Scaffold(body: RewardsScreen())),
       ),
@@ -71,7 +49,10 @@ void main() {
     expect(find.text('Cinema'), findsOneWidget);
     expect(find.text('30 RP'), findsOneWidget);
     expect(find.text('Estoque: 2'), findsOneWidget);
-    expect(find.widgetWithText(FilledButton, 'Comprar'), findsOneWidget);
+    expect(find.widgetWithText(OutlinedButton, 'Nova'), findsOneWidget);
+    expect(find.byTooltip('Editar'), findsOneWidget);
+    expect(find.byTooltip('Arquivar'), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, 'Comprar'), findsNothing);
   });
 
   testWidgets('reward form shows fields for a new reward', (tester) async {

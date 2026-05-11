@@ -1,3 +1,5 @@
+import 'mission_reward_drop.dart';
+
 class MissionCompletionEvent {
   final int? id;
   final int missionId;
@@ -8,6 +10,7 @@ class MissionCompletionEvent {
   final String? recurrenceType;
   final int resultingStreak;
   final List<MissionCompletionSkillReward> skillRewards;
+  final List<MissionCompletionRewardDrop> rewardDrops;
 
   MissionCompletionEvent({
     this.id,
@@ -19,6 +22,7 @@ class MissionCompletionEvent {
     this.recurrenceType,
     required this.resultingStreak,
     this.skillRewards = const [],
+    this.rewardDrops = const [],
   });
 
   factory MissionCompletionEvent.fromMap(Map<String, dynamic> map) {
@@ -37,6 +41,7 @@ class MissionCompletionEvent {
   MissionCompletionEvent copyWith({
     int? id,
     List<MissionCompletionSkillReward>? skillRewards,
+    List<MissionCompletionRewardDrop>? rewardDrops,
   }) {
     return MissionCompletionEvent(
       id: id ?? this.id,
@@ -48,6 +53,7 @@ class MissionCompletionEvent {
       recurrenceType: recurrenceType,
       resultingStreak: resultingStreak,
       skillRewards: skillRewards ?? this.skillRewards,
+      rewardDrops: rewardDrops ?? this.rewardDrops,
     );
   }
 }

@@ -73,7 +73,9 @@ class SkillLinearItem extends StatelessWidget {
                     value: (skill.currentXP / xpForNextLevel).clamp(0.0, 1.0),
                     minHeight: 6,
                     backgroundColor: AppTheme.border,
-                    valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primary),
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                      AppTheme.primary,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -115,4 +117,3 @@ class SkillLinearItem extends StatelessWidget {
     );
   }
 }
-

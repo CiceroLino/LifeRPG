@@ -7,14 +7,21 @@ import '../../../core/utils/reward_point_advisor.dart';
 import '../../../core/utils/xp_calculator.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/mission.dart';
+import '../../../data/models/mission_reward_drop.dart';
+import '../../../data/models/reward.dart';
 import '../../../data/models/skill.dart';
 import '../../../providers/mission_provider.dart';
+import '../../../providers/reward_provider.dart';
+import '../../../providers/settings_provider.dart';
 import '../../../providers/skill_provider.dart';
+import '../../screens/map/location_picker_screen.dart';
 import '../../widgets/common/reward_picker_dialog.dart';
 import 'mission_icon_assets.dart';
 
 class MissionFormScreen extends StatefulWidget {
-  const MissionFormScreen({super.key});
+  final int? initialParentMissionId;
+
+  const MissionFormScreen({super.key, this.initialParentMissionId});
 
   @override
   State<MissionFormScreen> createState() => _MissionFormScreenState();
@@ -32,19 +39,24 @@ class _MissionFormScreenState extends State<MissionFormScreen> {
   double _urgency = 50;
   double _fear = 30;
   DateTime? _dueDate;
+  DateTime? _reminderAt;
   String _recurrence = 'once';
   int? _parentMissionId;
   final Set<int> _selectedSkills = {};
+  final List<MissionRewardDrop> _rewardDrops = [];
   String _iconAsset = missionIconOptions.first;
   bool _isCompleted = false;
+  MissionLocationSelection? _location;
 
   @override
   void initState() {
     super.initState();
+    _parentMissionId = widget.initialParentMissionId;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       context.read<SkillProvider>().loadSkills();
       context.read<MissionProvider>().loadMissions();
+      context.read<RewardProvider>().loadRewards();
     });
   }
 
@@ -59,6 +71,7 @@ class _MissionFormScreenState extends State<MissionFormScreen> {
   @override
   Widget build(BuildContext context) {
     final skillProvider = context.watch<SkillProvider>();
+    final rewardProvider = context.watch<RewardProvider>();
     final missions = context.watch<MissionProvider>().missions;
     final xpPreview = _xpPreview;
     final recommendedRewardPoints = _recommendedRewardPoints;
@@ -198,6 +211,32 @@ class _MissionFormScreenState extends State<MissionFormScreen> {
               ],
               onChanged: (v) => setState(() => _recurrence = v ?? 'once'),
             ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              icon: const Icon(Icons.notifications_outlined, size: 18),
+              label: Text(
+                _reminderAt == null
+                    ? 'Definir lembrete'
+                    : 'Lembrete: ${_reminderAt!.toLocal().toString().substring(0, 16)}',
+              ),
+              onPressed: _pickReminder,
+            ),
+            const SizedBox(height: 16),
+            _Section(title: 'Local'),
+            OutlinedButton.icon(
+              icon: const Icon(Icons.location_on_outlined, size: 18),
+              label: Text(_location?.name ?? _locationLabel),
+              onPressed: _pickLocation,
+            ),
+            if (_location != null)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: () => setState(() => _location = null),
+                  icon: const Icon(Icons.clear),
+                  label: const Text('Limpar local'),
+                ),
+              ),
             const SizedBox(height: 16),
             _Section(title: 'Duração e Recompensa'),
             TextFormField(
@@ -245,6 +284,14 @@ class _MissionFormScreenState extends State<MissionFormScreen> {
                   ],
                 ),
               ),
+            ),
+            const SizedBox(height: 16),
+            _Section(title: 'Drops de Recompensa'),
+            _RewardDropsEditor(
+              drops: _rewardDrops,
+              rewards: rewardProvider.rewards,
+              onAdd: _pickRewardDrop,
+              onRemove: (drop) => setState(() => _rewardDrops.remove(drop)),
             ),
             const SizedBox(height: 16),
             _Section(title: 'Icon'),
@@ -414,17 +461,77 @@ class _MissionFormScreenState extends State<MissionFormScreen> {
       estimatedDuration: duration.clamp(0, 60),
       rewardPoints: _rewardPoints,
       dueDate: _dueDate,
+      reminderAt: _reminderAt,
       isRecurring: isRecurring,
       recurrenceType: recurrenceType,
       status: status,
       completedAt: completedAt,
       parentMissionId: _parentMissionId,
       icon: _iconAsset,
+      locationName: _location?.name,
+      latitude: _location?.latitude,
+      longitude: _location?.longitude,
       skillIds: _selectedSkills.toList(),
     );
 
-    await context.read<MissionProvider>().addMission(mission);
+    await context.read<MissionProvider>().addMission(
+      mission,
+      notificationsEnabled: context
+          .read<SettingsProvider>()
+          .notificationsEnabled,
+      rewardDrops: _rewardDrops,
+    );
     if (mounted) Navigator.pop(context);
+  }
+
+  Future<void> _pickRewardDrop() async {
+    final rewards = context.read<RewardProvider>().rewards;
+    final result = await showDialog<MissionRewardDrop>(
+      context: context,
+      builder: (context) => _RewardDropDialog(rewards: rewards),
+    );
+    if (result == null) return;
+    setState(() => _rewardDrops.add(result));
+  }
+
+  String get _locationLabel {
+    final location = _location;
+    if (location == null) return 'Definir local da missão';
+    return '${location.latitude.toStringAsFixed(4)}, ${location.longitude.toStringAsFixed(4)}';
+  }
+
+  Future<void> _pickReminder() async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate: _reminderAt ?? _dueDate ?? DateTime.now(),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
+    );
+    if (!mounted || date == null) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_reminderAt ?? DateTime.now()),
+    );
+    if (!mounted || time == null) return;
+    setState(() {
+      _reminderAt = DateTime(
+        date.year,
+        date.month,
+        date.day,
+        time.hour,
+        time.minute,
+      );
+    });
+  }
+
+  Future<void> _pickLocation() async {
+    final result = await Navigator.of(context).push<MissionLocationSelection>(
+      MaterialPageRoute(
+        builder: (_) => LocationPickerScreen(initialLocation: _location),
+      ),
+    );
+    if (result == null || !mounted) return;
+    setState(() => _location = result);
   }
 
   Future<void> _pickIcon() async {
@@ -564,6 +671,167 @@ class _StrategyPreview extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _RewardDropsEditor extends StatelessWidget {
+  final List<MissionRewardDrop> drops;
+  final List<Reward> rewards;
+  final VoidCallback onAdd;
+  final ValueChanged<MissionRewardDrop> onRemove;
+
+  const _RewardDropsEditor({
+    required this.drops,
+    required this.rewards,
+    required this.onAdd,
+    required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final rewardById = {
+      for (final reward in rewards)
+        if (reward.id != null) reward.id!: reward,
+    };
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (drops.isEmpty)
+          const Text(
+            'Nenhum drop vinculado.',
+            style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+          )
+        else
+          ...drops.map((drop) {
+            final reward = rewardById[drop.rewardId];
+            return ListTile(
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.auto_awesome, color: AppTheme.primary),
+              title: Text(reward?.name ?? 'Reward #${drop.rewardId}'),
+              subtitle: Text(
+                '${drop.chancePercent}% de chance | qtd. ${drop.quantity}',
+              ),
+              trailing: IconButton(
+                tooltip: 'Remover drop',
+                onPressed: () => onRemove(drop),
+                icon: const Icon(Icons.close),
+              ),
+            );
+          }),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: OutlinedButton.icon(
+            onPressed: rewards.isEmpty ? null : onAdd,
+            icon: const Icon(Icons.add),
+            label: Text(
+              rewards.isEmpty
+                  ? 'Cadastre uma recompensa antes'
+                  : 'Adicionar drop',
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _RewardDropDialog extends StatefulWidget {
+  final List<Reward> rewards;
+
+  const _RewardDropDialog({required this.rewards});
+
+  @override
+  State<_RewardDropDialog> createState() => _RewardDropDialogState();
+}
+
+class _RewardDropDialogState extends State<_RewardDropDialog> {
+  int? _rewardId;
+  double _chance = 25;
+  final _quantityController = TextEditingController(text: '1');
+
+  @override
+  void initState() {
+    super.initState();
+    _rewardId = widget.rewards.isEmpty ? null : widget.rewards.first.id;
+  }
+
+  @override
+  void dispose() {
+    _quantityController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Drop da missão'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          DropdownButtonFormField<int>(
+            initialValue: _rewardId,
+            decoration: const InputDecoration(labelText: 'Recompensa'),
+            items: widget.rewards
+                .where((reward) => reward.id != null)
+                .map(
+                  (reward) => DropdownMenuItem(
+                    value: reward.id,
+                    child: Text(reward.name),
+                  ),
+                )
+                .toList(),
+            onChanged: (value) => setState(() => _rewardId = value),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              const Text('Chance'),
+              Expanded(
+                child: Slider(
+                  value: _chance,
+                  min: 0,
+                  max: 100,
+                  divisions: 20,
+                  label: '${_chance.round()}%',
+                  onChanged: (value) => setState(() => _chance = value),
+                ),
+              ),
+              SizedBox(width: 42, child: Text('${_chance.round()}%')),
+            ],
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _quantityController,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(labelText: 'Quantidade'),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancelar'),
+        ),
+        TextButton(
+          onPressed: _rewardId == null
+              ? null
+              : () {
+                  Navigator.pop(
+                    context,
+                    MissionRewardDrop(
+                      missionId: 0,
+                      rewardId: _rewardId!,
+                      chancePercent: _chance.round(),
+                      quantity:
+                          int.tryParse(_quantityController.text.trim()) ?? 1,
+                    ),
+                  );
+                },
+          child: const Text('Adicionar'),
+        ),
+      ],
     );
   }
 }

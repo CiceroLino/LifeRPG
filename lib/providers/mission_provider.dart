@@ -1,7 +1,10 @@
 import 'package:flutter/foundation.dart';
 import '../data/models/mission.dart';
+import '../data/models/mission_reward_drop.dart';
 import '../data/repositories/mission_repository.dart';
+import '../data/repositories/mission_reward_drop_repository.dart';
 import '../services/mission_completion_service.dart';
+import '../services/mission_reminder_service.dart';
 
 enum MissionSortMode {
   recent,
@@ -15,6 +18,7 @@ enum MissionFilterMode { plan, all, next, overdue, today, tomorrow }
 
 class MissionProvider extends ChangeNotifier {
   final MissionRepository _missionRepo = MissionRepository();
+  final MissionRewardDropRepository _dropRepo = MissionRewardDropRepository();
   final MissionCompletionService _completionService =
       MissionCompletionService();
 
@@ -210,7 +214,11 @@ class MissionProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> addMission(Mission mission) async {
+  Future<int?> addMission(
+    Mission mission, {
+    bool notificationsEnabled = true,
+    List<MissionRewardDrop> rewardDrops = const [],
+  }) async {
     try {
       final id = await _missionRepo.insert(mission);
 
@@ -219,16 +227,39 @@ class MissionProvider extends ChangeNotifier {
         await _missionRepo.linkSkills(id, mission.skillIds);
       }
 
+      if (rewardDrops.isNotEmpty) {
+        await _dropRepo.replaceForMission(
+          id,
+          rewardDrops.map((drop) => drop.copyWith(missionId: id)).toList(),
+        );
+      }
+
+      await MissionReminderService.instance.scheduleForMission(
+        mission.copyWith(id: id),
+        notificationsEnabled: notificationsEnabled,
+      );
+
       await loadMissions();
+      return id;
     } catch (e) {
       _error = 'Erro ao adicionar missão: $e';
       notifyListeners();
+      return null;
     }
   }
 
   Future<void> completeMission(int id) async {
     try {
       _lastCompletionResult = await _completionService.completeMission(id);
+      final mission = _lastCompletionResult?.mission;
+      if (mission != null && mission.status == 'completed') {
+        await MissionReminderService.instance.cancelForMission(id);
+      } else if (mission != null) {
+        await MissionReminderService.instance.scheduleForMission(
+          mission,
+          notificationsEnabled: true,
+        );
+      }
       await loadMissions();
     } catch (e) {
       _error = 'Erro ao completar missão: $e';
@@ -260,13 +291,31 @@ class MissionProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> updateMission(Mission mission) async {
+  Future<void> updateMission(
+    Mission mission, {
+    bool notificationsEnabled = true,
+    List<MissionRewardDrop>? rewardDrops,
+  }) async {
     try {
       await _missionRepo.update(mission);
 
       if (mission.skillIds.isNotEmpty) {
         await _missionRepo.linkSkills(mission.id!, mission.skillIds);
       }
+
+      if (rewardDrops != null) {
+        await _dropRepo.replaceForMission(
+          mission.id!,
+          rewardDrops
+              .map((drop) => drop.copyWith(missionId: mission.id!))
+              .toList(),
+        );
+      }
+
+      await MissionReminderService.instance.scheduleForMission(
+        mission,
+        notificationsEnabled: notificationsEnabled,
+      );
 
       await loadMissions();
     } catch (e) {
@@ -278,6 +327,7 @@ class MissionProvider extends ChangeNotifier {
   Future<void> deleteMission(int id) async {
     try {
       await _missionRepo.delete(id);
+      await MissionReminderService.instance.cancelForMission(id);
       await loadMissions();
     } catch (e) {
       _error = 'Erro ao deletar missão: $e';

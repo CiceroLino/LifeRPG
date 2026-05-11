@@ -3,10 +3,14 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
+import 'package:provider/single_child_widget.dart';
 
 import 'package:liferpg/data/models/mission.dart';
+import 'package:liferpg/data/models/mission_reward_drop.dart';
 import 'package:liferpg/data/models/skill.dart';
 import 'package:liferpg/providers/mission_provider.dart';
+import 'package:liferpg/providers/reward_provider.dart';
+import 'package:liferpg/providers/settings_provider.dart';
 import 'package:liferpg/providers/skill_provider.dart';
 import 'package:liferpg/ui/screens/missions/mission_icon_assets.dart';
 import 'package:liferpg/ui/screens/missions/mission_form_screen.dart';
@@ -43,9 +47,31 @@ class FakeMissionProvider extends MissionProvider {
   Future<void> loadMissions() async {}
 
   @override
-  Future<void> addMission(Mission mission) async {
+  Future<int?> addMission(
+    Mission mission, {
+    bool notificationsEnabled = true,
+    List<MissionRewardDrop> rewardDrops = const [],
+  }) async {
     addedMission = mission;
+    return mission.id;
   }
+}
+
+class FakeRewardProvider extends RewardProvider {
+  @override
+  Future<void> loadRewards() async {}
+}
+
+List<SingleChildWidget> _providers({
+  required SkillProvider skillProvider,
+  required MissionProvider missionProvider,
+}) {
+  return [
+    ChangeNotifierProvider<SkillProvider>.value(value: skillProvider),
+    ChangeNotifierProvider<MissionProvider>.value(value: missionProvider),
+    ChangeNotifierProvider<RewardProvider>.value(value: FakeRewardProvider()),
+    ChangeNotifierProvider<SettingsProvider>.value(value: SettingsProvider()),
+  ];
 }
 
 Future<void> _setLargeSurface(WidgetTester tester) async {
@@ -63,10 +89,10 @@ void main() {
 
     await tester.pumpWidget(
       MultiProvider(
-        providers: [
-          ChangeNotifierProvider<SkillProvider>.value(value: skillProvider),
-          ChangeNotifierProvider<MissionProvider>.value(value: missionProvider),
-        ],
+        providers: _providers(
+          skillProvider: skillProvider,
+          missionProvider: missionProvider,
+        ),
         child: const MaterialApp(home: MissionFormScreen()),
       ),
     );
@@ -113,10 +139,10 @@ void main() {
 
     await tester.pumpWidget(
       MultiProvider(
-        providers: [
-          ChangeNotifierProvider<SkillProvider>.value(value: skillProvider),
-          ChangeNotifierProvider<MissionProvider>.value(value: missionProvider),
-        ],
+        providers: _providers(
+          skillProvider: skillProvider,
+          missionProvider: missionProvider,
+        ),
         child: const MaterialApp(home: MissionFormScreen()),
       ),
     );
@@ -138,16 +164,21 @@ void main() {
 
     await tester.pumpWidget(
       MultiProvider(
-        providers: [
-          ChangeNotifierProvider<SkillProvider>.value(value: skillProvider),
-          ChangeNotifierProvider<MissionProvider>.value(value: missionProvider),
-        ],
+        providers: _providers(
+          skillProvider: skillProvider,
+          missionProvider: missionProvider,
+        ),
         child: const MaterialApp(home: MissionFormScreen()),
       ),
     );
 
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextFormField).first, 'Write plan');
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('save-mission-button')),
+      400,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.tap(find.byKey(const Key('save-mission-button')).last);
     await tester.pumpAndSettle();
 

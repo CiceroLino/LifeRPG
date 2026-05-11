@@ -36,8 +36,8 @@ class LifeRPGAppBar extends StatelessWidget implements PreferredSizeWidget {
   /// Callback quando uma opção de ordenação é selecionada
   final ValueChanged<String>? onSortChanged;
 
-  /// Callback quando workspace é alterado
-  final ValueChanged<String>? onWorkspaceChanged;
+  /// Callback para navegação alternativa pelo título.
+  final ValueChanged<int>? onNavigateToScreen;
 
   /// Callback para resetar avatar (profile)
   final VoidCallback? onResetAvatar;
@@ -66,7 +66,7 @@ class LifeRPGAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.onCalendar,
     this.onAddMission,
     this.onSortChanged,
-    this.onWorkspaceChanged,
+    this.onNavigateToScreen,
     this.onResetAvatar,
     this.onShareProfile,
     this.onExportData,
@@ -103,7 +103,7 @@ class LifeRPGAppBar extends StatelessWidget implements PreferredSizeWidget {
         : currentScreen[0].toUpperCase() + currentScreen.substring(1);
 
     return InkWell(
-      onTap: () => _showWorkspaceDialog(context),
+      onTap: () => _showNavigationDialog(context),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
         child: Column(
@@ -124,7 +124,7 @@ class LifeRPGAppBar extends StatelessWidget implements PreferredSizeWidget {
                 ),
                 const SizedBox(width: 4),
                 const Icon(
-                  Icons.arrow_drop_down,
+                  Icons.unfold_more,
                   color: AppTheme.textPrimary,
                   size: 20,
                 ),
@@ -155,8 +155,21 @@ class LifeRPGAppBar extends StatelessWidget implements PreferredSizeWidget {
       case 'statistics':
         return _buildStatisticsActions(context);
       default:
-        return _buildMissionsActions(context); // Default
+        return _buildDefaultActions();
     }
+  }
+
+  List<Widget> _buildDefaultActions() {
+    return [
+      IconButton(
+        icon: Icon(
+          isStatsExpanded ? Icons.fullscreen_exit : Icons.fullscreen,
+          color: AppTheme.textPrimary,
+        ),
+        onPressed: onToggleStats,
+        tooltip: isStatsExpanded ? 'Ocultar Stats' : 'Mostrar Stats',
+      ),
+    ];
   }
 
   /// Actions para o contexto de Missions
@@ -476,38 +489,49 @@ class LifeRPGAppBar extends StatelessWidget implements PreferredSizeWidget {
     );
   }
 
-  /// Mostra o dialog mockado para trocar de Workspace
-  void _showWorkspaceDialog(BuildContext context) {
+  /// Mostra navegação alternativa para quando a sidebar não está em foco.
+  void _showNavigationDialog(BuildContext context) {
+    const destinations = [
+      (0, 'Missions', Icons.flag_outlined),
+      (1, 'Map', Icons.map_outlined),
+      (2, 'Rewards', Icons.card_giftcard_outlined),
+      (3, 'Inventory', Icons.inventory_2_outlined),
+      (4, 'Skills', Icons.auto_graph),
+      (5, 'Statistics', Icons.query_stats),
+      (6, 'Profile', Icons.person_outline),
+      (7, 'Shop', Icons.storefront_outlined),
+      (8, 'Settings', Icons.settings_outlined),
+      (9, 'Help', Icons.help_outline),
+    ];
+
     showDialog(
       context: context,
       builder: (context) => SimpleDialog(
         backgroundColor: AppTheme.surface,
         title: const Text(
-          'Select Workspace',
+          'Navigate',
           style: TextStyle(color: AppTheme.textPrimary),
         ),
-        children: [
-          SimpleDialogOption(
-            onPressed: () {
-              onWorkspaceChanged?.call('personal');
-              Navigator.of(context).pop();
-            },
-            child: const Text(
-              'Personal',
-              style: TextStyle(color: AppTheme.textPrimary),
-            ),
-          ),
-          SimpleDialogOption(
-            onPressed: () {
-              onWorkspaceChanged?.call('work');
-              Navigator.of(context).pop();
-            },
-            child: const Text(
-              'Work',
-              style: TextStyle(color: AppTheme.textPrimary),
-            ),
-          ),
-        ],
+        children: destinations
+            .map(
+              (destination) => SimpleDialogOption(
+                onPressed: () {
+                  onNavigateToScreen?.call(destination.$1);
+                  Navigator.of(context).pop();
+                },
+                child: Row(
+                  children: [
+                    Icon(destination.$3, color: AppTheme.textPrimary, size: 20),
+                    const SizedBox(width: 12),
+                    Text(
+                      destination.$2,
+                      style: const TextStyle(color: AppTheme.textPrimary),
+                    ),
+                  ],
+                ),
+              ),
+            )
+            .toList(),
       ),
     );
   }

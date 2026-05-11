@@ -3,9 +3,8 @@ import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/reward.dart';
-import '../../../providers/inventory_provider.dart';
-import '../../../providers/player_provider.dart';
 import '../../../providers/reward_provider.dart';
+import '../../widgets/common/game_snack_bar.dart';
 import 'reward_form_screen.dart';
 
 class RewardsScreen extends StatefulWidget {
@@ -26,9 +25,8 @@ class _RewardsScreenState extends State<RewardsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer2<RewardProvider, PlayerProvider>(
-      builder: (context, rewards, playerProvider, _) {
-        final player = playerProvider.player;
+    return Consumer<RewardProvider>(
+      builder: (context, rewards, _) {
         return Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -38,7 +36,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
                 children: [
                   const Expanded(
                     child: Text(
-                      'Rewards',
+                      'Rewards Admin',
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w700,
@@ -46,9 +44,16 @@ class _RewardsScreenState extends State<RewardsScreen> {
                       ),
                     ),
                   ),
-                  Chip(
-                    avatar: const Icon(Icons.stars_rounded, size: 18),
-                    label: Text('${player?.rewardPoints ?? 0} RP'),
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const RewardFormScreen(),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.add),
+                    label: const Text('Nova'),
                   ),
                 ],
               ),
@@ -65,7 +70,7 @@ class _RewardsScreenState extends State<RewardsScreen> {
                     ? const Center(child: CircularProgressIndicator())
                     : _RewardsList(
                         rewards: rewards.rewards,
-                        onPurchase: _purchase,
+                        onArchive: _archive,
                       ),
               ),
             ],
@@ -75,30 +80,27 @@ class _RewardsScreenState extends State<RewardsScreen> {
     );
   }
 
-  Future<void> _purchase(Reward reward) async {
+  Future<void> _archive(Reward reward) async {
+    if (reward.id == null) return;
     final rewardProvider = context.read<RewardProvider>();
-    final playerProvider = context.read<PlayerProvider>();
-    final inventoryProvider = context.read<InventoryProvider>();
-    final success = await rewardProvider.purchaseReward(reward.id!);
-    if (success) {
-      await playerProvider.loadPlayer();
-      await inventoryProvider.loadItems();
-    }
+    await rewardProvider.archiveReward(reward.id!);
     if (!mounted) return;
-    final message = success
-        ? 'Recompensa enviada para o Inventory.'
-        : rewardProvider.error ?? 'Compra não concluída.';
-    ScaffoldMessenger.of(
+    GameSnackBar.show(
       context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+      message: rewardProvider.error ?? 'Recompensa arquivada.',
+      type: rewardProvider.error == null
+          ? GameSnackBarType.info
+          : GameSnackBarType.error,
+      title: rewardProvider.error == null ? 'Registro Atualizado' : 'Erro',
+    );
   }
 }
 
 class _RewardsList extends StatelessWidget {
   final List<Reward> rewards;
-  final ValueChanged<Reward> onPurchase;
+  final ValueChanged<Reward> onArchive;
 
-  const _RewardsList({required this.rewards, required this.onPurchase});
+  const _RewardsList({required this.rewards, required this.onArchive});
 
   @override
   Widget build(BuildContext context) {
@@ -116,10 +118,7 @@ class _RewardsList extends StatelessWidget {
       separatorBuilder: (_, index) => const SizedBox(height: 10),
       itemBuilder: (context, index) {
         final reward = rewards[index];
-        return _RewardTile(
-          reward: reward,
-          onPurchase: () => onPurchase(reward),
-        );
+        return _RewardTile(reward: reward, onArchive: () => onArchive(reward));
       },
     );
   }
@@ -127,13 +126,12 @@ class _RewardsList extends StatelessWidget {
 
 class _RewardTile extends StatelessWidget {
   final Reward reward;
-  final VoidCallback onPurchase;
+  final VoidCallback onArchive;
 
-  const _RewardTile({required this.reward, required this.onPurchase});
+  const _RewardTile({required this.reward, required this.onArchive});
 
   @override
   Widget build(BuildContext context) {
-    final inStock = reward.isUnlimitedStock || (reward.stockRemaining ?? 0) > 0;
     return Container(
       decoration: BoxDecoration(
         color: AppTheme.surface,
@@ -202,9 +200,10 @@ class _RewardTile extends StatelessWidget {
                 },
                 icon: const Icon(Icons.edit_outlined),
               ),
-              FilledButton(
-                onPressed: inStock ? onPurchase : null,
-                child: const Text('Comprar'),
+              IconButton(
+                tooltip: 'Arquivar',
+                onPressed: onArchive,
+                icon: const Icon(Icons.archive_outlined),
               ),
             ],
           ),

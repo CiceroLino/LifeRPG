@@ -49,18 +49,11 @@ class PlayerRepository {
     final newTotalXP = player.totalXP + xp;
     final newLevel = XPCalculator.calculateLevel(newTotalXP);
 
-    await update(
-      player.copyWith(
-      totalXP: newTotalXP,
-      level: newLevel,
-      ),
-    );
+    await update(player.copyWith(totalXP: newTotalXP, level: newLevel));
   }
 
   Future<void> addRewardPoints(int points) async {
     final player = await get();
-    await update(player.copyWith(
-      rewardPoints: player.rewardPoints + points,
-    ));
+    await update(player.copyWith(rewardPoints: player.rewardPoints + points));
   }
 }

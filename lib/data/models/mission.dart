@@ -20,6 +20,11 @@ class Mission {
   final int orderIndex;
   final String? icon;
   final String? emoji;
+  final String? locationName;
+  final double? latitude;
+  final double? longitude;
+  final DateTime? reminderAt;
+  final List<int> recurrenceDays;
   final DateTime createdAt;
   final DateTime updatedAt;
   final DateTime? completedAt;
@@ -47,6 +52,11 @@ class Mission {
     this.orderIndex = 0,
     this.icon,
     this.emoji,
+    this.locationName,
+    this.latitude,
+    this.longitude,
+    this.reminderAt,
+    this.recurrenceDays = const [],
     DateTime? createdAt,
     DateTime? updatedAt,
     this.completedAt,
@@ -77,6 +87,13 @@ class Mission {
       'order_index': orderIndex,
       'icon': icon,
       'emoji': emoji,
+      'location_name': locationName,
+      'latitude': latitude,
+      'longitude': longitude,
+      'reminder_at': reminderAt?.toIso8601String(),
+      'recurrence_days': recurrenceDays.isEmpty
+          ? null
+          : recurrenceDays.join(','),
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
       'completed_at': completedAt?.toIso8601String(),
@@ -110,6 +127,13 @@ class Mission {
       orderIndex: map['order_index'] as int? ?? 0,
       icon: map['icon'] as String?,
       emoji: map['emoji'] as String?,
+      locationName: map['location_name'] as String?,
+      latitude: (map['latitude'] as num?)?.toDouble(),
+      longitude: (map['longitude'] as num?)?.toDouble(),
+      reminderAt: map['reminder_at'] != null
+          ? DateTime.parse(map['reminder_at'] as String)
+          : null,
+      recurrenceDays: _parseRecurrenceDays(map['recurrence_days'] as String?),
       createdAt: DateTime.parse(map['created_at'] as String),
       updatedAt: DateTime.parse(map['updated_at'] as String),
       completedAt: map['completed_at'] != null
@@ -154,6 +178,11 @@ class Mission {
     int? orderIndex,
     String? icon,
     String? emoji,
+    String? locationName,
+    double? latitude,
+    double? longitude,
+    DateTime? reminderAt,
+    List<int>? recurrenceDays,
     DateTime? createdAt,
     DateTime? updatedAt,
     DateTime? completedAt,
@@ -181,10 +210,25 @@ class Mission {
       orderIndex: orderIndex ?? this.orderIndex,
       icon: icon ?? this.icon,
       emoji: emoji ?? this.emoji,
+      locationName: locationName ?? this.locationName,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      reminderAt: reminderAt ?? this.reminderAt,
+      recurrenceDays: recurrenceDays ?? this.recurrenceDays,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       completedAt: completedAt ?? this.completedAt,
       skillIds: skillIds ?? this.skillIds,
     );
+  }
+
+  static List<int> _parseRecurrenceDays(String? value) {
+    if (value == null || value.trim().isEmpty) return const [];
+    return value
+        .split(',')
+        .map((part) => int.tryParse(part.trim()))
+        .whereType<int>()
+        .where((day) => day >= 1 && day <= 7)
+        .toList(growable: false);
   }
 }

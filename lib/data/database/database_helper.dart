@@ -20,7 +20,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 6,
+      version: 7,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
       },
@@ -87,6 +87,11 @@ class DatabaseHelper {
         order_index INTEGER DEFAULT 0,
         icon TEXT,
         emoji TEXT,
+        location_name TEXT,
+        latitude REAL,
+        longitude REAL,
+        reminder_at TEXT,
+        recurrence_days TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         completed_at TEXT,
@@ -111,6 +116,7 @@ class DatabaseHelper {
 
     await _createMissionCompletionHistoryTables(db);
     await _createRewardInventoryTables(db);
+    await _createMissionRewardDropTables(db);
 
     await _insertDefaultPlayer(db);
     await _insertDefaultSkills(db);
@@ -140,6 +146,31 @@ class DatabaseHelper {
     }
     if (oldVersion < 6) {
       await _createRewardInventoryTables(db);
+    }
+    if (oldVersion < 7) {
+      await _migrateStrategyV7(db);
+    }
+  }
+
+  Future<void> _migrateStrategyV7(Database db) async {
+    await _addColumnIfMissing(db, 'missions', 'location_name', 'TEXT');
+    await _addColumnIfMissing(db, 'missions', 'latitude', 'REAL');
+    await _addColumnIfMissing(db, 'missions', 'longitude', 'REAL');
+    await _addColumnIfMissing(db, 'missions', 'reminder_at', 'TEXT');
+    await _addColumnIfMissing(db, 'missions', 'recurrence_days', 'TEXT');
+    await _createMissionRewardDropTables(db);
+  }
+
+  Future<void> _addColumnIfMissing(
+    DatabaseExecutor db,
+    String table,
+    String column,
+    String type,
+  ) async {
+    final columns = await db.rawQuery('PRAGMA table_info($table)');
+    final exists = columns.any((row) => row['name'] == column);
+    if (!exists) {
+      await db.execute('ALTER TABLE $table ADD COLUMN $column $type');
     }
   }
 
@@ -407,6 +438,45 @@ class DatabaseHelper {
     );
   }
 
+  Future<void> _createMissionRewardDropTables(DatabaseExecutor db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS mission_reward_drops (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        mission_id INTEGER NOT NULL,
+        reward_id INTEGER NOT NULL,
+        chance_percent INTEGER NOT NULL DEFAULT 100 CHECK(chance_percent BETWEEN 0 AND 100),
+        quantity INTEGER NOT NULL DEFAULT 1 CHECK(quantity > 0),
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(mission_id) REFERENCES missions(id) ON DELETE CASCADE,
+        FOREIGN KEY(reward_id) REFERENCES rewards(id) ON DELETE CASCADE
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS mission_completion_reward_drops (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        event_id INTEGER NOT NULL,
+        reward_id INTEGER NOT NULL,
+        inventory_item_id INTEGER,
+        reward_name_snapshot TEXT NOT NULL,
+        quantity INTEGER NOT NULL DEFAULT 1,
+        chance_percent INTEGER NOT NULL DEFAULT 0,
+        was_awarded INTEGER NOT NULL DEFAULT 0,
+        FOREIGN KEY(event_id) REFERENCES mission_completion_events(id) ON DELETE CASCADE,
+        FOREIGN KEY(reward_id) REFERENCES rewards(id) ON DELETE SET NULL,
+        FOREIGN KEY(inventory_item_id) REFERENCES inventory_items(id) ON DELETE SET NULL
+      )
+    ''');
+
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_mission_reward_drops_mission ON mission_reward_drops(mission_id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_completion_reward_drops_event ON mission_completion_reward_drops(event_id)',
+    );
+  }
+
   Future<Map<String, dynamic>> getAllDataForBackup() async {
     final db = await database;
 
@@ -421,6 +491,10 @@ class DatabaseHelper {
     final rewardsMaps = await db.query('rewards');
     final inventoryItemsMaps = await db.query('inventory_items');
     final rewardRedemptionsMaps = await db.query('reward_redemptions');
+    final missionRewardDropsMaps = await db.query('mission_reward_drops');
+    final completionRewardDropsMaps = await db.query(
+      'mission_completion_reward_drops',
+    );
 
     return {
       'version': '1.0',
@@ -434,6 +508,8 @@ class DatabaseHelper {
       'rewards': rewardsMaps,
       'inventory_items': inventoryItemsMaps,
       'reward_redemptions': rewardRedemptionsMaps,
+      'mission_reward_drops': missionRewardDropsMaps,
+      'mission_completion_reward_drops': completionRewardDropsMaps,
     };
   }
 
@@ -456,6 +532,8 @@ class DatabaseHelper {
     final db = await database;
     await db.transaction((txn) async {
       await txn.delete('reward_redemptions');
+      await txn.delete('mission_completion_reward_drops');
+      await txn.delete('mission_reward_drops');
       await txn.delete('inventory_items');
       await txn.delete('rewards');
       await txn.delete('mission_completion_skill_rewards');
@@ -474,6 +552,8 @@ class DatabaseHelper {
 
     await db.transaction((txn) async {
       await txn.delete('reward_redemptions');
+      await txn.delete('mission_completion_reward_drops');
+      await txn.delete('mission_reward_drops');
       await txn.delete('inventory_items');
       await txn.delete('rewards');
       await txn.delete('mission_completion_skill_rewards');
@@ -538,6 +618,16 @@ class DatabaseHelper {
         }
       }
 
+      final missionRewardDrops = data['mission_reward_drops'] as List<dynamic>?;
+      if (missionRewardDrops != null) {
+        for (final drop in missionRewardDrops) {
+          await txn.insert(
+            'mission_reward_drops',
+            drop as Map<String, dynamic>,
+          );
+        }
+      }
+
       final inventoryItems = data['inventory_items'] as List<dynamic>?;
       if (inventoryItems != null) {
         for (final item in inventoryItems) {
@@ -551,6 +641,17 @@ class DatabaseHelper {
           await txn.insert(
             'reward_redemptions',
             redemption as Map<String, dynamic>,
+          );
+        }
+      }
+
+      final completionRewardDrops =
+          data['mission_completion_reward_drops'] as List<dynamic>?;
+      if (completionRewardDrops != null) {
+        for (final drop in completionRewardDrops) {
+          await txn.insert(
+            'mission_completion_reward_drops',
+            drop as Map<String, dynamic>,
           );
         }
       }
