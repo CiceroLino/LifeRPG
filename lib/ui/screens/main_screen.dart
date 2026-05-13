@@ -6,6 +6,7 @@ import 'package:share_plus/share_plus.dart';
 import 'missions/missions_list_screen.dart';
 import 'missions/mission_form_screen.dart';
 import 'notebooks/notebooks_screen.dart';
+import 'tomes/tomes_screen.dart';
 import 'map/map_screen.dart';
 import 'rewards/rewards_screen.dart';
 import 'rewards/reward_form_screen.dart';
@@ -28,6 +29,7 @@ import '../../providers/player_provider.dart';
 import '../../providers/reward_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/skill_provider.dart';
+import '../../providers/tome_provider.dart';
 import '../../l10n/app_localizations.dart';
 
 class MainScreen extends StatefulWidget {
@@ -53,6 +55,7 @@ class _MainScreenState extends State<MainScreen> {
         context.read<SkillProvider>().loadSkills();
         context.read<RewardProvider>().loadRewards();
         context.read<InventoryProvider>().loadItems();
+        context.read<TomeProvider>().loadTomes();
         _syncEnergyAutoRefreshTimer();
       }
     });
@@ -67,6 +70,7 @@ class _MainScreenState extends State<MainScreen> {
   final _pages = const [
     MissionsListScreen(),
     NotebooksScreen(),
+    TomesScreen(),
     MapScreen(),
     RewardsScreen(),
     InventoryScreen(),
@@ -79,12 +83,13 @@ class _MainScreenState extends State<MainScreen> {
     HelpScreen(),
   ];
 
-  // Índices que NÃO devem mostrar o header (Notebooks, Skills, Settings e Help)
+  // Índices que NÃO devem mostrar o header (Notebooks, Tomes, Skills, Settings e Help)
   bool get _shouldShowHeader =>
       _currentIndex != 1 &&
-      _currentIndex != 5 &&
-      _currentIndex != 10 &&
-      _currentIndex != 11;
+      _currentIndex != 2 &&
+      _currentIndex != 6 &&
+      _currentIndex != 11 &&
+      _currentIndex != 12;
 
   @override
   Widget build(BuildContext context) {
@@ -231,7 +236,7 @@ class _MainScreenState extends State<MainScreen> {
 
   void _goToProfile() {
     setState(() {
-      _currentIndex = 7;
+      _currentIndex = 8;
     });
   }
 
@@ -483,7 +488,7 @@ class _MainScreenState extends State<MainScreen> {
           },
           child: const Icon(Icons.add),
         );
-      case 3:
+      case 4:
         return FloatingActionButton(
           onPressed: () {
             Navigator.of(
@@ -492,11 +497,11 @@ class _MainScreenState extends State<MainScreen> {
           },
           child: const Icon(Icons.add),
         );
-      case 4:
-        return null;
       case 5:
         return null;
-      case 9:
+      case 6:
+        return null;
+      case 10:
         return null;
       default:
         return null;
@@ -508,6 +513,7 @@ class _MainScreenState extends State<MainScreen> {
     const screenNames = [
       'missions',
       'notebooks',
+      'tomes',
       'map',
       'rewards',
       'inventory',

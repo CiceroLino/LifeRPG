@@ -2,7 +2,7 @@
 
 ## Goal
 
-Add a local-first notes module named `Notebooks`, themed as handheld notebooks in the LifeRPG world. The first phase covers notebooks and notes only; PDF `Tomes` and media `Tavern` remain separate later phases.
+Add a local-first notes module named `Notebooks`, themed as handheld notebooks in the LifeRPG world. The first phase covers notebooks and notes only. Phase 2 adds PDF `Tomes`; media `Tavern` remains a later phase.
 
 ## Product Shape
 
@@ -31,3 +31,11 @@ The list should feel compact and useful, not like a marketing page. Cards show n
 - Provider test covers loading, search filtering, and note CRUD.
 - Widget smoke test covers empty state, create action visibility, and rendering a notebook.
 
+## Phase 2: Tomes
+
+- `Tomes` appears as a first-class navigation destination after `Notebooks`.
+- A tome stores title, optional author, description, local PDF path, current page, total pages, active/archive state, and last-opened timestamp.
+- Users import a PDF through the platform file picker.
+- The first reader step opens the selected PDF with the system default app through a local file URI.
+- Reading progress is manual: users can edit current page and total pages.
+- Backup/restore includes `tomes`; the PDF file itself remains external and is not copied into the backup payload.

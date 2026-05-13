@@ -19,6 +19,7 @@ class AppDrawer extends StatelessWidget {
     final items = <_DrawerItem>[
       const _DrawerItem(labelKey: 'missions', icon: Icons.flag_outlined),
       const _DrawerItem(labelKey: 'notebooks', icon: Icons.menu_book_outlined),
+      const _DrawerItem(labelKey: 'tomes', icon: Icons.auto_stories_outlined),
       const _DrawerItem(labelKey: 'map', icon: Icons.map_outlined),
       const _DrawerItem(
         labelKey: 'rewards',

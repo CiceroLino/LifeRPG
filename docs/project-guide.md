@@ -16,6 +16,7 @@ LifeRPG é um app Flutter que transforma tarefas reais em progressão de RPG.
 - Energia é exibida como HP e diminui/aumenta conforme tempo acordado e tempo dormindo, ou por ajuste manual.
 - Pomodoro é tratado como Focus Quest: uma sessão de foco com duração limitada que concede XP ao player.
 - Notebooks são cadernos locais para capturar notas livres fora do fluxo de missões.
+- Tomes são referências PDF locais catalogadas no app, com caminho do arquivo e progresso manual de leitura.
 
 Referência de produto: o raciocínio de missões, atributos, RP, recompensas e HP segue a linha do artigo "LifeRPG Strategy Guide (v1.0.0)", de kolayāna, adaptado ao código atual deste app.
 
@@ -55,13 +56,14 @@ Providers principais:
 - `RewardProvider`
 - `InventoryProvider`
 - `NotebookProvider`
+- `TomeProvider`
 - `SettingsProvider`
 
 ## Banco de Dados
 
 Arquivo do banco: `liferpg.db`.
 
-Versão atual do schema: `11`.
+Versão atual do schema: `12`.
 
 Tabelas principais:
 
@@ -79,6 +81,7 @@ Tabelas principais:
 - `focus_sessions`: histórico de sessões Pomodoro/Focus Quest concluídas.
 - `notebooks`: cadernos de notas locais.
 - `notes`: notas vinculadas a um notebook.
+- `tomes`: PDFs locais catalogados como tomos, com metadados e progresso manual.
 
 Notas de migração:
 
@@ -89,6 +92,7 @@ Notas de migração:
 - A versão 9 adicionou sessões Pomodoro/Focus Quest com XP concedido por minuto focado.
 - A versão 10 adiciona o campo `description` no player (`player.description`) com valor padrão vazio, permitindo perfil com texto personalizado.
 - A versão 11 adiciona `notebooks` e `notes`.
+- A versão 12 adiciona `tomes`.
 - Foreign keys são habilitadas em `onConfigure`.
 
 Backup/restore:

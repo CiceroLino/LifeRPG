@@ -20,7 +20,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 11,
+      version: 12,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
       },
@@ -122,6 +122,7 @@ class DatabaseHelper {
     await _createMissionRewardDropTables(db);
     await _createFocusSessionTables(db);
     await _createNotebookTables(db);
+    await _createTomeTables(db);
 
     await _insertDefaultPlayer(db);
   }
@@ -165,6 +166,9 @@ class DatabaseHelper {
     }
     if (oldVersion < 11) {
       await _createNotebookTables(db);
+    }
+    if (oldVersion < 12) {
+      await _createTomeTables(db);
     }
   }
 
@@ -555,6 +559,28 @@ class DatabaseHelper {
     );
   }
 
+  Future<void> _createTomeTables(DatabaseExecutor db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS tomes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        author TEXT DEFAULT '',
+        description TEXT DEFAULT '',
+        file_path TEXT NOT NULL,
+        current_page INTEGER NOT NULL DEFAULT 0 CHECK(current_page >= 0),
+        total_pages INTEGER CHECK(total_pages IS NULL OR total_pages > 0),
+        is_active INTEGER DEFAULT 1,
+        last_opened_at TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    ''');
+
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_tomes_active ON tomes(is_active)',
+    );
+  }
+
   Future<Map<String, dynamic>> getAllDataForBackup() async {
     final db = await database;
 
@@ -576,6 +602,7 @@ class DatabaseHelper {
     final focusSessionsMaps = await db.query('focus_sessions');
     final notebooksMaps = await db.query('notebooks');
     final notesMaps = await db.query('notes');
+    final tomesMaps = await db.query('tomes');
 
     return {
       'version': '1.0',
@@ -594,6 +621,7 @@ class DatabaseHelper {
       'focus_sessions': focusSessionsMaps,
       'notebooks': notebooksMaps,
       'notes': notesMaps,
+      'tomes': tomesMaps,
     };
   }
 
@@ -619,6 +647,7 @@ class DatabaseHelper {
       await txn.delete('focus_sessions');
       await txn.delete('notes');
       await txn.delete('notebooks');
+      await txn.delete('tomes');
       await txn.delete('mission_completion_reward_drops');
       await txn.delete('mission_reward_drops');
       await txn.delete('inventory_items');
@@ -641,6 +670,7 @@ class DatabaseHelper {
       await txn.delete('focus_sessions');
       await txn.delete('notes');
       await txn.delete('notebooks');
+      await txn.delete('tomes');
       await txn.delete('mission_completion_reward_drops');
       await txn.delete('mission_reward_drops');
       await txn.delete('inventory_items');
@@ -763,6 +793,13 @@ class DatabaseHelper {
       if (notes != null) {
         for (final note in notes) {
           await txn.insert('notes', note as Map<String, dynamic>);
+        }
+      }
+
+      final tomes = data['tomes'] as List<dynamic>?;
+      if (tomes != null) {
+        for (final tome in tomes) {
+          await txn.insert('tomes', tome as Map<String, dynamic>);
         }
       }
     });

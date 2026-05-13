@@ -13,6 +13,7 @@ import 'package:liferpg/providers/pomodoro_provider.dart';
 import 'package:liferpg/providers/reward_provider.dart';
 import 'package:liferpg/providers/settings_provider.dart';
 import 'package:liferpg/providers/skill_provider.dart';
+import 'package:liferpg/providers/tome_provider.dart';
 import 'package:liferpg/ui/screens/main_screen.dart';
 import 'package:liferpg/ui/widgets/common/liferpg_app_bar.dart';
 
@@ -100,6 +101,14 @@ class FakeNotebookProvider extends NotebookProvider {
   Future<void> loadNotebooks() async {}
 }
 
+class FakeTomeProvider extends TomeProvider {
+  @override
+  bool get isLoading => false;
+
+  @override
+  Future<void> loadTomes() async {}
+}
+
 void main() {
   Future<void> pumpMain(
     WidgetTester tester,
@@ -127,6 +136,7 @@ void main() {
           ChangeNotifierProvider<NotebookProvider>.value(
             value: FakeNotebookProvider(),
           ),
+          ChangeNotifierProvider<TomeProvider>.value(value: FakeTomeProvider()),
           ChangeNotifierProvider<SettingsProvider>.value(
             value: FakeSettingsProvider(),
           ),

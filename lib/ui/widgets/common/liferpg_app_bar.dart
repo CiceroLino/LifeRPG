@@ -591,6 +591,8 @@ class _LifeRPGAppBarState extends State<LifeRPGAppBar> {
         return l10n.translate('missions');
       case 'notebooks':
         return l10n.translate('notebooks');
+      case 'tomes':
+        return l10n.translate('tomes');
       case 'map':
         return l10n.translate('map');
       case 'rewards':
@@ -622,16 +624,17 @@ class _LifeRPGAppBarState extends State<LifeRPGAppBar> {
     const screens = {
       'missions': 0,
       'notebooks': 1,
-      'map': 2,
-      'rewards': 3,
-      'inventory': 4,
-      'skills': 5,
-      'statistics': 6,
-      'profile': 7,
-      'shop': 8,
-      'pomodoro': 9,
-      'settings': 10,
-      'help': 11,
+      'tomes': 2,
+      'map': 3,
+      'rewards': 4,
+      'inventory': 5,
+      'skills': 6,
+      'statistics': 7,
+      'profile': 8,
+      'shop': 9,
+      'pomodoro': 10,
+      'settings': 11,
+      'help': 12,
     };
     return screens[screen] ?? 0;
   }
@@ -649,51 +652,56 @@ class _LifeRPGAppBarState extends State<LifeRPGAppBar> {
     ),
     _AppBarDestination(
       index: 2,
+      label: l10n.translate('tomes'),
+      icon: Icons.auto_stories_outlined,
+    ),
+    _AppBarDestination(
+      index: 3,
       label: l10n.translate('map'),
       icon: Icons.map_outlined,
     ),
     _AppBarDestination(
-      index: 3,
+      index: 4,
       label: l10n.translate('rewards'),
       icon: Icons.card_giftcard_outlined,
     ),
     _AppBarDestination(
-      index: 4,
+      index: 5,
       label: l10n.translate('inventory'),
       icon: Icons.inventory_2_outlined,
     ),
     _AppBarDestination(
-      index: 5,
+      index: 6,
       label: l10n.translate('skills'),
       icon: Icons.auto_graph,
     ),
     _AppBarDestination(
-      index: 6,
+      index: 7,
       label: l10n.translate('statistics'),
       icon: Icons.query_stats,
     ),
     _AppBarDestination(
-      index: 7,
+      index: 8,
       label: l10n.translate('profile'),
       icon: Icons.person_outline,
     ),
     _AppBarDestination(
-      index: 8,
+      index: 9,
       label: l10n.translate('shop'),
       icon: Icons.storefront_outlined,
     ),
     _AppBarDestination(
-      index: 9,
+      index: 10,
       label: l10n.translate('pomodoro'),
       icon: Icons.hourglass_bottom_outlined,
     ),
     _AppBarDestination(
-      index: 10,
+      index: 11,
       label: l10n.translate('settings'),
       icon: Icons.settings_outlined,
     ),
     _AppBarDestination(
-      index: 11,
+      index: 12,
       label: l10n.translate('help'),
       icon: Icons.help_outline,
     ),
