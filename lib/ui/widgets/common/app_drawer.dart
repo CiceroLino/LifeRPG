@@ -142,7 +142,9 @@ class AppDrawer extends StatelessWidget {
                     selected: selected,
                     selectedColor: AppTheme.primary,
                     selectedTileColor: AppTheme.surface.withValues(alpha: 0.3),
-                    iconColor: AppTheme.textSecondary,
+                    iconColor: selected
+                        ? AppTheme.primary
+                        : AppTheme.textSecondary,
                     dense: true,
                     onTap: () {
                       Navigator.pop(context);

@@ -127,14 +127,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       );
     } finally {
-      if (!mounted) return;
-      setState(() => _isSaving = false);
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
     }
-  }
-
-  Future<bool> _onWillPopProfile() async {
-    if (!_hasUnsavedChanges) return true;
-    return await _confirmDiscardChanges() == true;
   }
 
   Future<bool?> _confirmDiscardChanges() {
@@ -227,8 +223,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
         final avatarPath = _avatarPath;
 
-        return WillPopScope(
-          onWillPop: _onWillPopProfile,
+        return PopScope(
+          canPop: !_hasUnsavedChanges,
+          onPopInvokedWithResult: (didPop, result) async {
+            if (didPop) return;
+            final shouldDiscard = await _confirmDiscardChanges() == true;
+            if (!context.mounted || !mounted || !shouldDiscard) return;
+            setState(() => _hasUnsavedChanges = false);
+            Navigator.of(context).pop();
+          },
           child: Container(
             color: AppTheme.background,
             child: SingleChildScrollView(
@@ -256,7 +259,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     width: 1,
                                   ),
                                 ),
-                                child: _showAvatar &&
+                                child:
+                                    _showAvatar &&
                                         avatarPath != null &&
                                         avatarPath.isNotEmpty
                                     ? ClipRRect(
@@ -370,9 +374,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       decoration: _inputDecoration('Descrição do perfil')
                           .copyWith(
-                        contentPadding: const EdgeInsets.only(top: 8),
-                        helperText: 'Máximo de 250 caracteres.',
-                      ),
+                            contentPadding: const EdgeInsets.only(top: 8),
+                            helperText: 'Máximo de 250 caracteres.',
+                          ),
                     ),
                     const SizedBox(height: 16),
                     SizedBox(

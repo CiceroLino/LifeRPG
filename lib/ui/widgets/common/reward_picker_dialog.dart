@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../l10n/app_localizations.dart';
 
 class RewardPickerDialog extends StatefulWidget {
   final int initialValue;
@@ -53,6 +54,7 @@ class _RewardPickerDialogState extends State<RewardPickerDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Dialog(
       backgroundColor: AppTheme.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -61,9 +63,9 @@ class _RewardPickerDialogState extends State<RewardPickerDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-              'Set Reward Points',
-              style: TextStyle(
+            Text(
+              l10n.translate('set_reward_points'),
+              style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w600,
                 color: AppTheme.textPrimary,
@@ -109,9 +111,9 @@ class _RewardPickerDialogState extends State<RewardPickerDialog> {
               children: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text(
-                    'CANCEL',
-                    style: TextStyle(
+                  child: Text(
+                    l10n.translate('cancel').toUpperCase(),
+                    style: const TextStyle(
                       color: AppTheme.textSecondary,
                       fontWeight: FontWeight.w600,
                     ),
@@ -120,9 +122,9 @@ class _RewardPickerDialogState extends State<RewardPickerDialog> {
                 const SizedBox(width: 16),
                 TextButton(
                   onPressed: () => Navigator.pop(context, _currentValue),
-                  child: const Text(
-                    'OK',
-                    style: TextStyle(
+                  child: Text(
+                    l10n.translate('ok').toUpperCase(),
+                    style: const TextStyle(
                       color: AppTheme.primary,
                       fontWeight: FontWeight.w600,
                     ),

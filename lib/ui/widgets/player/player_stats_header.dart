@@ -7,6 +7,7 @@ import '../../../data/models/player.dart';
 import '../../../core/utils/energy_schedule_calculator.dart';
 import '../../../core/utils/xp_calculator.dart';
 import '../common/avatar_image.dart';
+import '../../../l10n/app_localizations.dart';
 
 class PlayerStatsHeader extends StatelessWidget {
   final Player player;
@@ -45,12 +46,12 @@ class PlayerStatsHeader extends StatelessWidget {
   }
 
   /// Formata o timer restante (placeholder - pode ser implementado com lógica real)
-  String _formatTimeLeft() {
+  String _formatTimeLeft(AppLocalizations l10n) {
     if (player.energyMode != 'auto') {
-      return 'manual';
+      return l10n.translate('manual');
     }
     if (player.wakeUpTime == null || player.sleepTime == null) {
-      return 'set schedule';
+      return l10n.translate('set_schedule');
     }
 
     final wake = _parseTodayTime(player.wakeUpTime!);
@@ -72,7 +73,7 @@ class PlayerStatsHeader extends StatelessWidget {
         : wake.add(const Duration(days: 1));
     final remaining = target.difference(nowAdjusted);
     if (remaining.isNegative) {
-      return '00:00 left';
+      return l10n.translate('zero_energy_time_left');
     }
     final h = remaining.inHours.toString().padLeft(2, '0');
     final m = (remaining.inMinutes % 60).toString().padLeft(2, '0');
@@ -91,6 +92,7 @@ class PlayerStatsHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final autoEnergy = EnergyScheduleCalculator.compute(
       now: DateTime.now(),
       wakeUpTime: player.wakeUpTime,
@@ -228,7 +230,7 @@ class PlayerStatsHeader extends StatelessWidget {
                   label: '$energyValue/$maxHp',
                   labelAlignment: Alignment.centerLeft,
                   labelPadding: const EdgeInsets.only(left: 8),
-                  rightLabel: _formatTimeLeft(),
+                  rightLabel: _formatTimeLeft(l10n),
                   rightLabelPadding: const EdgeInsets.only(right: 8),
                   onTapDown: player.energyMode == 'manual'
                       ? (localX, width) {
@@ -266,13 +268,13 @@ class PlayerStatsHeader extends StatelessWidget {
                   fontWeight: FontWeight.w500,
                   letterSpacing: 0.5,
                 ),
-                tabs: const [
-                  Tab(text: 'PLAN'),
-                  Tab(text: 'ALL'),
-                  Tab(text: 'NEXT'),
-                  Tab(text: 'OVERDUE'),
-                  Tab(text: 'TODAY'),
-                  Tab(text: 'TOMORROW'),
+                tabs: [
+                  Tab(text: l10n.translate('plan')),
+                  Tab(text: l10n.translate('all')),
+                  Tab(text: l10n.translate('next')),
+                  Tab(text: l10n.translate('overdue')),
+                  Tab(text: l10n.translate('today')),
+                  Tab(text: l10n.translate('tomorrow')),
                 ],
               ),
             ),

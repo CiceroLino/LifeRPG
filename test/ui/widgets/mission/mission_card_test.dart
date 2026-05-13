@@ -22,8 +22,8 @@ void main() {
       ),
     );
 
-    expect(find.byKey(const Key('mission-status-dropdown')), findsOneWidget);
-    expect(find.widgetWithText(OutlinedButton, 'Editar'), findsOneWidget);
+    expect(find.byKey(const Key('mission-status-select')), findsOneWidget);
+    expect(find.byKey(const Key('mission-edit-button')), findsOneWidget);
   });
 
   testWidgets('calls status callback when status changes', (tester) async {
@@ -43,9 +43,9 @@ void main() {
       ),
     );
 
-    await tester.tap(find.byKey(const Key('mission-status-dropdown')));
+    await tester.tap(find.byKey(const Key('mission-status-select')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Concluída').last);
+    await tester.tap(find.text('Completed').last);
     await tester.pumpAndSettle();
 
     expect(changedTo, 'completed');

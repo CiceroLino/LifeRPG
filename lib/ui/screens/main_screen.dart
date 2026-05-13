@@ -41,6 +41,7 @@ class _MainScreenState extends State<MainScreen> {
   bool _isStatsExpanded = true;
   bool _showCompleted = false;
   Timer? _energyAutoRefreshTimer;
+  bool _isExporting = false;
 
   @override
   void initState() {
@@ -127,9 +128,23 @@ class _MainScreenState extends State<MainScreen> {
                   playerProvider.player != null;
               return Column(
                 children: [
-                  AnimatedCrossFade(
-                    firstChild: shouldShowHeader
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 260),
+                    switchInCurve: Curves.easeOutCubic,
+                    switchOutCurve: Curves.easeInCubic,
+                    transitionBuilder: (child, animation) {
+                      return FadeTransition(
+                        opacity: animation,
+                        child: SizeTransition(
+                          sizeFactor: animation,
+                          axisAlignment: -1,
+                          child: child,
+                        ),
+                      );
+                    },
+                    child: shouldShowHeader
                         ? PlayerStatsHeader(
+                            key: const ValueKey('player-stats-header'),
                             player: playerProvider.player!,
                             onManualEnergyChanged: (value) =>
                                 _setManualEnergy(value),
@@ -138,11 +153,6 @@ class _MainScreenState extends State<MainScreen> {
                             onTabChanged: _setMissionTabFilter,
                           )
                         : const SizedBox.shrink(),
-                    secondChild: const SizedBox.shrink(),
-                    crossFadeState: shouldShowHeader
-                        ? CrossFadeState.showFirst
-                        : CrossFadeState.showSecond,
-                    duration: const Duration(milliseconds: 250),
                   ),
                   Expanded(
                     child: IndexedStack(index: _currentIndex, children: _pages),
@@ -263,16 +273,38 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Future<void> _exportData() async {
-    final l10n = AppLocalizations.of(context);
-    final settings = context.read<SettingsProvider>();
-    await settings.exportData();
+    if (_isExporting) return;
     if (!mounted) return;
-    GameSnackBar.show(
-      context,
-      title: l10n.translate('export_backup'),
-      message: l10n.translate('backup_created'),
-      type: GameSnackBarType.success,
-    );
+    setState(() {
+      _isExporting = true;
+    });
+    final settings = context.read<SettingsProvider>();
+    try {
+      final l10n = AppLocalizations.of(context);
+      final success = await settings.exportData();
+      if (!mounted) return;
+      if (!success) {
+        GameSnackBar.show(
+          context,
+          title: l10n.translate('export_backup'),
+          message: l10n.translate('backup_export_cancelled'),
+          type: GameSnackBarType.info,
+        );
+        return;
+      }
+      GameSnackBar.show(
+        context,
+        title: l10n.translate('export_backup'),
+        message: l10n.translate('backup_created'),
+        type: GameSnackBarType.success,
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isExporting = false;
+        });
+      }
+    }
   }
 
   Future<void> _clearHistory() async {
@@ -331,7 +363,6 @@ class _MainScreenState extends State<MainScreen> {
         return 'reward';
       case MissionSortMode.recent:
       case MissionSortMode.oldest:
-      default:
         return 'date';
     }
   }

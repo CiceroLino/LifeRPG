@@ -458,17 +458,12 @@ Padrões:
 Comportamento de reset:
 
 - `resetCharacter()` reseta XP, nível, RP, energia, modo de energia e horários de acordar/dormir do player.
-- `factoryReset()` deleta dados de recompensas, inventário, histórico de conclusão, missões, skills e player; reinsere o player padrão e as skills padrão; limpa preferências e recarrega padrões.
+- `factoryReset()` deleta dados de recompensas, inventário, histórico de conclusão, missões, skills e player; reinsere apenas o player padrão; limpa preferências e recarrega padrões.
 
-Skills padrão:
+Estado inicial de skills:
 
-- Inteligência, azul `#2196F3`
-- Força, vermelho `#F44336`
-- Saúde, verde `#4CAF50`
-- Social, laranja `#FF9800`
-- Criatividade, roxo `#9C27B0`
-
-O banco atualmente armazena os nomes em português com acentos. Mantenha defaults visíveis ao usuário localizados intencionalmente se alterá-los.
+- Novos bancos e factory reset começam sem skills.
+- O gráfico spider só é exibido quando existem pelo menos 3 skills.
 
 ## Navegação e Telas
 

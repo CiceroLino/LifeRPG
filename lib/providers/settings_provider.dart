@@ -120,15 +120,17 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> exportData() async {
+  Future<bool> exportData() async {
     try {
       final success = await _backupService.createBackupFile();
       if (!success) {
         debugPrint('Falha ao criar arquivo de backup');
+        return false;
       }
+      return true;
     } catch (e) {
       debugPrint('Erro ao exportar dados: $e');
-      rethrow;
+      return false;
     }
   }
 

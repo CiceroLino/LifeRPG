@@ -5,6 +5,7 @@ import 'package:liferpg/data/database/database_helper.dart';
 import 'package:liferpg/data/models/mission.dart';
 import 'package:liferpg/data/models/mission_reward_drop.dart';
 import 'package:liferpg/data/models/reward.dart';
+import 'package:liferpg/data/models/skill.dart';
 import 'package:liferpg/data/repositories/inventory_repository.dart';
 import 'package:liferpg/data/repositories/mission_completion_history_repository.dart';
 import 'package:liferpg/data/repositories/mission_repository.dart';
@@ -51,15 +52,25 @@ void main() {
     return id;
   }
 
+  Future<List<int>> seedDefaultSkills(int count) async {
+    final ids = <int>[];
+    for (var i = 0; i < count; i++) {
+      final id = await skills.insert(Skill(name: 'Focus ${i + 1}'));
+      ids.add(id);
+    }
+    return ids;
+  }
+
   test(
     'normal mission grants rewards once, rewards skills, and completes',
     () async {
+      final skillIds = await seedDefaultSkills(2);
       final missionId = await insertMission(
         Mission(
           title: 'Study',
           xpReward: 45,
           rewardPoints: 12,
-          skillIds: const [1, 2],
+          skillIds: skillIds,
         ),
       );
 
@@ -78,8 +89,8 @@ void main() {
       expect(player.totalXP, 45);
       expect(player.rewardPoints, 12);
 
-      expect((await skills.getById(1))!.currentXP, 23);
-      expect((await skills.getById(2))!.currentXP, 23);
+      expect((await skills.getById(skillIds[0]))!.currentXP, 23);
+      expect((await skills.getById(skillIds[1]))!.currentXP, 23);
 
       final events = await history.getAll();
       expect(events, hasLength(1));
@@ -233,8 +244,9 @@ void main() {
   });
 
   test('backup and restore preserve mission completion history', () async {
+    final skillIds = await seedDefaultSkills(1);
     final missionId = await insertMission(
-      Mission(title: 'Backup me', xpReward: 10, skillIds: const [1]),
+      Mission(title: 'Backup me', xpReward: 10, skillIds: skillIds),
     );
 
     await service.completeMission(missionId);
@@ -248,6 +260,6 @@ void main() {
     final events = await history.getAll();
     expect(events, hasLength(1));
     expect(events.single.missionTitleSnapshot, 'Backup me');
-    expect(events.single.skillRewards.single.skillId, 1);
+    expect(events.single.skillRewards.single.skillId, skillIds[0]);
   });
 }

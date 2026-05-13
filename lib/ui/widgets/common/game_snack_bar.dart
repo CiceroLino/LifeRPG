@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../l10n/app_localizations.dart';
 
 enum GameSnackBarType { success, error, reward, info }
 
@@ -11,23 +12,28 @@ class GameSnackBar {
     String? title,
     GameSnackBarType type = GameSnackBarType.info,
   }) {
+    final l10n = AppLocalizations.of(context);
     final (icon, color, defaultTitle) = switch (type) {
       GameSnackBarType.success => (
         Icons.check_circle_outline,
         AppTheme.successGreen,
-        'Success',
+        l10n.translate('success'),
       ),
       GameSnackBarType.error => (
         Icons.warning_amber_rounded,
         AppTheme.accentRed,
-        'Error',
+        l10n.translate('error'),
       ),
       GameSnackBarType.reward => (
         Icons.auto_awesome,
         AppTheme.accentAmber,
-        'Reward',
+        l10n.translate('reward'),
       ),
-      GameSnackBarType.info => (Icons.info_outline, AppTheme.primary, 'Info'),
+      GameSnackBarType.info => (
+        Icons.info_outline,
+        AppTheme.primary,
+        l10n.translate('info'),
+      ),
     };
 
     ScaffoldMessenger.of(context).showSnackBar(

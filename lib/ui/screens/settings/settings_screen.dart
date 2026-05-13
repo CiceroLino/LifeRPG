@@ -262,27 +262,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
     BuildContext context,
     SettingsProvider settings,
   ) async {
+    if (_isExporting) return;
     setState(() => _isExporting = true);
+    final l10n = AppLocalizations.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final cancelledMessage = l10n.translate('backup_export_cancelled');
+    final successMessage = l10n.translate('backup_created');
+    final errorMessage = l10n.translate('error_creating_backup');
 
     try {
-      await settings.exportData();
-      if (mounted) {
-        ScaffoldMessenger.of(this.context).showSnackBar(
+      final success = await settings.exportData();
+      if (!mounted) {
+        return;
+      }
+      if (!success) {
+        messenger.showSnackBar(
           SnackBar(
-            content: Text(
-              AppLocalizations.of(this.context).translate('backup_created'),
-            ),
-            backgroundColor: AppTheme.successGreen,
+            content: Text(cancelledMessage),
+            backgroundColor: AppTheme.textSecondary,
           ),
         );
+        return;
       }
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(successMessage),
+          backgroundColor: AppTheme.successGreen,
+        ),
+      );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(this.context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(
-            content: Text(
-              '${AppLocalizations.of(this.context).translate('error_creating_backup')}: ${e.toString()}',
-            ),
+            content: Text('$errorMessage: ${e.toString()}'),
             backgroundColor: AppTheme.accentRed,
           ),
         );

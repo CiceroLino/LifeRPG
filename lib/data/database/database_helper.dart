@@ -123,7 +123,6 @@ class DatabaseHelper {
     await _createFocusSessionTables(db);
 
     await _insertDefaultPlayer(db);
-    await _insertDefaultSkills(db);
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -589,7 +588,6 @@ class DatabaseHelper {
       await txn.delete('skills');
       await txn.delete('player');
       await _insertDefaultPlayer(txn);
-      await _insertDefaultSkills(txn);
     });
   }
 
@@ -745,25 +743,5 @@ class DatabaseHelper {
       'created_at': now,
       'updated_at': now,
     });
-  }
-
-  Future<void> _insertDefaultSkills(DatabaseExecutor db) async {
-    final now = DateTime.now().toIso8601String();
-    final skills = [
-      ('Inteligência', '#2196F3'),
-      ('Força', '#F44336'),
-      ('Saúde', '#4CAF50'),
-      ('Social', '#FF9800'),
-      ('Criatividade', '#9C27B0'),
-    ];
-
-    for (final (name, color) in skills) {
-      await db.insert('skills', {
-        'name': name,
-        'color': color,
-        'created_at': now,
-        'updated_at': now,
-      });
-    }
   }
 }

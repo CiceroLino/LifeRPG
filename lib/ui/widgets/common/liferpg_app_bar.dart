@@ -61,53 +61,95 @@ class _LifeRPGAppBarState extends State<LifeRPGAppBar> {
   final FocusNode _searchFocusNode = FocusNode();
   bool _isMissionSearchExpanded = false;
   bool _hasSearchText = false;
+  bool _isSyncingSearchText = false;
 
   @override
   void initState() {
     super.initState();
     _searchController.text = widget.missionSearchQuery;
-    _hasSearchText = _searchController.text.trim().isNotEmpty;
+    _hasSearchText = widget.missionSearchQuery.trim().isNotEmpty;
+    _searchController.addListener(_handleSearchTextChanged);
+  }
+
+  @override
+  void dispose() {
+    _searchController
+      ..removeListener(_handleSearchTextChanged)
+      ..dispose();
+    _searchFocusNode.dispose();
+    super.dispose();
   }
 
   @override
   void didUpdateWidget(covariant LifeRPGAppBar oldWidget) {
     super.didUpdateWidget(oldWidget);
 
+    if (!mounted) {
+      return;
+    }
+
     if (widget.currentScreen != 'missions' && _isMissionSearchExpanded) {
-      setState(() => _isMissionSearchExpanded = false);
-      _searchFocusNode.unfocus();
-    }
-
-    if (widget.missionSearchQuery != _searchController.text) {
-      _searchController.text = widget.missionSearchQuery;
-      _hasSearchText = _searchController.text.trim().isNotEmpty;
-    }
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    _searchFocusNode.dispose();
-    super.dispose();
-  }
-
-  void _onSearchTextChanged(String value) {
-    if (!mounted) return;
-    if (!_hasSearchText && _searchController.text.isNotEmpty ||
-        _hasSearchText && value.isEmpty) {
       setState(() {
-        _hasSearchText = value.isNotEmpty;
+        _isMissionSearchExpanded = false;
+      });
+      _searchFocusNode.unfocus();
+      _setSearchText('');
+      widget.onSearch?.call('');
+      return;
+    }
+
+    if (widget.currentScreen == 'missions' &&
+        widget.missionSearchQuery != _searchController.text) {
+      _setSearchText(widget.missionSearchQuery);
+    }
+  }
+
+  void _handleSearchTextChanged() {
+    if (!mounted || _isSyncingSearchText) {
+      return;
+    }
+
+    final nextHasText = _searchController.text.trim().isNotEmpty;
+    if (_hasSearchText != nextHasText) {
+      setState(() {
+        _hasSearchText = nextHasText;
       });
     }
-    widget.onSearch?.call(value);
+    widget.onSearch?.call(_searchController.text);
+  }
+
+  void _setSearchText(String value) {
+    if (!mounted) {
+      return;
+    }
+
+    if (_searchController.text == value) {
+      _hasSearchText = value.trim().isNotEmpty;
+      return;
+    }
+
+    _isSyncingSearchText = true;
+    _searchController.value = TextEditingValue(
+      text: value,
+      selection: TextSelection.collapsed(offset: value.length),
+    );
+    _isSyncingSearchText = false;
+    _hasSearchText = value.trim().isNotEmpty;
   }
 
   void _toggleMissionSearch() {
+    if (!mounted) {
+      return;
+    }
+
     setState(() {
       _isMissionSearchExpanded = !_isMissionSearchExpanded;
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
+
       if (_isMissionSearchExpanded) {
         _searchFocusNode.requestFocus();
       } else {
@@ -117,8 +159,14 @@ class _LifeRPGAppBarState extends State<LifeRPGAppBar> {
   }
 
   void _clearMissionSearch() {
-    _searchController.clear();
-    _onSearchTextChanged('');
+    if (!_hasSearchText || !mounted) {
+      return;
+    }
+    _setSearchText('');
+    widget.onSearch?.call('');
+    setState(() {
+      _hasSearchText = false;
+    });
   }
 
   @override
@@ -156,10 +204,7 @@ class _LifeRPGAppBarState extends State<LifeRPGAppBar> {
       key: const Key('mission-search-field'),
       controller: _searchController,
       focusNode: _searchFocusNode,
-      autofocus: true,
-      onChanged: _onSearchTextChanged,
-      onSubmitted: (value) {
-        widget.onSearch?.call(value);
+      onSubmitted: (_) {
         _searchFocusNode.unfocus();
       },
       decoration: InputDecoration(
@@ -431,9 +476,7 @@ class _LifeRPGAppBarState extends State<LifeRPGAppBar> {
   void _handleMissionsMenuAction(BuildContext context, String value) {
     switch (value) {
       case 'add':
-        if (widget.onAddMission != null) {
-          widget.onAddMission!();
-        }
+        widget.onAddMission?.call();
         return;
       case 'show_completed':
         widget.onToggleShowCompleted?.call(!widget.showCompleted);
@@ -499,19 +542,21 @@ class _LifeRPGAppBarState extends State<LifeRPGAppBar> {
               mainAxisSize: MainAxisSize.min,
               children: sortOptions.map((option) {
                 final isSelected = selectedSort == option.$1;
-                return RadioListTile<String>(
-                  value: option.$1,
-                  groupValue: selectedSort,
-                  activeColor: AppTheme.primary,
+                return ListTile(
+                  selected: isSelected,
+                  leading: Icon(
+                    isSelected
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_unchecked,
+                    color: isSelected
+                        ? AppTheme.primary
+                        : AppTheme.textSecondary,
+                  ),
                   title: Text(
                     l10n.translate(option.$2),
                     style: const TextStyle(color: AppTheme.textPrimary),
                   ),
-                  onChanged: (value) {
-                    if (value == null) return;
-                    setState(() => selectedSort = value);
-                  },
-                  selected: isSelected,
+                  onTap: () => setState(() => selectedSort = option.$1),
                 );
               }).toList(),
             );
