@@ -32,6 +32,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
   final _mapController = MapController();
   final _nameController = TextEditingController();
   LatLng? _selected;
+  bool _isLocating = false;
 
   @override
   void initState() {
@@ -54,7 +55,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
     final selected = _selected;
     final center = selected ?? _fallbackCenter;
     return Scaffold(
-      appBar: AppBar(title: const Text('Mission Location')),
+      appBar: AppBar(title: const Text('Selecionar localização')),
       body: Column(
         children: [
           Expanded(
@@ -99,18 +100,26 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                   TextField(
                     controller: _nameController,
                     decoration: const InputDecoration(
-                      labelText: 'Nome do local',
+                      labelText: 'Nome do local (opcional)',
                       hintText: 'Casa, academia, biblioteca...',
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   Row(
                     children: [
                       Expanded(
                         child: OutlinedButton.icon(
-                          onPressed: _useCurrentLocation,
+                          onPressed: _isLocating ? null : _useCurrentLocation,
                           icon: const Icon(Icons.my_location),
-                          label: const Text('GPS atual'),
+                          label: _isLocating
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Text('GPS atual'),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -132,6 +141,13 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                         fontSize: 12,
                       ),
                     ),
+                    const SizedBox(height: 4),
+                    TextButton(
+                      onPressed: () {
+                        setState(() => _selected = null);
+                      },
+                      child: const Text('Limpar seleção'),
+                    ),
                   ],
                 ],
               ),
@@ -143,38 +159,54 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
   }
 
   Future<void> _useCurrentLocation() async {
-    final enabled = await Geolocator.isLocationServiceEnabled();
-    if (!enabled) {
+    setState(() => _isLocating = true);
+    try {
+      final enabled = await Geolocator.isLocationServiceEnabled();
+      if (!enabled) {
+        if (!mounted) return;
+        GameSnackBar.show(
+          context,
+          title: 'Localização',
+          message: 'Serviço de localização desativado.',
+          type: GameSnackBarType.error,
+        );
+        return;
+      }
+
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        if (!mounted) return;
+        GameSnackBar.show(
+          context,
+          title: 'Localização',
+          message:
+              'Permissão negada. Toque no mapa para escolher manualmente.',
+          type: GameSnackBarType.error,
+        );
+        return;
+      }
+
+      final position = await Geolocator.getCurrentPosition();
+      final point = LatLng(position.latitude, position.longitude);
+      setState(() => _selected = point);
+      _mapController.move(point, 16);
+    } catch (error) {
       if (!mounted) return;
       GameSnackBar.show(
         context,
-        title: 'Location',
-        message: 'Serviço de localização desativado.',
+        title: 'Localização',
+        message: 'Erro ao obter posição: $error',
         type: GameSnackBarType.error,
       );
-      return;
+    } finally {
+      if (mounted) {
+        setState(() => _isLocating = false);
+      }
     }
-
-    var permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-    }
-    if (permission == LocationPermission.denied ||
-        permission == LocationPermission.deniedForever) {
-      if (!mounted) return;
-      GameSnackBar.show(
-        context,
-        title: 'Location',
-        message: 'Permissão negada. Toque no mapa para escolher manualmente.',
-        type: GameSnackBarType.error,
-      );
-      return;
-    }
-
-    final position = await Geolocator.getCurrentPosition();
-    final point = LatLng(position.latitude, position.longitude);
-    setState(() => _selected = point);
-    _mapController.move(point, 16);
   }
 
   void _confirm() {

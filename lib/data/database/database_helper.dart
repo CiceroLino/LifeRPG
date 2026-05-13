@@ -20,7 +20,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 9,
+      version: 10,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
       },
@@ -35,6 +35,7 @@ class DatabaseHelper {
         id INTEGER PRIMARY KEY CHECK (id = 1),
         name TEXT NOT NULL DEFAULT 'Player',
         title TEXT NOT NULL DEFAULT 'Adventurer',
+        description TEXT DEFAULT '',
         total_xp INTEGER DEFAULT 0,
         level INTEGER DEFAULT 1,
         reward_points INTEGER DEFAULT 0,
@@ -158,6 +159,9 @@ class DatabaseHelper {
     }
     if (oldVersion < 9) {
       await _createFocusSessionTables(db);
+    }
+    if (oldVersion < 10) {
+      await _addColumnIfMissing(db, 'player', 'description', "TEXT DEFAULT ''");
     }
   }
 
@@ -731,6 +735,7 @@ class DatabaseHelper {
       'id': 1,
       'name': 'Player',
       'title': 'Adventurer',
+      'description': '',
       'total_xp': 0,
       'level': 1,
       'reward_points': 0,

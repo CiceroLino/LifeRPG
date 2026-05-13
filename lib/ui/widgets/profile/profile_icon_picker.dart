@@ -5,7 +5,6 @@ import '../../../core/theme/app_theme.dart';
 
 /// Lista de ícones SVG específicos para perfil (apenas ícones que existem no projeto)
 const List<String> _profileSvgIcons = [
-  // Perfil / Personagem
   'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/darkzaitzev/hooded-figure.svg',
   'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/darkzaitzev/hooded-assassin.svg',
   'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/darkzaitzev/ninja-head.svg',
@@ -13,15 +12,12 @@ const List<String> _profileSvgIcons = [
   'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/delapouite/character.svg',
   'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/delapouite/black-knight-helm.svg',
   'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/delapouite/knight-banner.svg',
-  // Asas / Aura
   'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/angel-wings.svg',
   'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/aura.svg',
   'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/feathered-wing.svg',
   'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/angel-outfit.svg',
-  // Classes / Profissões
   'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/delapouite/skills.svg',
   'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/darkzaitzev/apothecary.svg',
-  // Elementos / Objetos
   'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/brain.svg',
   'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/edged-shield.svg',
   'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/fireball.svg',
@@ -30,8 +26,7 @@ const List<String> _profileSvgIcons = [
   'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/bookmark.svg',
 ];
 
-/// Mostra um dialog/bottom sheet para selecionar um ícone de perfil
-/// Retorna o caminho do SVG selecionado ou null se cancelado
+/// Abre uma modal para selecionar um ícone de perfil.
 Future<String?> showProfileIconPicker(
   BuildContext context, {
   String? currentIconPath,
@@ -41,12 +36,10 @@ Future<String?> showProfileIconPicker(
     showDragHandle: true,
     backgroundColor: AppTheme.surface,
     isScrollControlled: true,
-    builder: (context) {
-      return SizedBox(
-        height: MediaQuery.of(context).size.height * 0.7,
-        child: _ProfileIconPickerContent(currentIconPath: currentIconPath),
-      );
-    },
+    builder: (context) => SizedBox(
+      height: MediaQuery.of(context).size.height * 0.72,
+      child: _ProfileIconPickerContent(currentIconPath: currentIconPath),
+    ),
   );
 }
 
@@ -96,13 +89,12 @@ class _ProfileIconPickerContentState extends State<_ProfileIconPickerContent> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Header com busca
         Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
               const Text(
-                'Select Profile Icon',
+                'Selecionar avatar',
                 style: TextStyle(
                   color: AppTheme.textPrimary,
                   fontSize: 18,
@@ -119,7 +111,7 @@ class _ProfileIconPickerContentState extends State<_ProfileIconPickerContent> {
                     size: 20,
                     color: AppTheme.textSecondary,
                   ),
-                  hintText: 'Search icons...',
+                  hintText: 'Buscar',
                   hintStyle: const TextStyle(color: AppTheme.textSecondary),
                   filled: true,
                   fillColor: AppTheme.background,
@@ -144,15 +136,25 @@ class _ProfileIconPickerContentState extends State<_ProfileIconPickerContent> {
                   ),
                 ),
               ),
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  '${_filteredSvgIcons.length} ícones encontrados',
+                  style: const TextStyle(
+                    color: AppTheme.textSecondary,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
             ],
           ),
         ),
-        // Grid de ícones SVG
         Expanded(
           child: _filteredSvgIcons.isEmpty
               ? const Center(
                   child: Text(
-                    'No icons found',
+                    'Nenhum ícone encontrado',
                     style: TextStyle(color: AppTheme.textSecondary),
                   ),
                 )
@@ -186,6 +188,7 @@ class _ProfileIconPickerContentState extends State<_ProfileIconPickerContent> {
                         padding: const EdgeInsets.all(12),
                         child: SvgPicture.asset(
                           iconPath,
+                          semanticsLabel: 'Ícone de avatar',
                           placeholderBuilder: (_) => const SizedBox(
                             child: Center(
                               child: CircularProgressIndicator(

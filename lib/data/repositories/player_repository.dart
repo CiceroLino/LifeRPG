@@ -13,6 +13,8 @@ class PlayerRepository {
       await db.insert('player', {
         'id': 1,
         'name': 'Player',
+        'title': 'Adventurer',
+        'description': '',
         'total_xp': 0,
         'level': 1,
         'reward_points': 0,

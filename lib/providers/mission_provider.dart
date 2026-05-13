@@ -299,9 +299,7 @@ class MissionProvider extends ChangeNotifier {
     try {
       await _missionRepo.update(mission);
 
-      if (mission.skillIds.isNotEmpty) {
-        await _missionRepo.linkSkills(mission.id!, mission.skillIds);
-      }
+      await _missionRepo.linkSkills(mission.id!, mission.skillIds);
 
       if (rewardDrops != null) {
         await _dropRepo.replaceForMission(

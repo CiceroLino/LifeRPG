@@ -6,6 +6,17 @@ import 'strategy_guide_screen.dart';
 class HelpScreen extends StatelessWidget {
   const HelpScreen({super.key});
 
+  static const String _appVersion = '2.3.5';
+
+  void _showComingSoon(BuildContext context, {required String feature}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$feature em breve.'),
+        backgroundColor: AppTheme.primary,
+      ),
+    );
+  }
+
   void _showVersionDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -14,8 +25,8 @@ class HelpScreen extends StatelessWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         title: Column(
           children: [
-            Icon(Icons.games, size: 64, color: AppTheme.primary),
-            const SizedBox(height: 16),
+            const Icon(Icons.games, size: 64, color: AppTheme.primary),
+            const SizedBox(height: 12),
             const Text(
               'LifeRPG',
               style: TextStyle(
@@ -26,18 +37,20 @@ class HelpScreen extends StatelessWidget {
             ),
           ],
         ),
-        content: const Column(
+        content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'Version 2.3.5',
+              'Version $_appVersion',
               style: TextStyle(fontSize: 16, color: AppTheme.textSecondary),
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             Text(
-              '© 2025 LifeRPG Team\nAll rights reserved.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+              '© 2025 LifeRPG Team',
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppTheme.textSecondary,
+              ),
             ),
           ],
         ),
@@ -68,7 +81,7 @@ class HelpScreen extends StatelessWidget {
           ),
           child: const LicensePage(
             applicationName: 'LifeRPG',
-            applicationVersion: '2.3.5',
+            applicationVersion: _appVersion,
             applicationIcon: Icon(
               Icons.games,
               size: 48,
@@ -83,42 +96,46 @@ class HelpScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Help')),
+      appBar: AppBar(title: const Text('Ajuda')),
       body: ListView(
+        padding: const EdgeInsets.only(bottom: 12),
         children: [
-          _HelpListTile(
+          _HelpSection(
             icon: Icons.book,
-            title: 'Manual',
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => const StrategyGuideScreen(),
-              ),
-            ),
+            title: 'Guia de Estratégia',
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const StrategyGuideScreen(),
+                ),
+              );
+            },
           ),
-          _HelpListTile(
+          _HelpSection(
             icon: Icons.bug_report,
-            title: 'Report Bugs',
-            onTap: () {},
+            title: 'Reportar bug',
+            onTap: () => _showComingSoon(context, feature: 'Reporte de bugs'),
           ),
-          _HelpListTile(
+          _HelpSection(
             icon: Icons.feedback,
-            title: 'Send Feedback',
-            onTap: () {},
+            title: 'Enviar feedback',
+            onTap: () =>
+                _showComingSoon(context, feature: 'Envio de feedback'),
           ),
-          _HelpListTile(
+          _HelpSection(
             icon: Icons.translate,
-            title: 'Translate',
-            onTap: () {},
+            title: 'Idioma e localização',
+            onTap: () => _showComingSoon(context, feature: 'Configuração de idioma'),
           ),
           const Divider(height: 1),
-          _HelpListTile(
+          _HelpSection(
             icon: Icons.description,
-            title: 'Credits/Licenses',
+            title: 'Licenças',
             onTap: () => _showLicensesScreen(context),
           ),
-          _HelpListTile(
-            icon: Icons.info,
-            title: 'Version Info',
+          _HelpSection(
+            icon: Icons.info_outline,
+            title: 'Informações do app',
             onTap: () => _showVersionDialog(context),
           ),
         ],
@@ -127,12 +144,12 @@ class HelpScreen extends StatelessWidget {
   }
 }
 
-class _HelpListTile extends StatelessWidget {
+class _HelpSection extends StatelessWidget {
   final IconData icon;
   final String title;
   final VoidCallback onTap;
 
-  const _HelpListTile({
+  const _HelpSection({
     required this.icon,
     required this.title,
     required this.onTap,
@@ -142,10 +159,7 @@ class _HelpListTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       leading: Icon(icon, color: AppTheme.textSecondary),
-      title: Text(
-        title,
-        style: const TextStyle(color: AppTheme.textPrimary, fontSize: 16),
-      ),
+      title: Text(title, style: const TextStyle(color: AppTheme.textPrimary)),
       trailing: const Icon(Icons.chevron_right, color: AppTheme.textSecondary),
       onTap: onTap,
     );

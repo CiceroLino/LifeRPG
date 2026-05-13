@@ -1,57 +1,30 @@
 import 'package:flutter/material.dart';
+
 import '../../../core/theme/app_theme.dart';
+import '../../../l10n/app_localizations.dart';
 
-/// AppBar customizado para o LifeRPG
+/// AppBar customizado para o LifeRPG.
 ///
-/// Implementa [PreferredSizeWidget] para ser usado como `appBar:` em Scaffolds.
-/// Design denso, escuro e funcional que se adapta dinamicamente ao contexto da tela.
-class LifeRPGAppBar extends StatelessWidget implements PreferredSizeWidget {
-  /// Tela atual: 'missions', 'profile', ou 'statistics'
+/// Se adapta ao contexto da tela atual (`currentScreen`) e expõe ações
+/// específicas para cada fluxo de uso (missões, perfil e estatísticas).
+class LifeRPGAppBar extends StatefulWidget implements PreferredSizeWidget {
   final String currentScreen;
-
-  /// Estado de expansão do PlayerStatsHeader
   final bool isStatsExpanded;
-
-  /// Estado de visibilidade de missões completadas (apenas para missions)
   final bool showCompleted;
-
-  /// Callback quando o botão de expand/collapse é pressionado
+  final String currentSort;
+  final String missionSearchQuery;
   final VoidCallback? onToggleStats;
-
-  /// Callback para alternar visibilidade de missões completadas
   final Function(bool)? onToggleShowCompleted;
-
-  /// Callback quando o botão de search é pressionado (missions)
-  final VoidCallback? onSearch;
-
-  /// Callback quando o botão de edit é pressionado (profile)
+  final ValueChanged<String>? onSearch;
   final VoidCallback? onEdit;
-
-  /// Callback quando o botão de calendar é pressionado (statistics)
   final VoidCallback? onCalendar;
-
-  /// Callback para navegar para criação de missão
   final VoidCallback? onAddMission;
-
-  /// Callback quando uma opção de ordenação é selecionada
   final ValueChanged<String>? onSortChanged;
-
-  /// Callback para navegação alternativa pelo título.
   final ValueChanged<int>? onNavigateToScreen;
-
-  /// Callback para resetar avatar (profile)
   final VoidCallback? onResetAvatar;
-
-  /// Callback para compartilhar perfil (profile)
   final VoidCallback? onShareProfile;
-
-  /// Callback para exportar dados (statistics)
   final VoidCallback? onExportData;
-
-  /// Callback para limpar histórico (statistics)
   final VoidCallback? onClearHistory;
-
-  /// Callback para abrir filtro de skills (missions)
   final VoidCallback? onSkillsFilter;
 
   const LifeRPGAppBar({
@@ -59,6 +32,8 @@ class LifeRPGAppBar extends StatelessWidget implements PreferredSizeWidget {
     required this.currentScreen,
     this.isStatsExpanded = true,
     this.showCompleted = false,
+    this.currentSort = 'date',
+    this.missionSearchQuery = '',
     this.onToggleStats,
     this.onToggleShowCompleted,
     this.onSearch,
@@ -78,43 +53,173 @@ class LifeRPGAppBar extends StatelessWidget implements PreferredSizeWidget {
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 
   @override
+  State<LifeRPGAppBar> createState() => _LifeRPGAppBarState();
+}
+
+class _LifeRPGAppBarState extends State<LifeRPGAppBar> {
+  final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
+  bool _isMissionSearchExpanded = false;
+  bool _hasSearchText = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController.text = widget.missionSearchQuery;
+    _hasSearchText = _searchController.text.trim().isNotEmpty;
+  }
+
+  @override
+  void didUpdateWidget(covariant LifeRPGAppBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (widget.currentScreen != 'missions' && _isMissionSearchExpanded) {
+      setState(() => _isMissionSearchExpanded = false);
+      _searchFocusNode.unfocus();
+    }
+
+    if (widget.missionSearchQuery != _searchController.text) {
+      _searchController.text = widget.missionSearchQuery;
+      _hasSearchText = _searchController.text.trim().isNotEmpty;
+    }
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _searchFocusNode.dispose();
+    super.dispose();
+  }
+
+  void _onSearchTextChanged(String value) {
+    if (!mounted) return;
+    if (!_hasSearchText && _searchController.text.isNotEmpty ||
+        _hasSearchText && value.isEmpty) {
+      setState(() {
+        _hasSearchText = value.isNotEmpty;
+      });
+    }
+    widget.onSearch?.call(value);
+  }
+
+  void _toggleMissionSearch() {
+    setState(() {
+      _isMissionSearchExpanded = !_isMissionSearchExpanded;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (_isMissionSearchExpanded) {
+        _searchFocusNode.requestFocus();
+      } else {
+        _searchFocusNode.unfocus();
+      }
+    });
+  }
+
+  void _clearMissionSearch() {
+    _searchController.clear();
+    _onSearchTextChanged('');
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return AppBar(
-      backgroundColor: AppTheme.background, // #212121
-      elevation: 0, // Flat, sem elevação
+      backgroundColor: AppTheme.background,
+      elevation: 0,
       leading: Builder(
         builder: (context) => IconButton(
           icon: const Icon(Icons.menu),
           color: AppTheme.textPrimary,
+          tooltip: l10n.translate('open_menu'),
           onPressed: () => Scaffold.of(context).openDrawer(),
         ),
       ),
       title: _buildTitle(context),
-      titleSpacing: 0, // Título próximo ao ícone do menu
+      titleSpacing: 0,
       actions: _buildActions(context),
     );
   }
 
-  /// Constrói o título interativo com dropdown e subtítulo dinâmico
   Widget _buildTitle(BuildContext context) {
-    // Capitaliza a primeira letra do currentScreen
-    final screenName = currentScreen.isEmpty
-        ? ''
-        : currentScreen[0].toUpperCase() + currentScreen.substring(1);
+    final l10n = AppLocalizations.of(context);
 
-    return InkWell(
-      onTap: () => _showNavigationDialog(context),
+    if (widget.currentScreen == 'missions' && _isMissionSearchExpanded) {
+      return _buildMissionSearchField(l10n);
+    }
+
+    return _buildNavigationDropdown(context, l10n);
+  }
+
+  Widget _buildMissionSearchField(AppLocalizations l10n) {
+    return TextField(
+      key: const Key('mission-search-field'),
+      controller: _searchController,
+      focusNode: _searchFocusNode,
+      autofocus: true,
+      onChanged: _onSearchTextChanged,
+      onSubmitted: (value) {
+        widget.onSearch?.call(value);
+        _searchFocusNode.unfocus();
+      },
+      decoration: InputDecoration(
+        hintText: l10n.translate('mission_search_hint'),
+        hintStyle: const TextStyle(color: AppTheme.textSecondary),
+        prefixIcon: const Icon(
+          Icons.search,
+          color: AppTheme.textSecondary,
+          size: 20,
+        ),
+        suffixIcon: _hasSearchText
+            ? IconButton(
+                key: const Key('mission-search-clear'),
+                icon: const Icon(Icons.clear, color: AppTheme.textSecondary),
+                tooltip: l10n.translate('search_clear'),
+                onPressed: _clearMissionSearch,
+              )
+            : null,
+        border: const UnderlineInputBorder(),
+        isDense: true,
+      ),
+      style: const TextStyle(color: AppTheme.textPrimary),
+      cursorColor: AppTheme.primary,
+    );
+  }
+
+  Widget _buildNavigationDropdown(BuildContext context, AppLocalizations l10n) {
+    final destinations = _navigationDestinations(l10n);
+    return PopupMenuButton<int>(
+      tooltip: l10n.translate('navigation_title'),
+      offset: const Offset(0, 8),
+      initialValue: _currentScreenIndex(widget.currentScreen),
+      onSelected: (value) => widget.onNavigateToScreen?.call(value),
+      itemBuilder: (context) => destinations
+          .map(
+            (destination) => PopupMenuItem<int>(
+              value: destination.index,
+              child: Row(
+                children: [
+                  Icon(destination.icon, color: AppTheme.textPrimary, size: 20),
+                  const SizedBox(width: 12),
+                  Text(
+                    destination.label,
+                    style: const TextStyle(color: AppTheme.textPrimary),
+                  ),
+                ],
+              ),
+            ),
+          )
+          .toList(),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Linha 1: "LifeRPG" + Ícone dropdown
-            Row(
+            const Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
+                Text(
                   'LifeRPG',
                   style: TextStyle(
                     color: AppTheme.textPrimary,
@@ -122,17 +227,12 @@ class LifeRPGAppBar extends StatelessWidget implements PreferredSizeWidget {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(width: 4),
-                const Icon(
-                  Icons.unfold_more,
-                  color: AppTheme.textPrimary,
-                  size: 20,
-                ),
+                SizedBox(width: 4),
+                Icon(Icons.unfold_more, color: AppTheme.textPrimary, size: 20),
               ],
             ),
-            // Linha 2: Subtítulo dinâmico baseado em currentScreen
             Text(
-              screenName,
+              _screenLabel(widget.currentScreen, l10n),
               style: const TextStyle(
                 color: AppTheme.textSecondary,
                 fontSize: 12,
@@ -145,9 +245,8 @@ class LifeRPGAppBar extends StatelessWidget implements PreferredSizeWidget {
     );
   }
 
-  /// Constrói os botões de ação no canto direito baseado no contexto
   List<Widget> _buildActions(BuildContext context) {
-    switch (currentScreen) {
+    switch (widget.currentScreen) {
       case 'missions':
         return _buildMissionsActions(context);
       case 'profile':
@@ -155,78 +254,82 @@ class LifeRPGAppBar extends StatelessWidget implements PreferredSizeWidget {
       case 'statistics':
         return _buildStatisticsActions(context);
       default:
-        return _buildDefaultActions();
+        return _buildDefaultActions(context);
     }
   }
 
-  List<Widget> _buildDefaultActions() {
-    return [
-      IconButton(
-        icon: Icon(
-          isStatsExpanded ? Icons.fullscreen_exit : Icons.fullscreen,
-          color: AppTheme.textPrimary,
-        ),
-        onPressed: onToggleStats,
-        tooltip: isStatsExpanded ? 'Ocultar Stats' : 'Mostrar Stats',
-      ),
-    ];
+  Widget _buildStatusToggleButton(AppLocalizations l10n) => IconButton(
+    icon: Icon(
+      widget.isStatsExpanded ? Icons.fullscreen_exit : Icons.fullscreen,
+      color: AppTheme.textPrimary,
+    ),
+    onPressed: widget.onToggleStats,
+    tooltip: widget.isStatsExpanded
+        ? l10n.translate('hide_status')
+        : l10n.translate('show_status'),
+  );
+
+  List<Widget> _buildDefaultActions(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return [_buildStatusToggleButton(l10n)];
   }
 
-  /// Actions para o contexto de Missions
   List<Widget> _buildMissionsActions(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return [
-      // Botão Expandir/Recolher
+      _buildStatusToggleButton(l10n),
       IconButton(
+        key: const Key('mission-search-toggle'),
         icon: Icon(
-          isStatsExpanded ? Icons.fullscreen_exit : Icons.fullscreen,
+          _isMissionSearchExpanded ? Icons.close : Icons.search,
           color: AppTheme.textPrimary,
         ),
-        onPressed: onToggleStats,
-        tooltip: isStatsExpanded ? 'Ocultar Stats' : 'Mostrar Stats',
+        onPressed: _toggleMissionSearch,
+        tooltip: _isMissionSearchExpanded
+            ? l10n.translate('close')
+            : l10n.translate('search_missions'),
       ),
-      // Botão Search
-      IconButton(
-        icon: const Icon(Icons.search, color: AppTheme.textPrimary),
-        onPressed: onSearch,
-        tooltip: 'Buscar',
-      ),
-      // Overflow Menu
       PopupMenuButton<String>(
         icon: const Icon(Icons.more_vert, color: AppTheme.textPrimary),
+        tooltip: l10n.translate('more_options'),
         onSelected: (value) => _handleMissionsMenuAction(context, value),
         itemBuilder: (context) => [
-          const PopupMenuItem<String>(
+          PopupMenuItem<String>(
             value: 'add',
             child: Row(
               children: [
-                Icon(Icons.add, size: 20, color: AppTheme.textPrimary),
-                SizedBox(width: 12),
-                Text('Add mission'),
+                const Icon(Icons.add, size: 20, color: AppTheme.textPrimary),
+                const SizedBox(width: 12),
+                Text(l10n.translate('add_mission')),
               ],
             ),
           ),
           CheckedPopupMenuItem<String>(
             value: 'show_completed',
-            checked: showCompleted,
-            child: const Text('Show completed'),
+            checked: widget.showCompleted,
+            child: Text(l10n.translate('show_completed')),
           ),
-          const PopupMenuItem<String>(
+          PopupMenuItem<String>(
             value: 'sort',
             child: Row(
               children: [
-                Icon(Icons.sort, size: 20, color: AppTheme.textPrimary),
-                SizedBox(width: 12),
-                Text('Sort by...'),
+                const Icon(Icons.sort, size: 20, color: AppTheme.textPrimary),
+                const SizedBox(width: 12),
+                Text(l10n.translate('sort_by')),
               ],
             ),
           ),
-          const PopupMenuItem<String>(
+          PopupMenuItem<String>(
             value: 'skills_filter',
             child: Row(
               children: [
-                Icon(Icons.filter_list, size: 20, color: AppTheme.textPrimary),
-                SizedBox(width: 12),
-                Text('Skills filter'),
+                const Icon(
+                  Icons.filter_list,
+                  size: 20,
+                  color: AppTheme.textPrimary,
+                ),
+                const SizedBox(width: 12),
+                Text(l10n.translate('filter_by_skill')),
               ],
             ),
           ),
@@ -235,46 +338,41 @@ class LifeRPGAppBar extends StatelessWidget implements PreferredSizeWidget {
     ];
   }
 
-  /// Actions para o contexto de Profile
   List<Widget> _buildProfileActions(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return [
-      // Botão Expandir/Recolher
-      IconButton(
-        icon: Icon(
-          isStatsExpanded ? Icons.fullscreen_exit : Icons.fullscreen,
-          color: AppTheme.textPrimary,
-        ),
-        onPressed: onToggleStats,
-        tooltip: isStatsExpanded ? 'Ocultar Stats' : 'Mostrar Stats',
-      ),
-      // Botão Edit
+      _buildStatusToggleButton(l10n),
       IconButton(
         icon: const Icon(Icons.edit, color: AppTheme.textPrimary),
-        onPressed: onEdit,
-        tooltip: 'Editar Perfil',
+        onPressed: widget.onEdit,
+        tooltip: l10n.translate('edit_profile'),
       ),
-      // Overflow Menu
       PopupMenuButton<String>(
         icon: const Icon(Icons.more_vert, color: AppTheme.textPrimary),
+        tooltip: l10n.translate('more_options'),
         onSelected: (value) => _handleProfileMenuAction(context, value),
         itemBuilder: (context) => [
-          const PopupMenuItem<String>(
+          PopupMenuItem<String>(
             value: 'reset_avatar',
             child: Row(
               children: [
-                Icon(Icons.refresh, size: 20, color: AppTheme.textPrimary),
-                SizedBox(width: 12),
-                Text('Reset Avatar'),
+                const Icon(
+                  Icons.refresh,
+                  size: 20,
+                  color: AppTheme.textPrimary,
+                ),
+                const SizedBox(width: 12),
+                Text(l10n.translate('reset_avatar')),
               ],
             ),
           ),
-          const PopupMenuItem<String>(
+          PopupMenuItem<String>(
             value: 'share_profile',
             child: Row(
               children: [
-                Icon(Icons.share, size: 20, color: AppTheme.textPrimary),
-                SizedBox(width: 12),
-                Text('Share Profile'),
+                const Icon(Icons.share, size: 20, color: AppTheme.textPrimary),
+                const SizedBox(width: 12),
+                Text(l10n.translate('share_profile')),
               ],
             ),
           ),
@@ -283,54 +381,45 @@ class LifeRPGAppBar extends StatelessWidget implements PreferredSizeWidget {
     ];
   }
 
-  /// Actions para o contexto de Statistics
   List<Widget> _buildStatisticsActions(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return [
-      // Botão Expandir/Recolher
-      IconButton(
-        icon: Icon(
-          isStatsExpanded ? Icons.fullscreen_exit : Icons.fullscreen,
-          color: AppTheme.textPrimary,
-        ),
-        onPressed: onToggleStats,
-        tooltip: isStatsExpanded ? 'Ocultar Stats' : 'Mostrar Stats',
-      ),
-      // Botão Calendar
+      _buildStatusToggleButton(l10n),
       IconButton(
         icon: const Icon(Icons.calendar_today, color: AppTheme.textPrimary),
-        onPressed: onCalendar,
-        tooltip: 'Calendário',
+        onPressed: widget.onCalendar,
+        tooltip: l10n.translate('calendar'),
       ),
-      // Overflow Menu
       PopupMenuButton<String>(
         icon: const Icon(Icons.more_vert, color: AppTheme.textPrimary),
+        tooltip: l10n.translate('more_options'),
         onSelected: (value) => _handleStatisticsMenuAction(context, value),
         itemBuilder: (context) => [
-          const PopupMenuItem<String>(
+          PopupMenuItem<String>(
             value: 'export',
             child: Row(
               children: [
-                Icon(
+                const Icon(
                   Icons.file_download,
                   size: 20,
                   color: AppTheme.textPrimary,
                 ),
-                SizedBox(width: 12),
-                Text('Export Data (CSV)'),
+                const SizedBox(width: 12),
+                Text(l10n.translate('export_backup')),
               ],
             ),
           ),
-          const PopupMenuItem<String>(
+          PopupMenuItem<String>(
             value: 'clear_history',
             child: Row(
               children: [
-                Icon(
+                const Icon(
                   Icons.delete_outline,
                   size: 20,
                   color: AppTheme.textPrimary,
                 ),
-                SizedBox(width: 12),
-                Text('Clear History'),
+                const SizedBox(width: 12),
+                Text(l10n.translate('clear_history')),
               ],
             ),
           ),
@@ -339,149 +428,111 @@ class LifeRPGAppBar extends StatelessWidget implements PreferredSizeWidget {
     ];
   }
 
-  /// Manipula as ações do menu overflow para Missions
   void _handleMissionsMenuAction(BuildContext context, String value) {
     switch (value) {
       case 'add':
-        if (onAddMission != null) {
-          onAddMission!();
-        } else {
-          debugPrint('Add mission');
+        if (widget.onAddMission != null) {
+          widget.onAddMission!();
         }
-        break;
-
+        return;
       case 'show_completed':
-        onToggleShowCompleted?.call(!showCompleted);
-        break;
-
+        widget.onToggleShowCompleted?.call(!widget.showCompleted);
+        return;
       case 'sort':
         _showSortDialog(context);
-        break;
-
+        return;
       case 'skills_filter':
-        if (onSkillsFilter != null) {
-          onSkillsFilter!();
-        } else {
-          debugPrint('Open filter');
-        }
-        break;
-
+        widget.onSkillsFilter?.call();
+        return;
       default:
-        break;
+        return;
     }
   }
 
-  /// Manipula as ações do menu overflow para Profile
   void _handleProfileMenuAction(BuildContext context, String value) {
     switch (value) {
       case 'reset_avatar':
-        if (onResetAvatar != null) {
-          onResetAvatar!();
-        } else {
-          debugPrint('Reset Avatar');
-        }
-        break;
-
+        widget.onResetAvatar?.call();
+        return;
       case 'share_profile':
-        if (onShareProfile != null) {
-          onShareProfile!();
-        } else {
-          debugPrint('Share Profile');
-        }
-        break;
-
+        widget.onShareProfile?.call();
+        return;
       default:
-        break;
+        return;
     }
   }
 
-  /// Manipula as ações do menu overflow para Statistics
   void _handleStatisticsMenuAction(BuildContext context, String value) {
     switch (value) {
       case 'export':
-        if (onExportData != null) {
-          onExportData!();
-        } else {
-          debugPrint('Export Data (CSV)');
-        }
-        break;
-
+        widget.onExportData?.call();
+        return;
       case 'clear_history':
-        if (onClearHistory != null) {
-          onClearHistory!();
-        } else {
-          debugPrint('Clear History');
-        }
-        break;
-
+        widget.onClearHistory?.call();
+        return;
       default:
-        break;
+        return;
     }
   }
 
-  /// Mostra o dialog de opções de ordenação
   void _showSortDialog(BuildContext context) {
-    String selectedSort = 'date'; // Valor padrão
-
-    showDialog(
+    final l10n = AppLocalizations.of(context);
+    String selectedSort = _normalizeSortValue(widget.currentSort);
+    showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppTheme.surface,
-        title: const Text(
-          'Sort Options',
-          style: TextStyle(color: AppTheme.textPrimary),
+        title: Text(
+          l10n.translate('sort_options'),
+          style: const TextStyle(color: AppTheme.textPrimary),
         ),
         content: StatefulBuilder(
           builder: (context, setState) {
-            Widget sortOption(String value, String label) {
-              final selected = selectedSort == value;
-              return ListTile(
-                title: Text(
-                  label,
-                  style: const TextStyle(color: AppTheme.textPrimary),
-                ),
-                trailing: selected
-                    ? const Icon(Icons.check_circle, color: AppTheme.primary)
-                    : const Icon(
-                        Icons.circle_outlined,
-                        color: AppTheme.textSecondary,
-                      ),
-                onTap: () {
-                  setState(() {
-                    selectedSort = value;
-                  });
-                },
-              );
-            }
+            const sortOptions = [
+              ('date', 'sort_date'),
+              ('difficulty', 'sort_difficulty'),
+              ('importance', 'sort_importance'),
+              ('reward', 'sort_reward'),
+            ];
 
             return Column(
               mainAxisSize: MainAxisSize.min,
-              children: [
-                sortOption('date', 'Date'),
-                sortOption('difficulty', 'Difficulty'),
-                sortOption('importance', 'Importance'),
-                sortOption('reward', 'Reward'),
-              ],
+              children: sortOptions.map((option) {
+                final isSelected = selectedSort == option.$1;
+                return RadioListTile<String>(
+                  value: option.$1,
+                  groupValue: selectedSort,
+                  activeColor: AppTheme.primary,
+                  title: Text(
+                    l10n.translate(option.$2),
+                    style: const TextStyle(color: AppTheme.textPrimary),
+                  ),
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setState(() => selectedSort = value);
+                  },
+                  selected: isSelected,
+                );
+              }).toList(),
             );
           },
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(color: AppTheme.textSecondary),
+            child: Text(
+              l10n.translate('cancel'),
+              style: const TextStyle(color: AppTheme.textSecondary),
             ),
           ),
           TextButton(
             onPressed: () {
-              onSortChanged?.call(selectedSort);
-              debugPrint('Sort by: $selectedSort');
+              widget.onSortChanged?.call(selectedSort);
               Navigator.of(context).pop();
             },
-            child: const Text(
-              'Apply',
-              style: TextStyle(color: AppTheme.primary),
+            child: Text(
+              l10n.translate('apply'),
+              style: const TextStyle(color: AppTheme.primary),
             ),
           ),
         ],
@@ -489,51 +540,131 @@ class LifeRPGAppBar extends StatelessWidget implements PreferredSizeWidget {
     );
   }
 
-  /// Mostra navegação alternativa para quando a sidebar não está em foco.
-  void _showNavigationDialog(BuildContext context) {
-    const destinations = [
-      (0, 'Missions', Icons.flag_outlined),
-      (1, 'Map', Icons.map_outlined),
-      (2, 'Rewards', Icons.card_giftcard_outlined),
-      (3, 'Inventory', Icons.inventory_2_outlined),
-      (4, 'Skills', Icons.auto_graph),
-      (5, 'Statistics', Icons.query_stats),
-      (6, 'Profile', Icons.person_outline),
-      (7, 'Shop', Icons.storefront_outlined),
-      (8, 'Pomodoro', Icons.hourglass_bottom_outlined),
-      (9, 'Settings', Icons.settings_outlined),
-      (10, 'Help', Icons.help_outline),
-    ];
-
-    showDialog(
-      context: context,
-      builder: (context) => SimpleDialog(
-        backgroundColor: AppTheme.surface,
-        title: const Text(
-          'Navigate',
-          style: TextStyle(color: AppTheme.textPrimary),
-        ),
-        children: destinations
-            .map(
-              (destination) => SimpleDialogOption(
-                onPressed: () {
-                  onNavigateToScreen?.call(destination.$1);
-                  Navigator.of(context).pop();
-                },
-                child: Row(
-                  children: [
-                    Icon(destination.$3, color: AppTheme.textPrimary, size: 20),
-                    const SizedBox(width: 12),
-                    Text(
-                      destination.$2,
-                      style: const TextStyle(color: AppTheme.textPrimary),
-                    ),
-                  ],
-                ),
-              ),
-            )
-            .toList(),
-      ),
-    );
+  String _screenLabel(String screen, AppLocalizations l10n) {
+    switch (screen) {
+      case 'missions':
+        return l10n.translate('missions');
+      case 'map':
+        return l10n.translate('map');
+      case 'rewards':
+        return l10n.translate('rewards');
+      case 'inventory':
+        return l10n.translate('inventory');
+      case 'skills':
+        return l10n.translate('skills');
+      case 'statistics':
+        return l10n.translate('statistics');
+      case 'profile':
+        return l10n.translate('profile');
+      case 'shop':
+        return l10n.translate('shop');
+      case 'pomodoro':
+        return l10n.translate('pomodoro');
+      case 'settings':
+        return l10n.translate('settings');
+      case 'help':
+        return l10n.translate('help');
+      default:
+        return screen.isNotEmpty
+            ? screen[0].toUpperCase() + screen.substring(1)
+            : '';
+    }
   }
+
+  int _currentScreenIndex(String screen) {
+    const screens = {
+      'missions': 0,
+      'map': 1,
+      'rewards': 2,
+      'inventory': 3,
+      'skills': 4,
+      'statistics': 5,
+      'profile': 6,
+      'shop': 7,
+      'pomodoro': 8,
+      'settings': 9,
+      'help': 10,
+    };
+    return screens[screen] ?? 0;
+  }
+
+  List<_AppBarDestination> _navigationDestinations(AppLocalizations l10n) => [
+    _AppBarDestination(
+      index: 0,
+      label: l10n.translate('missions'),
+      icon: Icons.flag_outlined,
+    ),
+    _AppBarDestination(
+      index: 1,
+      label: l10n.translate('map'),
+      icon: Icons.map_outlined,
+    ),
+    _AppBarDestination(
+      index: 2,
+      label: l10n.translate('rewards'),
+      icon: Icons.card_giftcard_outlined,
+    ),
+    _AppBarDestination(
+      index: 3,
+      label: l10n.translate('inventory'),
+      icon: Icons.inventory_2_outlined,
+    ),
+    _AppBarDestination(
+      index: 4,
+      label: l10n.translate('skills'),
+      icon: Icons.auto_graph,
+    ),
+    _AppBarDestination(
+      index: 5,
+      label: l10n.translate('statistics'),
+      icon: Icons.query_stats,
+    ),
+    _AppBarDestination(
+      index: 6,
+      label: l10n.translate('profile'),
+      icon: Icons.person_outline,
+    ),
+    _AppBarDestination(
+      index: 7,
+      label: l10n.translate('shop'),
+      icon: Icons.storefront_outlined,
+    ),
+    _AppBarDestination(
+      index: 8,
+      label: l10n.translate('pomodoro'),
+      icon: Icons.hourglass_bottom_outlined,
+    ),
+    _AppBarDestination(
+      index: 9,
+      label: l10n.translate('settings'),
+      icon: Icons.settings_outlined,
+    ),
+    _AppBarDestination(
+      index: 10,
+      label: l10n.translate('help'),
+      icon: Icons.help_outline,
+    ),
+  ];
+
+  String _normalizeSortValue(String value) {
+    if (value == 'difficulty' ||
+        value == 'importance' ||
+        value == 'reward' ||
+        value == 'date') {
+      return value;
+    }
+    return 'date';
+  }
+}
+
+class _AppBarDestination {
+  const _AppBarDestination({
+    required this.index,
+    required this.label,
+    required this.icon,
+  });
+
+  final int index;
+  final String label;
+  final IconData icon;
 }

@@ -31,6 +31,7 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
   late TextEditingController _descriptionController;
   late TextEditingController _notesController;
   late TextEditingController _reminderNoteController;
+  late TextEditingController _durationController;
 
   double _difficulty = 50;
   double _urgency = 50;
@@ -56,6 +57,9 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
     _notesController = TextEditingController(text: m?.notes ?? '');
     _reminderNoteController = TextEditingController(
       text: m?.reminderNote ?? '',
+    );
+    _durationController = TextEditingController(
+      text: (m?.estimatedDuration ?? 30).toString(),
     );
     _difficulty = (m?.difficulty ?? 50).toDouble();
     _urgency = (m?.urgency ?? 50).toDouble();
@@ -89,6 +93,7 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
     _descriptionController.dispose();
     _notesController.dispose();
     _reminderNoteController.dispose();
+    _durationController.dispose();
     super.dispose();
   }
 
@@ -112,7 +117,7 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
         leading: TextButton(
           onPressed: () => Navigator.pop(context),
           child: const Text(
-            'Cancel',
+            'Cancelar',
             style: TextStyle(color: AppTheme.textSecondary),
           ),
         ),
@@ -120,7 +125,7 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
           TextButton(
             onPressed: _save,
             child: const Text(
-              'Save',
+              'Salvar',
               style: TextStyle(
                 color: AppTheme.primary,
                 fontWeight: FontWeight.bold,
@@ -139,20 +144,21 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
               children: [
                 TextFormField(
                   controller: _titleController,
-                  decoration: const InputDecoration(labelText: 'Task'),
-                  validator: (v) =>
-                      v == null || v.trim().isEmpty ? 'Required' : null,
+                  decoration: const InputDecoration(labelText: 'Missão'),
+                  validator: (v) => v == null || v.trim().isEmpty
+                      ? 'Informe o nome da missão'
+                      : null,
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _descriptionController,
-                  decoration: const InputDecoration(labelText: 'Details'),
+                  decoration: const InputDecoration(labelText: 'Descrição'),
                   minLines: 2,
                   maxLines: 4,
                 ),
                 const SizedBox(height: 20),
                 const Text(
-                  'Quest Log',
+                  'Caderno',
                   style: TextStyle(
                     fontWeight: FontWeight.w700,
                     color: AppTheme.textSecondary,
@@ -162,7 +168,7 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
                 TextFormField(
                   controller: _notesController,
                   decoration: const InputDecoration(
-                    labelText: 'Mission notes',
+                    labelText: 'Anotações',
                     prefixIcon: Icon(Icons.menu_book_outlined),
                   ),
                   minLines: 3,
@@ -170,7 +176,7 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
                 ),
                 const SizedBox(height: 20),
                 const Text(
-                  'Attributes',
+                  'Atributos',
                   style: TextStyle(
                     fontWeight: FontWeight.w700,
                     color: AppTheme.textSecondary,
@@ -178,7 +184,7 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
                 ),
                 const SizedBox(height: 8),
                 AttributeSliderRow(
-                  label: 'Difficulty',
+                  label: 'Dificuldade',
                   attribute: MissionAttribute.difficulty,
                   icon: FontAwesomeIcons.personHiking,
                   value: _difficulty,
@@ -186,7 +192,7 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
                   onChanged: (v) => setState(() => _difficulty = v),
                 ),
                 AttributeSliderRow(
-                  label: 'Urgency',
+                  label: 'Urgência',
                   attribute: MissionAttribute.urgency,
                   icon: FontAwesomeIcons.personRunning,
                   value: _urgency,
@@ -194,7 +200,7 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
                   onChanged: (v) => setState(() => _urgency = v),
                 ),
                 AttributeSliderRow(
-                  label: 'Fear',
+                  label: 'Medo',
                   attribute: MissionAttribute.fear,
                   icon: FontAwesomeIcons.mask,
                   value: _fear,
@@ -204,12 +210,12 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
                 const SizedBox(height: 8),
                 _StrategyPreview(
                   icon: Icons.stars,
-                  label: 'Calculated XP',
+                  label: 'XP calculado',
                   value: '$xpPreview XP',
                 ),
                 const SizedBox(height: 20),
                 const Text(
-                  'Links',
+                  'Vínculos',
                   style: TextStyle(
                     fontWeight: FontWeight.w700,
                     color: AppTheme.textSecondary,
@@ -219,49 +225,66 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
                 _LinkRow(
                   label: 'Skills',
                   value: selectedSkills.isEmpty
-                      ? 'Select skills'
+                      ? 'Selecionar skills'
                       : selectedSkills.map((s) => s.name).join(', '),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => _pickSkills(skillProvider.skills),
                 ),
                 const Divider(height: 16),
                 _LinkRow(
-                  label: 'Parent Mission',
+                  label: 'Missão principal',
                   value: _parentMissionId != null
                       ? _parentMissionTitle(availableParentMissions)
-                      : 'None',
+                      : 'Nenhuma',
                   trailing: const Icon(Icons.expand_more),
                   onTap: () => _pickParentMission(availableParentMissions),
                 ),
                 const Divider(height: 16),
                 _LinkRow(
-                  label: 'Date Due',
+                  label: 'Prazo',
                   value: _dueDate == null
-                      ? 'Not set'
+                      ? 'Não definido'
                       : _dueDate!.toLocal().toString().split(' ').first,
                   leadingIcon: Icons.calendar_today,
                   onTap: _pickDate,
                 ),
                 _LinkRow(
-                  label: 'Repetition',
+                  label: 'Repetição',
                   value: _recurrenceLabel(_recurrence),
                   leadingIcon: Icons.repeat,
                   onTap: _pickRecurrence,
                 ),
                 const Divider(height: 16),
                 _LinkRow(
-                  label: 'Reminder',
+                  label: 'Lembrete',
                   value: _reminderAt == null
-                      ? 'Not set'
+                      ? 'Não definido'
                       : _reminderAt!.toLocal().toString().substring(0, 16),
                   leadingIcon: Icons.notifications_outlined,
                   onTap: _pickReminder,
                 ),
                 const SizedBox(height: 8),
                 TextFormField(
+                  controller: _durationController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Duração estimada (min)',
+                    hintText: '0-60',
+                    prefixIcon: Icon(Icons.timer),
+                  ),
+                  validator: (value) {
+                    final minutes = int.tryParse(value?.trim() ?? '');
+                    if (minutes == null || minutes < 0 || minutes > 60) {
+                      return 'Informe um valor entre 0 e 60';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
                   controller: _reminderNoteController,
                   decoration: const InputDecoration(
-                    labelText: 'Reminder Rune',
+                    labelText: 'Lembrete',
                     prefixIcon: Icon(Icons.edit_notifications_outlined),
                   ),
                   minLines: 2,
@@ -269,7 +292,7 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
                 ),
                 const Divider(height: 16),
                 _LinkRow(
-                  label: 'Location',
+                  label: 'Local',
                   value: _locationLabel,
                   leadingIcon: Icons.location_on_outlined,
                   onTap: _pickLocation,
@@ -285,7 +308,7 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
                   ),
                 const SizedBox(height: 24),
                 const Text(
-                  'Reward',
+                  'Recompensa',
                   style: TextStyle(
                     fontWeight: FontWeight.w700,
                     color: AppTheme.textSecondary,
@@ -312,20 +335,20 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
                             });
                           }
                         },
-                        child: Text('Set Reward Points ($_rewardPoints)'),
+                        child: Text('Definir pontos ($_rewardPoints)'),
                       ),
                       OutlinedButton(
                         onPressed: () => setState(
                           () => _rewardPoints = recommendedRewardPoints,
                         ),
-                        child: Text('Use $recommendedRewardPoints RP'),
+                        child: Text('Usar $recommendedRewardPoints RP'),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 20),
                 const Text(
-                  'Reward Drops',
+                  'Drops',
                   style: TextStyle(
                     fontWeight: FontWeight.w700,
                     color: AppTheme.textSecondary,
@@ -458,7 +481,7 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
 
   String get _locationLabel {
     final location = _location;
-    if (location == null) return 'Not set';
+    if (location == null) return 'Não definido';
     final name = location.name;
     if (name != null && name.trim().isNotEmpty) return name;
     return '${location.latitude.toStringAsFixed(4)}, '
@@ -468,24 +491,24 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
   String _recurrenceLabel(String value) {
     switch (value) {
       case 'daily':
-        return 'Daily';
+        return 'Diário';
       case 'weekly':
-        return 'Weekly';
+        return 'Semanal';
       case 'monthly':
-        return 'Monthly';
+        return 'Mensal';
       case 'yearly':
-        return 'Yearly';
+        return 'Anual';
       case 'continuous':
-        return 'Continuous';
+        return 'Contínuo';
       default:
-        return 'Once';
+        return 'Única';
     }
   }
 
   String _parentMissionTitle(List<Mission> missions) {
     final match = missions.where((m) => m.id == _parentMissionId);
     if (match.isEmpty) {
-      return 'Mission #$_parentMissionId';
+      return 'Missão #$_parentMissionId';
     }
     return match.first.title;
   }
@@ -582,14 +605,14 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
           shrinkWrap: true,
           children: [
             ListTile(
-              title: const Text('None'),
+              title: const Text('Sem missão principal'),
               onTap: () => Navigator.pop(context, null),
             ),
             ...missions.map(
               (mission) => ListTile(
                 title: Text(mission.title),
                 subtitle: mission.id != null
-                    ? Text('Mission #${mission.id}')
+                    ? Text('Missão #${mission.id}')
                     : null,
                 trailing: mission.id == _parentMissionId
                     ? const Icon(Icons.check, color: AppTheme.primary)
@@ -610,6 +633,7 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     final base = widget.initial;
+    final estimatedDuration = int.tryParse(_durationController.text.trim()) ?? 30;
     final mission = Mission(
       id: base?.id,
       title: _titleController.text.trim(),
@@ -625,7 +649,7 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
       status: base?.status ?? 'active',
       dueDate: _dueDate,
       reminderAt: _reminderAt,
-      estimatedDuration: base?.estimatedDuration,
+      estimatedDuration: estimatedDuration.clamp(0, 60),
       isRecurring: _recurrence != 'once',
       recurrenceType: _recurrence == 'once' ? null : _recurrence,
       recurrenceInterval: base?.recurrenceInterval,

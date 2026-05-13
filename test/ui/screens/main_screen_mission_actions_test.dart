@@ -130,16 +130,15 @@ void main() {
     final missionProvider = FakeMissionProvider();
     await pumpMain(tester, missionProvider);
 
-    final appBar = tester.widget<LifeRPGAppBar>(find.byType(LifeRPGAppBar));
-    appBar.onSearch?.call();
+    await tester.tap(find.byKey(const Key('mission-search-toggle')));
     await tester.pump();
+    expect(find.byKey(const Key('mission-search-field')), findsOneWidget);
 
     await tester.enterText(
       find.byKey(const Key('mission-search-field')),
       'flutter',
     );
-    await tester.tap(find.widgetWithText(TextButton, 'Aplicar'));
-    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump();
 
     expect(missionProvider.lastQuery, 'flutter');
   });
@@ -170,7 +169,7 @@ void main() {
     expect(missionProvider.lastFilterMode, MissionFilterMode.tomorrow);
   });
 
-  testWidgets('navigation dialog exposes Pomodoro focus quest', (tester) async {
+  testWidgets('navigation dropdown exposes Pomodoro option', (tester) async {
     final missionProvider = FakeMissionProvider();
     await pumpMain(tester, missionProvider);
 

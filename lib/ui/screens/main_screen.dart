@@ -20,12 +20,14 @@ import '../widgets/common/app_drawer.dart';
 import '../widgets/common/game_snack_bar.dart';
 import '../widgets/common/liferpg_app_bar.dart';
 import '../widgets/player/player_stats_header.dart';
+import '../../core/theme/app_theme.dart';
 import '../../providers/mission_provider.dart';
 import '../../providers/inventory_provider.dart';
 import '../../providers/player_provider.dart';
 import '../../providers/reward_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/skill_provider.dart';
+import '../../l10n/app_localizations.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -80,62 +82,78 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      drawer: AppDrawer(
-        selectedIndex: _currentIndex,
-        onItemSelected: (i) => setState(() => _currentIndex = i),
-      ),
-      appBar: LifeRPGAppBar(
-        currentScreen: _getCurrentScreenName(_currentIndex),
-        isStatsExpanded: _isStatsExpanded,
-        showCompleted: _showCompleted,
-        onToggleStats: () =>
-            setState(() => _isStatsExpanded = !_isStatsExpanded),
-        onToggleShowCompleted: (value) {
-          setState(() => _showCompleted = value);
-          context.read<MissionProvider>().setShowCompleted(value);
-        },
-        onSearch: _showMissionSearchDialog,
-        onEdit: _goToProfile,
-        onCalendar: _showCalendarPicker,
-        onAddMission: () {
-          Navigator.of(
-            context,
-          ).push(MaterialPageRoute(builder: (_) => const MissionFormScreen()));
-        },
-        onSortChanged: (sortValue) => _applySort(sortValue),
-        onNavigateToScreen: (index) => setState(() => _currentIndex = index),
-        onResetAvatar: _resetAvatar,
-        onShareProfile: _shareProfile,
-        onExportData: _exportData,
-        onClearHistory: _clearHistory,
-        onSkillsFilter: _openSkillsFilterSheet,
-      ),
-      body: Consumer<PlayerProvider>(
-        builder: (context, playerProvider, _) {
-          _syncEnergyAutoRefreshTimer();
-          return Column(
-            children: [
-              // Player Stats Header (mostra apenas se não for Settings ou Help e se estiver expandido)
-              if (_shouldShowHeader &&
+    return Consumer<MissionProvider>(
+      builder: (context, missionProvider, _) {
+        return Scaffold(
+          drawer: AppDrawer(
+            selectedIndex: _currentIndex,
+            onItemSelected: (i) => setState(() => _currentIndex = i),
+          ),
+          appBar: LifeRPGAppBar(
+            currentScreen: _getCurrentScreenName(_currentIndex),
+            isStatsExpanded: _isStatsExpanded,
+            showCompleted: _showCompleted,
+            missionSearchQuery: missionProvider.searchQuery,
+            currentSort: _missionSortValueForAppBar(context),
+            onToggleStats: () =>
+                setState(() => _isStatsExpanded = !_isStatsExpanded),
+            onToggleShowCompleted: (value) {
+              setState(() => _showCompleted = value);
+              context.read<MissionProvider>().setShowCompleted(value);
+            },
+            onSearch: missionProvider.setSearchQuery,
+            onEdit: _goToProfile,
+            onCalendar: _showCalendarPicker,
+            onAddMission: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const MissionFormScreen()),
+              );
+            },
+            onSortChanged: (sortValue) => _applySort(sortValue),
+            onNavigateToScreen: (index) =>
+                setState(() => _currentIndex = index),
+            onResetAvatar: _resetAvatar,
+            onShareProfile: _shareProfile,
+            onExportData: _exportData,
+            onClearHistory: _clearHistory,
+            onSkillsFilter: _openSkillsFilterSheet,
+          ),
+          body: Consumer<PlayerProvider>(
+            builder: (context, playerProvider, _) {
+              _syncEnergyAutoRefreshTimer();
+              final shouldShowHeader =
+                  _shouldShowHeader &&
                   _isStatsExpanded &&
-                  playerProvider.player != null)
-                PlayerStatsHeader(
-                  player: playerProvider.player!,
-                  onManualEnergyChanged: (value) => _setManualEnergy(value),
-                  onProfileTap: _goToProfile,
-                  showTabs: _currentIndex == 0,
-                  onTabChanged: _setMissionTabFilter,
-                ),
-              // Conteúdo da tela
-              Expanded(
-                child: IndexedStack(index: _currentIndex, children: _pages),
-              ),
-            ],
-          );
-        },
-      ),
-      floatingActionButton: _buildFAB(),
+                  playerProvider.player != null;
+              return Column(
+                children: [
+                  AnimatedCrossFade(
+                    firstChild: shouldShowHeader
+                        ? PlayerStatsHeader(
+                            player: playerProvider.player!,
+                            onManualEnergyChanged: (value) =>
+                                _setManualEnergy(value),
+                            onProfileTap: _goToProfile,
+                            showTabs: _currentIndex == 0,
+                            onTabChanged: _setMissionTabFilter,
+                          )
+                        : const SizedBox.shrink(),
+                    secondChild: const SizedBox.shrink(),
+                    crossFadeState: shouldShowHeader
+                        ? CrossFadeState.showFirst
+                        : CrossFadeState.showSecond,
+                    duration: const Duration(milliseconds: 250),
+                  ),
+                  Expanded(
+                    child: IndexedStack(index: _currentIndex, children: _pages),
+                  ),
+                ],
+              );
+            },
+          ),
+          floatingActionButton: _buildFAB(),
+        );
+      },
     );
   }
 
@@ -160,40 +178,6 @@ class _MainScreenState extends State<MainScreen> {
       if (!mounted) return;
       setState(() {});
     });
-  }
-
-  Future<void> _showMissionSearchDialog() async {
-    final controller = TextEditingController(
-      text: context.read<MissionProvider>().searchQuery,
-    );
-    final query = await showDialog<String>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Buscar missões'),
-        content: TextField(
-          key: const Key('mission-search-field'),
-          controller: controller,
-          decoration: const InputDecoration(hintText: 'Título ou descrição'),
-          autofocus: true,
-          onSubmitted: (value) => Navigator.of(dialogContext).pop(value),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancelar'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(controller.text),
-            child: const Text('Aplicar'),
-          ),
-        ],
-      ),
-    );
-
-    controller.dispose();
-
-    if (!mounted || query == null) return;
-    context.read<MissionProvider>().setSearchQuery(query);
   }
 
   void _applySort(String sortValue) {
@@ -237,6 +221,7 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Future<void> _showCalendarPicker() async {
+    final l10n = AppLocalizations.of(context);
     final now = DateTime.now();
     final picked = await showDatePicker(
       context: context,
@@ -247,12 +232,14 @@ class _MainScreenState extends State<MainScreen> {
     if (!mounted || picked == null) return;
     GameSnackBar.show(
       context,
-      title: 'Calendar',
-      message: 'Data selecionada: ${picked.toIso8601String().split('T').first}',
+      title: l10n.translate('calendar'),
+      message:
+          '${l10n.translate('selected_date_prefix')}${picked.toIso8601String().split('T').first}',
     );
   }
 
   Future<void> _resetAvatar() async {
+    final l10n = AppLocalizations.of(context);
     final playerProvider = context.read<PlayerProvider>();
     final player = playerProvider.player;
     if (player == null) return;
@@ -260,47 +247,100 @@ class _MainScreenState extends State<MainScreen> {
     if (!mounted) return;
     GameSnackBar.show(
       context,
-      title: 'Profile',
-      message: 'Avatar resetado com sucesso.',
+      title: l10n.translate('profile'),
+      message: l10n.translate('avatar_reset_success'),
       type: GameSnackBarType.success,
     );
   }
 
   Future<void> _shareProfile() async {
+    final l10n = AppLocalizations.of(context);
     final player = context.read<PlayerProvider>().player;
     if (player == null) return;
     final text =
-        'LifeRPG Profile\\nNome: ${player.name}\\nTítulo: ${player.title}\\nNível: ${player.level}\\nXP: ${player.totalXP}\\nReward Points: ${player.rewardPoints}';
-    await Share.share(text, subject: 'Meu perfil LifeRPG');
+        'LifeRPG ${l10n.translate('profile')}\\nName: ${player.name}\\nTitle: ${player.title}\\nLevel: ${player.level}\\nXP: ${player.totalXP}\\nCoins: ${player.rewardPoints}';
+    await Share.share(text, subject: 'LifeRPG ${l10n.translate('profile')}');
   }
 
   Future<void> _exportData() async {
+    final l10n = AppLocalizations.of(context);
     final settings = context.read<SettingsProvider>();
     await settings.exportData();
     if (!mounted) return;
     GameSnackBar.show(
       context,
-      title: 'Backup',
-      message: 'Exportação concluída.',
+      title: l10n.translate('export_backup'),
+      message: l10n.translate('backup_created'),
       type: GameSnackBarType.success,
     );
   }
 
   Future<void> _clearHistory() async {
+    final shouldClear = await _confirmClearHistory();
+    if (!mounted || shouldClear != true) return;
+
     await context.read<MissionProvider>().clearCompletedMissions();
     if (!mounted) return;
     GameSnackBar.show(
       context,
-      title: 'History',
-      message: 'Histórico limpo.',
+      title: AppLocalizations.of(context).translate('history'),
+      message: AppLocalizations.of(context).translate('history_cleared'),
       type: GameSnackBarType.success,
     );
+  }
+
+  Future<bool?> _confirmClearHistory() {
+    final l10n = AppLocalizations.of(context);
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppTheme.surface,
+        title: Text(
+          l10n.translate('confirm_clear_history_title'),
+          style: TextStyle(color: AppTheme.textPrimary),
+        ),
+        content: Text(
+          l10n.translate('confirm_clear_history_message'),
+          style: TextStyle(color: AppTheme.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(l10n.translate('cancel')),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(
+              l10n.translate('confirm'),
+              style: TextStyle(color: AppTheme.accentRed),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _missionSortValueForAppBar(BuildContext context) {
+    final missionProvider = context.read<MissionProvider>();
+    switch (missionProvider.sortMode) {
+      case MissionSortMode.difficultyDesc:
+        return 'difficulty';
+      case MissionSortMode.priorityDesc:
+        return 'importance';
+      case MissionSortMode.rewardDesc:
+        return 'reward';
+      case MissionSortMode.recent:
+      case MissionSortMode.oldest:
+      default:
+        return 'date';
+    }
   }
 
   Future<void> _openSkillsFilterSheet() async {
     final skillProvider = context.read<SkillProvider>();
     final missionProvider = context.read<MissionProvider>();
     final selected = {...missionProvider.selectedSkillIds};
+    final l10n = AppLocalizations.of(context);
 
     await showModalBottomSheet<void>(
       context: context,
@@ -308,44 +348,60 @@ class _MainScreenState extends State<MainScreen> {
       builder: (sheetContext) {
         final skills = skillProvider.skills;
         if (skills.isEmpty) {
-          return const Padding(
-            padding: EdgeInsets.all(16),
-            child: Text('Nenhuma skill disponível para filtrar.'),
+          return SizedBox(
+            height: MediaQuery.of(context).size.height * 0.45,
+            child: Center(child: Text(l10n.translate('no_skills_available'))),
           );
         }
 
         return StatefulBuilder(
           builder: (context, setState) {
+            final selectedCount = selected.length;
             return Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Filtrar por skills',
+                  Text(
+                    l10n.translate('filter_by_skills'),
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: skills.map((skill) {
-                      return FilterChip(
-                        label: Text(skill.name),
-                        selected: selected.contains(skill.id),
-                        onSelected: (enabled) {
-                          if (skill.id == null) return;
-                          setState(() {
-                            if (enabled) {
-                              selected.add(skill.id!);
-                            } else {
-                              selected.remove(skill.id!);
-                            }
-                          });
-                        },
-                      );
-                    }).toList(),
+                  Text(
+                    l10n
+                        .translate('selected_count_label')
+                        .replaceFirst('{count}', selectedCount.toString()),
+                    style: const TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    height: MediaQuery.of(context).size.height * 0.28,
+                    child: SingleChildScrollView(
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: skills.map((skill) {
+                          return FilterChip(
+                            label: Text(skill.name),
+                            selected: selected.contains(skill.id),
+                            onSelected: (enabled) {
+                              if (skill.id == null) return;
+                              setState(() {
+                                if (enabled) {
+                                  selected.add(skill.id!);
+                                } else {
+                                  selected.remove(skill.id!);
+                                }
+                              });
+                            },
+                          );
+                        }).toList(),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 12),
                   Row(
@@ -355,19 +411,19 @@ class _MainScreenState extends State<MainScreen> {
                           selected.clear();
                           setState(() {});
                         },
-                        child: const Text('Limpar'),
+                        child: Text(l10n.translate('clear')),
                       ),
                       const Spacer(),
                       TextButton(
                         onPressed: () => Navigator.of(sheetContext).pop(),
-                        child: const Text('Cancelar'),
+                        child: Text(l10n.translate('cancel')),
                       ),
                       TextButton(
                         onPressed: () {
                           missionProvider.setSkillFilters(selected);
                           Navigator.of(sheetContext).pop();
                         },
-                        child: const Text('Aplicar'),
+                        child: Text(l10n.translate('apply')),
                       ),
                     ],
                   ),

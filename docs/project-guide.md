@@ -59,7 +59,7 @@ Providers principais:
 
 Arquivo do banco: `liferpg.db`.
 
-Versão atual do schema: `9`.
+Versão atual do schema: `10`.
 
 Tabelas principais:
 
@@ -83,6 +83,7 @@ Notas de migração:
 - A versão 7 adicionou local, lembrete e dias de recorrência em missões, além de drops configuráveis e histórico de rolagens.
 - A versão 8 adicionou notas de missão e texto livre de lembrete.
 - A versão 9 adicionou sessões Pomodoro/Focus Quest com XP concedido por minuto focado.
+- A versão 10 adiciona o campo `description` no player (`player.description`) com valor padrão vazio, permitindo perfil com texto personalizado.
 - Foreign keys são habilitadas em `onConfigure`.
 
 Backup/restore:

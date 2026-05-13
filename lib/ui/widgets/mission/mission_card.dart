@@ -323,7 +323,7 @@ class MissionCard extends StatelessWidget {
                         if (mission.notes.isNotEmpty) ...[
                           _ExpandedLoreBlock(
                             icon: Icons.menu_book_outlined,
-                            label: 'Quest Log',
+                            label: 'Diário',
                             value: mission.notes,
                           ),
                           const SizedBox(height: 8),
@@ -331,7 +331,7 @@ class MissionCard extends StatelessWidget {
                         if (mission.reminderNote.isNotEmpty) ...[
                           _ExpandedLoreBlock(
                             icon: Icons.edit_notifications_outlined,
-                            label: 'Reminder Rune',
+                            label: 'Lembrete',
                             value: mission.reminderNote,
                           ),
                           const SizedBox(height: 8),
@@ -350,15 +350,15 @@ class MissionCard extends StatelessWidget {
                                 items: const [
                                   DropdownMenuItem(
                                     value: 'active',
-                                    child: Text('Active'),
+                                    child: Text('Ativa'),
                                   ),
                                   DropdownMenuItem(
                                     value: 'completed',
-                                    child: Text('Completed'),
+                                    child: Text('Concluída'),
                                   ),
                                   DropdownMenuItem(
                                     value: 'archived',
-                                    child: Text('Archived'),
+                                    child: Text('Arquivada'),
                                   ),
                                 ],
                                 onChanged: (value) async {

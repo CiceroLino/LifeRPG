@@ -3,12 +3,11 @@ import 'package:provider/provider.dart';
 
 import '../../../core/platform/custom_avatar_storage.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../data/models/player.dart';
 import '../../../providers/player_provider.dart';
 import '../../widgets/common/avatar_image.dart';
 import '../../widgets/profile/profile_icon_picker.dart';
 
-/// Tela de perfil do jogador com layout de edição fiel ao design original.
-/// Header persistente (PlayerStatsHeader) é gerenciado pelo MainScreen.
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -17,20 +16,35 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  late TextEditingController _nameController;
-  late TextEditingController _titleController;
-  late TextEditingController _descriptionController;
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _nameController;
+  late final TextEditingController _titleController;
+  late final TextEditingController _descriptionController;
   bool _showAvatar = true;
+  String? _avatarPath;
+  bool _isSaving = false;
+  bool _hasUnsavedChanges = false;
+  int? _loadedPlayerId;
 
   @override
   void initState() {
     super.initState();
+    _nameController = TextEditingController();
+    _titleController = TextEditingController();
+    _descriptionController = TextEditingController();
+
+    _nameController.addListener(() => _setUnsaved(true));
+    _titleController.addListener(() => _setUnsaved(true));
+    _descriptionController.addListener(() => _setUnsaved(true));
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
     final player = context.read<PlayerProvider>().player;
-    _nameController = TextEditingController(text: player?.name ?? 'Player');
-    _titleController = TextEditingController(
-      text: player?.title ?? 'Adventurer',
-    );
-    _descriptionController = TextEditingController(text: '');
+    if (player != null && _loadedPlayerId != player.id) {
+      _hydrateFromPlayer(player);
+    }
   }
 
   @override
@@ -39,6 +53,167 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _titleController.dispose();
     _descriptionController.dispose();
     super.dispose();
+  }
+
+  void _hydrateFromPlayer(Player player) {
+    setState(() {
+      _nameController.text = player.name;
+      _titleController.text = player.title;
+      _descriptionController.text = player.description;
+      _avatarPath = player.avatarPath;
+      _loadedPlayerId = player.id;
+      _hasUnsavedChanges = false;
+    });
+  }
+
+  void _setUnsaved(bool value) {
+    if (_hasUnsavedChanges == value || _loadedPlayerId == null) return;
+    setState(() {
+      _hasUnsavedChanges = value;
+    });
+  }
+
+  Future<void> _saveProfile() async {
+    if (!_formKey.currentState!.validate()) return;
+    if (_isSaving) return;
+
+    final playerProvider = context.read<PlayerProvider>();
+    final player = playerProvider.player;
+    if (player == null) return;
+
+    final name = _nameController.text.trim();
+    final title = _titleController.text.trim();
+    final description = _descriptionController.text.trim();
+
+    if (name.isEmpty || title.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Nome e título não podem ficar vazios.'),
+          backgroundColor: AppTheme.accentRed,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isSaving = true);
+    try {
+      await playerProvider.updatePlayer(
+        player.copyWith(
+          name: name,
+          title: title,
+          description: description,
+          avatarPath: _avatarPath,
+        ),
+      );
+      if (!mounted) return;
+
+      setState(() {
+        _hasUnsavedChanges = false;
+      });
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Perfil salvo com sucesso.'),
+          backgroundColor: AppTheme.primary,
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erro ao salvar perfil: $error'),
+          backgroundColor: AppTheme.accentRed,
+        ),
+      );
+    } finally {
+      if (!mounted) return;
+      setState(() => _isSaving = false);
+    }
+  }
+
+  Future<bool> _onWillPopProfile() async {
+    if (!_hasUnsavedChanges) return true;
+    return await _confirmDiscardChanges() == true;
+  }
+
+  Future<bool?> _confirmDiscardChanges() {
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppTheme.surface,
+        title: const Text(
+          'Descartar alterações',
+          style: TextStyle(color: AppTheme.textPrimary),
+        ),
+        content: const Text(
+          'Você fez alterações não salvas no perfil. Deseja sair sem salvar?',
+          style: TextStyle(color: AppTheme.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text(
+              'Descartar',
+              style: TextStyle(color: AppTheme.accentRed),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _pickAvatarFromGallery() async {
+    try {
+      final avatarPath = await pickAndStoreCustomAvatar();
+      if (avatarPath == null) return;
+      setState(() {
+        _avatarPath = avatarPath;
+        _hasUnsavedChanges = true;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erro ao salvar ícone: $e'),
+          backgroundColor: AppTheme.accentRed,
+        ),
+      );
+    }
+  }
+
+  Future<void> _pickAvatarFromIconPicker() async {
+    final selectedIcon = await showProfileIconPicker(
+      context,
+      currentIconPath: _avatarPath,
+    );
+    if (selectedIcon == null) return;
+
+    setState(() {
+      _avatarPath = selectedIcon;
+      _hasUnsavedChanges = true;
+    });
+  }
+
+  InputDecoration _inputDecoration(String label) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle: const TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+      enabledBorder: const UnderlineInputBorder(
+        borderSide: BorderSide(color: AppTheme.border, width: 1),
+      ),
+      focusedBorder: const UnderlineInputBorder(
+        borderSide: BorderSide(color: AppTheme.primary, width: 2),
+      ),
+      border: const UnderlineInputBorder(
+        borderSide: BorderSide(color: AppTheme.border, width: 1),
+      ),
+      contentPadding: const EdgeInsets.only(bottom: 8),
+    );
   }
 
   @override
@@ -50,268 +225,177 @@ class _ProfileScreenState extends State<ProfileScreen> {
           return const Center(child: CircularProgressIndicator());
         }
 
-        return Container(
-          color: AppTheme.background,
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Layout de Edição: Avatar + Checkbox + Botão CUSTOM
-                Row(
+        final avatarPath = _avatarPath;
+
+        return WillPopScope(
+          onWillPop: _onWillPopProfile,
+          child: Container(
+            color: AppTheme.background,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Form(
+                key: _formKey,
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Esquerda: Ícone do avatar grande (branco) - clicável para selecionar ícone
-                    Column(
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        GestureDetector(
-                          onTap: () async {
-                            // Abre o seletor de ícones da aplicação
-                            final selectedIcon = await showProfileIconPicker(
-                              context,
-                              currentIconPath: player.avatarPath,
-                            );
-                            if (selectedIcon != null && mounted) {
-                              final updatedPlayer = player.copyWith(
-                                avatarPath: selectedIcon,
-                              );
-                              await playerProvider.updatePlayer(updatedPlayer);
-                            }
-                          },
-                          child: Container(
-                            width: 80,
-                            height: 80,
-                            decoration: BoxDecoration(
-                              color: AppTheme.surface,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: AppTheme.border,
-                                width: 1,
+                        Column(
+                          children: [
+                            GestureDetector(
+                              onTap: _pickAvatarFromIconPicker,
+                              child: Container(
+                                width: 80,
+                                height: 80,
+                                decoration: BoxDecoration(
+                                  color: AppTheme.surface,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: AppTheme.border,
+                                    width: 1,
+                                  ),
+                                ),
+                                child: _showAvatar &&
+                                        avatarPath != null &&
+                                        avatarPath.isNotEmpty
+                                    ? ClipRRect(
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: buildAvatarImage(
+                                          avatarPath,
+                                          placeholderBuilder:
+                                              _buildAvatarPlaceholder,
+                                          fit: BoxFit.cover,
+                                        ),
+                                      )
+                                    : _buildAvatarPlaceholder(),
                               ),
                             ),
-                            child:
-                                _showAvatar &&
-                                    player.avatarPath != null &&
-                                    player.avatarPath!.isNotEmpty
-                                ? ClipRRect(
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: buildAvatarImage(
-                                      player.avatarPath!,
-                                      placeholderBuilder:
-                                          _buildAvatarPlaceholder,
-                                      fit: BoxFit.cover,
-                                    ),
-                                  )
-                                : _buildAvatarPlaceholder(),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        // Checkbox "Show"
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Checkbox(
-                              value: _showAvatar,
-                              onChanged: (value) {
-                                setState(() {
-                                  _showAvatar = value ?? true;
-                                });
-                              },
-                              activeColor: AppTheme.primary,
-                              checkColor: Colors.white,
+                            const SizedBox(height: 8),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Checkbox(
+                                  value: _showAvatar,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _showAvatar = value ?? true;
+                                    });
+                                  },
+                                  activeColor: AppTheme.primary,
+                                  checkColor: Colors.white,
+                                ),
+                                const Text(
+                                  'Exibir avatar',
+                                  style: TextStyle(
+                                    color: AppTheme.textPrimary,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
                             ),
-                            const Text(
-                              'Show',
-                              style: TextStyle(
-                                color: AppTheme.textPrimary,
-                                fontSize: 14,
+                            const SizedBox(height: 8),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: AppTheme.surface,
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(
+                                  color: AppTheme.border,
+                                  width: 1,
+                                ),
+                              ),
+                              child: TextButton(
+                                onPressed: _pickAvatarFromGallery,
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 8,
+                                  ),
+                                  minimumSize: const Size(80, 36),
+                                ),
+                                child: const Text(
+                                  'Personalizar',
+                                  style: TextStyle(
+                                    color: AppTheme.textPrimary,
+                                    fontSize: 12,
+                                  ),
+                                ),
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 8),
-                        // Botão retangular cinza com borda tracejada [ ] CUSTOM
-                        Container(
-                          decoration: BoxDecoration(
-                            color: AppTheme.surface,
-                            borderRadius: BorderRadius.circular(4),
-                            border: Border.all(
-                              color: AppTheme.border,
-                              width: 1,
-                              style: BorderStyle.solid,
-                            ),
-                          ),
-                          child: TextButton(
-                            onPressed: () async {
-                              try {
-                                final avatarPath =
-                                    await pickAndStoreCustomAvatar();
-                                if (avatarPath == null || !mounted) {
-                                  return;
-                                }
-
-                                final updatedPlayer = player.copyWith(
-                                  avatarPath: avatarPath,
-                                );
-                                await playerProvider.updatePlayer(
-                                  updatedPlayer,
-                                );
-                              } catch (e) {
-                                if (!mounted) return;
-                                ScaffoldMessenger.of(this.context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('Erro ao salvar ícone: $e'),
-                                    backgroundColor: AppTheme.accentRed,
-                                  ),
-                                );
-                              }
-                            },
-                            style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
+                        const SizedBox(width: 24),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              TextFormField(
+                                controller: _nameController,
+                                validator: (value) =>
+                                    (value == null || value.trim().isEmpty)
+                                    ? 'Informe o nome do herói'
+                                    : null,
+                                style: const TextStyle(
+                                  color: AppTheme.textPrimary,
+                                  fontSize: 16,
+                                ),
+                                decoration: _inputDecoration('Nome'),
                               ),
-                              minimumSize: const Size(80, 36),
-                            ),
-                            child: const Text(
-                              '[ ] CUSTOM',
-                              style: TextStyle(
-                                color: AppTheme.textPrimary,
-                                fontSize: 12,
+                              const SizedBox(height: 24),
+                              TextFormField(
+                                controller: _titleController,
+                                validator: (value) =>
+                                    (value == null || value.trim().isEmpty)
+                                    ? 'Informe o título/classe'
+                                    : null,
+                                style: const TextStyle(
+                                  color: AppTheme.textPrimary,
+                                  fontSize: 16,
+                                ),
+                                decoration: _inputDecoration('Título/Classe'),
                               ),
-                            ),
+                            ],
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(width: 24),
-                    // Direita: TextFields com underline
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // TextField "Name"
-                          TextField(
-                            controller: _nameController,
-                            style: const TextStyle(
-                              color: AppTheme.textPrimary,
-                              fontSize: 16,
-                            ),
-                            decoration: InputDecoration(
-                              labelText: 'Name',
-                              labelStyle: const TextStyle(
-                                color: AppTheme.textSecondary,
-                                fontSize: 14,
-                              ),
-                              enabledBorder: UnderlineInputBorder(
-                                borderSide: BorderSide(
-                                  color: AppTheme.border,
-                                  width: 1,
+                    const SizedBox(height: 32),
+                    TextFormField(
+                      controller: _descriptionController,
+                      maxLines: 5,
+                      maxLength: 250,
+                      style: const TextStyle(
+                        color: AppTheme.textPrimary,
+                        fontSize: 14,
+                      ),
+                      decoration: _inputDecoration('Descrição do perfil')
+                          .copyWith(
+                        contentPadding: const EdgeInsets.only(top: 8),
+                        helperText: 'Máximo de 250 caracteres.',
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: !_hasUnsavedChanges || _isSaving
+                            ? null
+                            : _saveProfile,
+                        child: _isSaving
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
                                 ),
-                              ),
-                              focusedBorder: UnderlineInputBorder(
-                                borderSide: BorderSide(
-                                  color: AppTheme.primary,
-                                  width: 2,
-                                ),
-                              ),
-                              border: UnderlineInputBorder(
-                                borderSide: BorderSide(
-                                  color: AppTheme.border,
-                                  width: 1,
-                                ),
-                              ),
-                              contentPadding: const EdgeInsets.only(bottom: 8),
-                            ),
-                            onSubmitted: (value) async {
-                              if (value.trim().isNotEmpty) {
-                                final updatedPlayer = player.copyWith(
-                                  name: value.trim(),
-                                );
-                                await playerProvider.updatePlayer(
-                                  updatedPlayer,
-                                );
-                              }
-                            },
-                          ),
-                          const SizedBox(height: 24),
-                          // TextField "Title/Class"
-                          TextField(
-                            controller: _titleController,
-                            style: const TextStyle(
-                              color: AppTheme.textPrimary,
-                              fontSize: 16,
-                            ),
-                            decoration: InputDecoration(
-                              labelText: 'Title/Class',
-                              labelStyle: const TextStyle(
-                                color: AppTheme.textSecondary,
-                                fontSize: 14,
-                              ),
-                              enabledBorder: UnderlineInputBorder(
-                                borderSide: BorderSide(
-                                  color: AppTheme.border,
-                                  width: 1,
-                                ),
-                              ),
-                              focusedBorder: UnderlineInputBorder(
-                                borderSide: BorderSide(
-                                  color: AppTheme.primary,
-                                  width: 2,
-                                ),
-                              ),
-                              border: UnderlineInputBorder(
-                                borderSide: BorderSide(
-                                  color: AppTheme.border,
-                                  width: 1,
-                                ),
-                              ),
-                              contentPadding: const EdgeInsets.only(bottom: 8),
-                            ),
-                            onSubmitted: (value) async {
-                              if (value.trim().isNotEmpty) {
-                                final updatedPlayer = player.copyWith(
-                                  title: value.trim(),
-                                );
-                                await playerProvider.updatePlayer(
-                                  updatedPlayer,
-                                );
-                              }
-                            },
-                          ),
-                        ],
+                              )
+                            : const Text('Salvar alterações'),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 32),
-                // Campo de texto grande para "Description"
-                TextField(
-                  controller: _descriptionController,
-                  maxLines: 5,
-                  style: const TextStyle(
-                    color: AppTheme.textPrimary,
-                    fontSize: 14,
-                  ),
-                  decoration: InputDecoration(
-                    labelText: 'Description',
-                    labelStyle: const TextStyle(
-                      color: AppTheme.textSecondary,
-                      fontSize: 14,
-                    ),
-                    enabledBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(color: AppTheme.border, width: 1),
-                    ),
-                    focusedBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(color: AppTheme.primary, width: 2),
-                    ),
-                    border: UnderlineInputBorder(
-                      borderSide: BorderSide(color: AppTheme.border, width: 1),
-                    ),
-                    contentPadding: const EdgeInsets.only(top: 8, bottom: 8),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         );

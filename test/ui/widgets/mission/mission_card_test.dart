@@ -45,7 +45,7 @@ void main() {
 
     await tester.tap(find.byKey(const Key('mission-status-dropdown')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Completed').last);
+    await tester.tap(find.text('Concluída').last);
     await tester.pumpAndSettle();
 
     expect(changedTo, 'completed');
