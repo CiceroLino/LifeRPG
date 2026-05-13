@@ -5,6 +5,7 @@ import 'package:share_plus/share_plus.dart';
 
 import 'missions/missions_list_screen.dart';
 import 'missions/mission_form_screen.dart';
+import 'notebooks/notebooks_screen.dart';
 import 'map/map_screen.dart';
 import 'rewards/rewards_screen.dart';
 import 'rewards/reward_form_screen.dart';
@@ -65,6 +66,7 @@ class _MainScreenState extends State<MainScreen> {
 
   final _pages = const [
     MissionsListScreen(),
+    NotebooksScreen(),
     MapScreen(),
     RewardsScreen(),
     InventoryScreen(),
@@ -77,9 +79,12 @@ class _MainScreenState extends State<MainScreen> {
     HelpScreen(),
   ];
 
-  // Índices que NÃO devem mostrar o header (Skills, Settings e Help)
+  // Índices que NÃO devem mostrar o header (Notebooks, Skills, Settings e Help)
   bool get _shouldShowHeader =>
-      _currentIndex != 4 && _currentIndex != 9 && _currentIndex != 10;
+      _currentIndex != 1 &&
+      _currentIndex != 5 &&
+      _currentIndex != 10 &&
+      _currentIndex != 11;
 
   @override
   Widget build(BuildContext context) {
@@ -226,7 +231,7 @@ class _MainScreenState extends State<MainScreen> {
 
   void _goToProfile() {
     setState(() {
-      _currentIndex = 6;
+      _currentIndex = 7;
     });
   }
 
@@ -478,7 +483,7 @@ class _MainScreenState extends State<MainScreen> {
           },
           child: const Icon(Icons.add),
         );
-      case 2:
+      case 3:
         return FloatingActionButton(
           onPressed: () {
             Navigator.of(
@@ -487,11 +492,11 @@ class _MainScreenState extends State<MainScreen> {
           },
           child: const Icon(Icons.add),
         );
-      case 3:
-        return null;
       case 4:
         return null;
-      case 8:
+      case 5:
+        return null;
+      case 9:
         return null;
       default:
         return null;
@@ -502,6 +507,7 @@ class _MainScreenState extends State<MainScreen> {
   String _getCurrentScreenName(int index) {
     const screenNames = [
       'missions',
+      'notebooks',
       'map',
       'rewards',
       'inventory',

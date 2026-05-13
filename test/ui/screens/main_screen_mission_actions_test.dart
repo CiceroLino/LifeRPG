@@ -6,6 +6,7 @@ import 'package:liferpg/data/models/mission.dart';
 import 'package:liferpg/data/models/player.dart';
 import 'package:liferpg/data/models/skill.dart';
 import 'package:liferpg/providers/mission_provider.dart';
+import 'package:liferpg/providers/notebook_provider.dart';
 import 'package:liferpg/providers/inventory_provider.dart';
 import 'package:liferpg/providers/player_provider.dart';
 import 'package:liferpg/providers/pomodoro_provider.dart';
@@ -91,6 +92,14 @@ class FakeInventoryProvider extends InventoryProvider {
   Future<void> loadItems() async {}
 }
 
+class FakeNotebookProvider extends NotebookProvider {
+  @override
+  bool get isLoading => false;
+
+  @override
+  Future<void> loadNotebooks() async {}
+}
+
 void main() {
   Future<void> pumpMain(
     WidgetTester tester,
@@ -114,6 +123,9 @@ void main() {
           ),
           ChangeNotifierProvider<InventoryProvider>.value(
             value: FakeInventoryProvider(),
+          ),
+          ChangeNotifierProvider<NotebookProvider>.value(
+            value: FakeNotebookProvider(),
           ),
           ChangeNotifierProvider<SettingsProvider>.value(
             value: FakeSettingsProvider(),

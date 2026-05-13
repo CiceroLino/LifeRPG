@@ -20,7 +20,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 10,
+      version: 11,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
       },
@@ -121,6 +121,7 @@ class DatabaseHelper {
     await _createRewardInventoryTables(db);
     await _createMissionRewardDropTables(db);
     await _createFocusSessionTables(db);
+    await _createNotebookTables(db);
 
     await _insertDefaultPlayer(db);
   }
@@ -161,6 +162,9 @@ class DatabaseHelper {
     }
     if (oldVersion < 10) {
       await _addColumnIfMissing(db, 'player', 'description', "TEXT DEFAULT ''");
+    }
+    if (oldVersion < 11) {
+      await _createNotebookTables(db);
     }
   }
 
@@ -519,6 +523,38 @@ class DatabaseHelper {
     );
   }
 
+  Future<void> _createNotebookTables(DatabaseExecutor db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS notebooks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        description TEXT DEFAULT '',
+        is_active INTEGER DEFAULT 1,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS notes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        notebook_id INTEGER NOT NULL,
+        title TEXT NOT NULL,
+        body TEXT DEFAULT '',
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(notebook_id) REFERENCES notebooks(id) ON DELETE CASCADE
+      )
+    ''');
+
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_notebooks_active ON notebooks(is_active)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_notes_notebook ON notes(notebook_id)',
+    );
+  }
+
   Future<Map<String, dynamic>> getAllDataForBackup() async {
     final db = await database;
 
@@ -538,6 +574,8 @@ class DatabaseHelper {
       'mission_completion_reward_drops',
     );
     final focusSessionsMaps = await db.query('focus_sessions');
+    final notebooksMaps = await db.query('notebooks');
+    final notesMaps = await db.query('notes');
 
     return {
       'version': '1.0',
@@ -554,6 +592,8 @@ class DatabaseHelper {
       'mission_reward_drops': missionRewardDropsMaps,
       'mission_completion_reward_drops': completionRewardDropsMaps,
       'focus_sessions': focusSessionsMaps,
+      'notebooks': notebooksMaps,
+      'notes': notesMaps,
     };
   }
 
@@ -577,6 +617,8 @@ class DatabaseHelper {
     await db.transaction((txn) async {
       await txn.delete('reward_redemptions');
       await txn.delete('focus_sessions');
+      await txn.delete('notes');
+      await txn.delete('notebooks');
       await txn.delete('mission_completion_reward_drops');
       await txn.delete('mission_reward_drops');
       await txn.delete('inventory_items');
@@ -597,6 +639,8 @@ class DatabaseHelper {
     await db.transaction((txn) async {
       await txn.delete('reward_redemptions');
       await txn.delete('focus_sessions');
+      await txn.delete('notes');
+      await txn.delete('notebooks');
       await txn.delete('mission_completion_reward_drops');
       await txn.delete('mission_reward_drops');
       await txn.delete('inventory_items');
@@ -705,6 +749,20 @@ class DatabaseHelper {
       if (focusSessions != null) {
         for (final session in focusSessions) {
           await txn.insert('focus_sessions', session as Map<String, dynamic>);
+        }
+      }
+
+      final notebooks = data['notebooks'] as List<dynamic>?;
+      if (notebooks != null) {
+        for (final notebook in notebooks) {
+          await txn.insert('notebooks', notebook as Map<String, dynamic>);
+        }
+      }
+
+      final notes = data['notes'] as List<dynamic>?;
+      if (notes != null) {
+        for (final note in notes) {
+          await txn.insert('notes', note as Map<String, dynamic>);
         }
       }
     });

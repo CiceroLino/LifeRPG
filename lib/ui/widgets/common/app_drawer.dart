@@ -24,6 +24,11 @@ class AppDrawer extends StatelessWidget {
             'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/archery-target.svg',
       ),
       const _DrawerItem(
+        labelKey: 'notebooks',
+        asset:
+            'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/delapouite/notebook.svg',
+      ),
+      const _DrawerItem(
         labelKey: 'map',
         asset:
             'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/compass.svg',
@@ -178,7 +183,9 @@ class AppDrawer extends StatelessWidget {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    tileColor: selected ? AppTheme.surface.withValues(alpha: .7) : null,
+                    tileColor: selected
+                        ? AppTheme.surface.withValues(alpha: .7)
+                        : null,
                   );
                 },
               ),

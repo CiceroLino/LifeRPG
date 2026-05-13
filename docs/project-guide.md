@@ -15,6 +15,7 @@ LifeRPG é um app Flutter que transforma tarefas reais em progressão de RPG.
 - Recompensas obtidas viram itens no inventário, onde podem ser consumidas.
 - Energia é exibida como HP e diminui/aumenta conforme tempo acordado e tempo dormindo, ou por ajuste manual.
 - Pomodoro é tratado como Focus Quest: uma sessão de foco com duração limitada que concede XP ao player.
+- Notebooks são cadernos locais para capturar notas livres fora do fluxo de missões.
 
 Referência de produto: o raciocínio de missões, atributos, RP, recompensas e HP segue a linha do artigo "LifeRPG Strategy Guide (v1.0.0)", de kolayāna, adaptado ao código atual deste app.
 
@@ -41,7 +42,7 @@ Regra importante de responsabilidade: não duplique cálculos de negócio na UI.
 
 - Chama `configureDatabasePlatform()` e inicializa `MissionReminderService` antes de `runApp`.
 - Registra providers com `MultiProvider`.
-- Carrega imediatamente player, recompensas, inventário, missões, skills e configurações.
+- Carrega imediatamente player, recompensas, inventário, missões, skills, notebooks e configurações.
 - Força `ThemeMode.dark`.
 - Suporta locales `en`, `pt` e `es`.
 
@@ -53,13 +54,14 @@ Providers principais:
 - `SkillProvider`
 - `RewardProvider`
 - `InventoryProvider`
+- `NotebookProvider`
 - `SettingsProvider`
 
 ## Banco de Dados
 
 Arquivo do banco: `liferpg.db`.
 
-Versão atual do schema: `10`.
+Versão atual do schema: `11`.
 
 Tabelas principais:
 
@@ -75,6 +77,8 @@ Tabelas principais:
 - `mission_reward_drops`: drops configurados por missão.
 - `mission_completion_reward_drops`: rolagens históricas de drops na conclusão.
 - `focus_sessions`: histórico de sessões Pomodoro/Focus Quest concluídas.
+- `notebooks`: cadernos de notas locais.
+- `notes`: notas vinculadas a um notebook.
 
 Notas de migração:
 
@@ -84,6 +88,7 @@ Notas de migração:
 - A versão 8 adicionou notas de missão e texto livre de lembrete.
 - A versão 9 adicionou sessões Pomodoro/Focus Quest com XP concedido por minuto focado.
 - A versão 10 adiciona o campo `description` no player (`player.description`) com valor padrão vazio, permitindo perfil com texto personalizado.
+- A versão 11 adiciona `notebooks` e `notes`.
 - Foreign keys são habilitadas em `onConfigure`.
 
 Backup/restore:

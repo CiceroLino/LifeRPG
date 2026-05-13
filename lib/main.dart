@@ -11,6 +11,7 @@ import 'providers/pomodoro_provider.dart';
 import 'providers/inventory_provider.dart';
 import 'providers/reward_provider.dart';
 import 'providers/skill_provider.dart';
+import 'providers/notebook_provider.dart';
 import 'providers/settings_provider.dart';
 import 'services/mission_reminder_service.dart';
 import 'l10n/app_localizations.dart';
@@ -40,6 +41,9 @@ class MyApp extends StatelessWidget {
           create: (_) => MissionProvider()..loadMissions(),
         ),
         ChangeNotifierProvider(create: (_) => SkillProvider()..loadSkills()),
+        ChangeNotifierProvider(
+          create: (_) => NotebookProvider()..loadNotebooks(),
+        ),
         ChangeNotifierProvider(create: (_) => SettingsProvider()..initialize()),
       ],
       child: Consumer<SettingsProvider>(
