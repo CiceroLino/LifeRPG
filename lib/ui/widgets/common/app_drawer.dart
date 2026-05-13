@@ -20,6 +20,7 @@ class AppDrawer extends StatelessWidget {
       const _DrawerItem(labelKey: 'missions', icon: Icons.flag_outlined),
       const _DrawerItem(labelKey: 'notebooks', icon: Icons.menu_book_outlined),
       const _DrawerItem(labelKey: 'tomes', icon: Icons.auto_stories_outlined),
+      const _DrawerItem(labelKey: 'tavern', icon: Icons.local_bar_outlined),
       const _DrawerItem(labelKey: 'map', icon: Icons.map_outlined),
       const _DrawerItem(
         labelKey: 'rewards',

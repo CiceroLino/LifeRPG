@@ -20,7 +20,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 12,
+      version: 13,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
       },
@@ -123,6 +123,7 @@ class DatabaseHelper {
     await _createFocusSessionTables(db);
     await _createNotebookTables(db);
     await _createTomeTables(db);
+    await _createAudioTrackTables(db);
 
     await _insertDefaultPlayer(db);
   }
@@ -169,6 +170,9 @@ class DatabaseHelper {
     }
     if (oldVersion < 12) {
       await _createTomeTables(db);
+    }
+    if (oldVersion < 13) {
+      await _createAudioTrackTables(db);
     }
   }
 
@@ -581,6 +585,28 @@ class DatabaseHelper {
     );
   }
 
+  Future<void> _createAudioTrackTables(DatabaseExecutor db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS audio_tracks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        artist TEXT DEFAULT '',
+        album TEXT DEFAULT '',
+        file_path TEXT NOT NULL,
+        duration_ms INTEGER CHECK(duration_ms IS NULL OR duration_ms >= 0),
+        position_ms INTEGER NOT NULL DEFAULT 0 CHECK(position_ms >= 0),
+        is_active INTEGER DEFAULT 1,
+        last_played_at TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    ''');
+
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_audio_tracks_active ON audio_tracks(is_active)',
+    );
+  }
+
   Future<Map<String, dynamic>> getAllDataForBackup() async {
     final db = await database;
 
@@ -603,6 +629,7 @@ class DatabaseHelper {
     final notebooksMaps = await db.query('notebooks');
     final notesMaps = await db.query('notes');
     final tomesMaps = await db.query('tomes');
+    final audioTracksMaps = await db.query('audio_tracks');
 
     return {
       'version': '1.0',
@@ -622,6 +649,7 @@ class DatabaseHelper {
       'notebooks': notebooksMaps,
       'notes': notesMaps,
       'tomes': tomesMaps,
+      'audio_tracks': audioTracksMaps,
     };
   }
 
@@ -648,6 +676,7 @@ class DatabaseHelper {
       await txn.delete('notes');
       await txn.delete('notebooks');
       await txn.delete('tomes');
+      await txn.delete('audio_tracks');
       await txn.delete('mission_completion_reward_drops');
       await txn.delete('mission_reward_drops');
       await txn.delete('inventory_items');
@@ -671,6 +700,7 @@ class DatabaseHelper {
       await txn.delete('notes');
       await txn.delete('notebooks');
       await txn.delete('tomes');
+      await txn.delete('audio_tracks');
       await txn.delete('mission_completion_reward_drops');
       await txn.delete('mission_reward_drops');
       await txn.delete('inventory_items');
@@ -800,6 +830,13 @@ class DatabaseHelper {
       if (tomes != null) {
         for (final tome in tomes) {
           await txn.insert('tomes', tome as Map<String, dynamic>);
+        }
+      }
+
+      final audioTracks = data['audio_tracks'] as List<dynamic>?;
+      if (audioTracks != null) {
+        for (final track in audioTracks) {
+          await txn.insert('audio_tracks', track as Map<String, dynamic>);
         }
       }
     });

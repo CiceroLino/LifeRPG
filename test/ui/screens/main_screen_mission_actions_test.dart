@@ -13,7 +13,9 @@ import 'package:liferpg/providers/pomodoro_provider.dart';
 import 'package:liferpg/providers/reward_provider.dart';
 import 'package:liferpg/providers/settings_provider.dart';
 import 'package:liferpg/providers/skill_provider.dart';
+import 'package:liferpg/providers/tavern_provider.dart';
 import 'package:liferpg/providers/tome_provider.dart';
+import 'package:liferpg/services/tavern_audio_service.dart';
 import 'package:liferpg/ui/screens/main_screen.dart';
 import 'package:liferpg/ui/widgets/common/liferpg_app_bar.dart';
 
@@ -109,6 +111,45 @@ class FakeTomeProvider extends TomeProvider {
   Future<void> loadTomes() async {}
 }
 
+class FakeTavernPlayback implements TavernPlayback {
+  @override
+  Stream<bool> get playingStream => const Stream.empty();
+
+  @override
+  Stream<Duration> get positionStream => const Stream.empty();
+
+  @override
+  Stream<Duration?> get durationStream => const Stream.empty();
+
+  @override
+  Stream<TavernPlaybackCommand> get commandStream => const Stream.empty();
+
+  @override
+  Future<Duration?> load(AudioTrack track) async => track.duration;
+
+  @override
+  Future<void> pause() async {}
+
+  @override
+  Future<void> play() async {}
+
+  @override
+  Future<void> seek(Duration position) async {}
+
+  @override
+  Future<void> stop() async {}
+}
+
+class FakeTavernProvider extends TavernProvider {
+  FakeTavernProvider() : super(playback: FakeTavernPlayback());
+
+  @override
+  bool get isLoading => false;
+
+  @override
+  Future<void> loadTracks() async {}
+}
+
 void main() {
   Future<void> pumpMain(
     WidgetTester tester,
@@ -137,6 +178,9 @@ void main() {
             value: FakeNotebookProvider(),
           ),
           ChangeNotifierProvider<TomeProvider>.value(value: FakeTomeProvider()),
+          ChangeNotifierProvider<TavernProvider>.value(
+            value: FakeTavernProvider(),
+          ),
           ChangeNotifierProvider<SettingsProvider>.value(
             value: FakeSettingsProvider(),
           ),
@@ -191,7 +235,9 @@ void main() {
     expect(missionProvider.lastFilterMode, MissionFilterMode.tomorrow);
   });
 
-  testWidgets('navigation dropdown exposes Pomodoro option', (tester) async {
+  testWidgets('navigation dropdown exposes Tavern and Pomodoro options', (
+    tester,
+  ) async {
     final missionProvider = FakeMissionProvider();
     await pumpMain(tester, missionProvider);
 
@@ -199,6 +245,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
+    expect(find.text('Tavern'), findsOneWidget);
     expect(find.text('Pomodoro'), findsOneWidget);
   });
 }

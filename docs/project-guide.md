@@ -17,6 +17,7 @@ LifeRPG é um app Flutter que transforma tarefas reais em progressão de RPG.
 - Pomodoro é tratado como Focus Quest: uma sessão de foco com duração limitada que concede XP ao player.
 - Notebooks são cadernos locais para capturar notas livres fora do fluxo de missões.
 - Tomes são referências PDF locais catalogadas no app, com caminho do arquivo e progresso manual de leitura.
+- Tavern é uma biblioteca/player local de áudio com suporte a reprodução em background mobile via `audio_service`/`just_audio`.
 
 Referência de produto: o raciocínio de missões, atributos, RP, recompensas e HP segue a linha do artigo "LifeRPG Strategy Guide (v1.0.0)", de kolayāna, adaptado ao código atual deste app.
 
@@ -43,7 +44,7 @@ Regra importante de responsabilidade: não duplique cálculos de negócio na UI.
 
 - Chama `configureDatabasePlatform()` e inicializa `MissionReminderService` antes de `runApp`.
 - Registra providers com `MultiProvider`.
-- Carrega imediatamente player, recompensas, inventário, missões, skills, notebooks e configurações.
+- Carrega imediatamente player, recompensas, inventário, missões, skills, notebooks, tomes, tavern e configurações.
 - Força `ThemeMode.dark`.
 - Suporta locales `en`, `pt` e `es`.
 
@@ -57,13 +58,14 @@ Providers principais:
 - `InventoryProvider`
 - `NotebookProvider`
 - `TomeProvider`
+- `TavernProvider`
 - `SettingsProvider`
 
 ## Banco de Dados
 
 Arquivo do banco: `liferpg.db`.
 
-Versão atual do schema: `12`.
+Versão atual do schema: `13`.
 
 Tabelas principais:
 
@@ -82,6 +84,7 @@ Tabelas principais:
 - `notebooks`: cadernos de notas locais.
 - `notes`: notas vinculadas a um notebook.
 - `tomes`: PDFs locais catalogados como tomos, com metadados e progresso manual.
+- `audio_tracks`: metadados locais de áudio da Tavern e progresso de reprodução.
 
 Notas de migração:
 
@@ -93,6 +96,7 @@ Notas de migração:
 - A versão 10 adiciona o campo `description` no player (`player.description`) com valor padrão vazio, permitindo perfil com texto personalizado.
 - A versão 11 adiciona `notebooks` e `notes`.
 - A versão 12 adiciona `tomes`.
+- A versão 13 adiciona `audio_tracks`.
 - Foreign keys são habilitadas em `onConfigure`.
 
 Backup/restore:

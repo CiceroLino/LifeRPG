@@ -7,6 +7,7 @@ import 'missions/missions_list_screen.dart';
 import 'missions/mission_form_screen.dart';
 import 'notebooks/notebooks_screen.dart';
 import 'tomes/tomes_screen.dart';
+import 'tavern/tavern_screen.dart';
 import 'map/map_screen.dart';
 import 'rewards/rewards_screen.dart';
 import 'rewards/reward_form_screen.dart';
@@ -71,6 +72,7 @@ class _MainScreenState extends State<MainScreen> {
     MissionsListScreen(),
     NotebooksScreen(),
     TomesScreen(),
+    TavernScreen(),
     MapScreen(),
     RewardsScreen(),
     InventoryScreen(),
@@ -83,13 +85,14 @@ class _MainScreenState extends State<MainScreen> {
     HelpScreen(),
   ];
 
-  // Índices que NÃO devem mostrar o header (Notebooks, Tomes, Skills, Settings e Help)
+  // Índices que NÃO devem mostrar o header (Notebooks, Tomes, Tavern, Skills, Settings e Help)
   bool get _shouldShowHeader =>
       _currentIndex != 1 &&
       _currentIndex != 2 &&
-      _currentIndex != 6 &&
-      _currentIndex != 11 &&
-      _currentIndex != 12;
+      _currentIndex != 3 &&
+      _currentIndex != 7 &&
+      _currentIndex != 12 &&
+      _currentIndex != 13;
 
   @override
   Widget build(BuildContext context) {
@@ -236,7 +239,7 @@ class _MainScreenState extends State<MainScreen> {
 
   void _goToProfile() {
     setState(() {
-      _currentIndex = 8;
+      _currentIndex = 9;
     });
   }
 
@@ -488,7 +491,7 @@ class _MainScreenState extends State<MainScreen> {
           },
           child: const Icon(Icons.add),
         );
-      case 4:
+      case 5:
         return FloatingActionButton(
           onPressed: () {
             Navigator.of(
@@ -497,11 +500,11 @@ class _MainScreenState extends State<MainScreen> {
           },
           child: const Icon(Icons.add),
         );
-      case 5:
-        return null;
       case 6:
         return null;
-      case 10:
+      case 7:
+        return null;
+      case 11:
         return null;
       default:
         return null;
@@ -514,6 +517,7 @@ class _MainScreenState extends State<MainScreen> {
       'missions',
       'notebooks',
       'tomes',
+      'tavern',
       'map',
       'rewards',
       'inventory',

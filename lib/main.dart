@@ -12,9 +12,11 @@ import 'providers/inventory_provider.dart';
 import 'providers/reward_provider.dart';
 import 'providers/skill_provider.dart';
 import 'providers/notebook_provider.dart';
+import 'providers/tavern_provider.dart';
 import 'providers/tome_provider.dart';
 import 'providers/settings_provider.dart';
 import 'services/mission_reminder_service.dart';
+import 'services/tavern_audio_service.dart';
 import 'l10n/app_localizations.dart';
 import 'ui/screens/main_screen.dart';
 
@@ -23,12 +25,15 @@ void main() async {
 
   await configureDatabasePlatform();
   await MissionReminderService.instance.initialize();
+  final tavernAudioService = await initTavernAudioService();
 
-  runApp(const MyApp());
+  runApp(MyApp(tavernAudioService: tavernAudioService));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final TavernPlayback tavernAudioService;
+
+  const MyApp({super.key, required this.tavernAudioService});
 
   @override
   Widget build(BuildContext context) {
@@ -46,6 +51,10 @@ class MyApp extends StatelessWidget {
           create: (_) => NotebookProvider()..loadNotebooks(),
         ),
         ChangeNotifierProvider(create: (_) => TomeProvider()..loadTomes()),
+        ChangeNotifierProvider(
+          create: (_) =>
+              TavernProvider(playback: tavernAudioService)..loadTracks(),
+        ),
         ChangeNotifierProvider(create: (_) => SettingsProvider()..initialize()),
       ],
       child: Consumer<SettingsProvider>(
