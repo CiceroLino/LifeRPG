@@ -1,10 +1,17 @@
 import 'package:flutter/foundation.dart';
+import 'package:file_picker/file_picker.dart';
 
 import '../data/models/tome.dart';
 import '../data/repositories/tome_repository.dart';
+import '../services/local_media_import_service.dart';
 
 class TomeProvider extends ChangeNotifier {
-  final TomeRepository _repo = TomeRepository();
+  TomeProvider({TomeRepository? repo, LocalMediaImportService? mediaImporter})
+    : _repo = repo ?? TomeRepository(),
+      _mediaImporter = mediaImporter ?? createLocalMediaImportService();
+
+  final TomeRepository _repo;
+  final LocalMediaImportService _mediaImporter;
 
   List<Tome> _tomes = [];
   bool _isLoading = false;
@@ -58,6 +65,20 @@ class TomeProvider extends ChangeNotifier {
     }
   }
 
+  Future<int?> importTome(PlatformFile file) async {
+    try {
+      final imported = await _mediaImporter.importPlatformFile(
+        file,
+        library: LocalMediaLibrary.tomes,
+        allowedExtensions: const ['pdf'],
+      );
+      return addTome(Tome(title: imported.title, filePath: imported.path));
+    } catch (e) {
+      debugPrint('Error importing tome: $e');
+      return null;
+    }
+  }
+
   Future<void> updateTome(Tome tome) async {
     try {
       await _repo.updateTome(tome);
@@ -82,6 +103,31 @@ class TomeProvider extends ChangeNotifier {
       await loadTomes();
     } catch (e) {
       debugPrint('Error marking tome opened: $e');
+    }
+  }
+
+  Future<void> updateReadingProgress(
+    int id, {
+    required int currentPage,
+    int? totalPages,
+  }) async {
+    try {
+      final tome = await _repo.getTomeById(id);
+      if (tome == null) return;
+      final safeCurrentPage = currentPage < 0 ? 0 : currentPage;
+      final safeTotalPages = totalPages != null && totalPages > 0
+          ? totalPages
+          : tome.totalPages;
+      await _repo.updateTome(
+        tome.copyWith(
+          currentPage: safeCurrentPage,
+          totalPages: safeTotalPages,
+          clearTotalPages: safeTotalPages == null,
+        ),
+      );
+      await loadTomes();
+    } catch (e) {
+      debugPrint('Error updating tome reading progress: $e');
     }
   }
 }

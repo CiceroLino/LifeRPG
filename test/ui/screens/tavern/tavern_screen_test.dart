@@ -44,6 +44,8 @@ class FakeTavernProvider extends TavernProvider {
     this.fakeIsPlaying = false,
     this.fakePosition = Duration.zero,
     this.fakeDuration,
+    this.fakeShuffleEnabled = false,
+    this.fakeRepeatMode = TavernRepeatMode.off,
     this.nullImportPaths = const {},
     this.throwImportPaths = const {},
   }) : super(playback: FakeTavernPlayback());
@@ -53,9 +55,12 @@ class FakeTavernProvider extends TavernProvider {
   final bool fakeIsPlaying;
   final Duration fakePosition;
   final Duration? fakeDuration;
+  final bool fakeShuffleEnabled;
+  final TavernRepeatMode fakeRepeatMode;
   final Set<String> nullImportPaths;
   final Set<String> throwImportPaths;
   final importedPaths = <String>[];
+  final importedFiles = <PlatformFile>[];
 
   @override
   List<AudioTrack> get filteredTracks => fakeTracks;
@@ -79,6 +84,12 @@ class FakeTavernProvider extends TavernProvider {
   Duration? get duration => fakeDuration;
 
   @override
+  bool get shuffleEnabled => fakeShuffleEnabled;
+
+  @override
+  TavernRepeatMode get repeatMode => fakeRepeatMode;
+
+  @override
   Future<void> loadTracks() async {}
 
   @override
@@ -92,10 +103,33 @@ class FakeTavernProvider extends TavernProvider {
   }
 
   @override
+  Future<int?> importTrack(PlatformFile file) async {
+    importedFiles.add(file);
+    final path = file.path ?? file.name;
+    if (throwImportPaths.contains(path)) {
+      throw StateError('Import failed');
+    }
+    if (nullImportPaths.contains(path)) return null;
+    return importedFiles.length;
+  }
+
+  @override
   Future<void> playTrack(AudioTrack track) async {}
 
   @override
   Future<void> togglePlayPause() async {}
+
+  @override
+  void toggleShuffle() {}
+
+  @override
+  void cycleRepeatMode() {}
+
+  @override
+  Future<void> playPreviousTrack() async {}
+
+  @override
+  Future<void> playNextTrack({bool fromCompletion = false}) async {}
 
   @override
   Future<void> archiveTrack(int id) async {}
@@ -109,6 +143,7 @@ class FakeFilePicker extends FilePicker {
   FileType? pickedType;
   List<String>? pickedAllowedExtensions;
   bool? pickedAllowMultiple;
+  bool? pickedWithReadStream;
 
   @override
   Future<FilePickerResult?> pickFiles({
@@ -128,6 +163,7 @@ class FakeFilePicker extends FilePicker {
     pickedType = type;
     pickedAllowedExtensions = allowedExtensions;
     pickedAllowMultiple = allowMultiple;
+    pickedWithReadStream = withReadStream;
     final error = this.error;
     if (error != null) throw error;
     return result;
@@ -210,6 +246,10 @@ void main() {
     expect(find.text('Inn Bard · Evening Set'), findsOneWidget);
     expect(find.text('Now playing'), findsOneWidget);
     expect(find.byIcon(Icons.pause), findsOneWidget);
+    expect(find.byTooltip('Previous track'), findsOneWidget);
+    expect(find.byTooltip('Next track'), findsOneWidget);
+    expect(find.byTooltip('Shuffle off'), findsOneWidget);
+    expect(find.byTooltip('Repeat off'), findsOneWidget);
     expect(find.byType(LinearProgressIndicator), findsOneWidget);
   });
 
@@ -238,6 +278,7 @@ void main() {
 
     expect(filePicker.pickedType, FileType.custom);
     expect(filePicker.pickedAllowMultiple, isTrue);
+    expect(filePicker.pickedWithReadStream, isTrue);
     expect(filePicker.pickedAllowedExtensions, [
       'mp3',
       'm4a',
@@ -246,7 +287,7 @@ void main() {
       'ogg',
       'flac',
     ]);
-    expect(provider.importedPaths, [
+    expect(provider.importedFiles.map((file) => file.path), [
       '/tmp/ok.mp3',
       '/tmp/null.mp3',
       '/tmp/throws.mp3',

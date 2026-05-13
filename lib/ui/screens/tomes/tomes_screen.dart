@@ -1,13 +1,12 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/tome.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../providers/tome_provider.dart';
+import 'tome_reader_screen.dart';
 
 class TomesScreen extends StatefulWidget {
   const TomesScreen({super.key});
@@ -127,37 +126,27 @@ class _TomesScreenState extends State<TomesScreen> {
       type: FileType.custom,
       allowedExtensions: ['pdf'],
       allowMultiple: false,
+      withReadStream: true,
     );
     if (!context.mounted || result == null || result.files.isEmpty) return;
 
     final file = result.files.single;
-    final path = file.path;
-    if (path == null || path.isEmpty) {
+    final importedId = await context.read<TomeProvider>().importTome(file);
+    if (!context.mounted) return;
+    if (importedId == null) {
       _showMessage(context, l10n.translate('tome_file_unavailable'));
-      return;
     }
-
-    final title = p.basenameWithoutExtension(path);
-    await context.read<TomeProvider>().addTome(
-      Tome(
-        title: title.isEmpty ? l10n.translate('untitled_tome') : title,
-        filePath: path,
-      ),
-    );
   }
 
   Future<void> _openTome(BuildContext context, Tome tome) async {
-    final l10n = AppLocalizations.of(context);
-    final uri = Uri.file(tome.filePath);
-    final opened = await launchUrl(uri);
-    if (!context.mounted) return;
-    if (!opened) {
-      _showMessage(context, l10n.translate('tome_open_failed'));
-      return;
-    }
-    if (tome.id != null) {
-      await context.read<TomeProvider>().markOpened(tome.id!);
-    }
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ChangeNotifierProvider<TomeProvider>.value(
+          value: context.read<TomeProvider>(),
+          child: TomeReaderScreen(tome: tome),
+        ),
+      ),
+    );
   }
 
   Future<void> _showTomeDialog(BuildContext context, {Tome? tome}) async {

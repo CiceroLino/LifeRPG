@@ -34,8 +34,8 @@ The list should feel compact and useful, not like a marketing page. Cards show n
 ## Phase 2: Tomes
 
 - `Tomes` appears as a first-class navigation destination after `Notebooks`.
-- A tome stores title, optional author, description, local PDF path, current page, total pages, active/archive state, and last-opened timestamp.
-- Users import a PDF through the platform file picker.
-- The first reader step opens the selected PDF with the system default app through a local file URI.
+- A tome stores title, optional author, description, managed internal PDF path, current page, total pages, active/archive state, and last-opened timestamp.
+- Users import a PDF through the platform file picker; the app copies it into managed internal media storage before saving metadata.
+- The reader opens the managed PDF inside the app with `pdfrx`, so reading no longer depends on a system default PDF app.
 - Reading progress is manual: users can edit current page and total pages.
-- Backup/restore includes `tomes`; the PDF file itself remains external and is not copied into the backup payload.
+- Backup/restore includes `tomes` metadata; managed PDF files are not copied into the JSON backup payload.

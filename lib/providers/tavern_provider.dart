@@ -1,13 +1,19 @@
 import 'dart:async';
+import 'dart:math';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as path;
 
 import '../data/repositories/audio_track_repository.dart';
+import '../services/local_media_import_service.dart';
 import '../services/tavern_audio_service.dart';
 
+enum TavernRepeatMode { off, all, one }
+
 class TavernProvider extends ChangeNotifier {
-  final AudioTrackRepository _repo = AudioTrackRepository();
+  final AudioTrackRepository _repo;
+  final LocalMediaImportService _mediaImporter;
   final TavernPlayback _playback;
   late final StreamSubscription<bool> _playingSubscription;
   late final StreamSubscription<Duration> _positionSubscription;
@@ -21,9 +27,18 @@ class TavernProvider extends ChangeNotifier {
   bool _isPlaying = false;
   Duration _position = Duration.zero;
   Duration? _duration;
+  bool _shuffleEnabled = false;
+  TavernRepeatMode _repeatMode = TavernRepeatMode.off;
   bool _disposed = false;
+  final Random _random = Random();
 
-  TavernProvider({required TavernPlayback playback}) : _playback = playback {
+  TavernProvider({
+    required TavernPlayback playback,
+    AudioTrackRepository? repo,
+    LocalMediaImportService? mediaImporter,
+  }) : _repo = repo ?? AudioTrackRepository(),
+       _mediaImporter = mediaImporter ?? createLocalMediaImportService(),
+       _playback = playback {
     _playingSubscription = _playback.playingStream.listen((isPlaying) {
       _isPlaying = isPlaying;
       _notify();
@@ -48,6 +63,8 @@ class TavernProvider extends ChangeNotifier {
   bool get isPlaying => _isPlaying;
   Duration get position => _position;
   Duration? get duration => _duration;
+  bool get shuffleEnabled => _shuffleEnabled;
+  TavernRepeatMode get repeatMode => _repeatMode;
 
   List<AudioTrack> get filteredTracks {
     final query = _searchQuery.trim().toLowerCase();
@@ -95,6 +112,20 @@ class TavernProvider extends ChangeNotifier {
       );
       await loadTracks();
       return id;
+    } catch (e) {
+      debugPrint('Error importing audio track: $e');
+      return null;
+    }
+  }
+
+  Future<int?> importTrack(PlatformFile file) async {
+    try {
+      final imported = await _mediaImporter.importPlatformFile(
+        file,
+        library: LocalMediaLibrary.tavern,
+        allowedExtensions: const ['mp3', 'm4a', 'aac', 'wav', 'ogg', 'flac'],
+      );
+      return importTrackFromPath(imported.path);
     } catch (e) {
       debugPrint('Error importing audio track: $e');
       return null;
@@ -171,6 +202,51 @@ class TavernProvider extends ChangeNotifier {
     }
   }
 
+  void toggleShuffle() {
+    _shuffleEnabled = !_shuffleEnabled;
+    _notify();
+  }
+
+  void cycleRepeatMode() {
+    _repeatMode = switch (_repeatMode) {
+      TavernRepeatMode.off => TavernRepeatMode.all,
+      TavernRepeatMode.all => TavernRepeatMode.one,
+      TavernRepeatMode.one => TavernRepeatMode.off,
+    };
+    _notify();
+  }
+
+  Future<void> playNextTrack({bool fromCompletion = false}) async {
+    final activeTrack = _activeTrack;
+    if (activeTrack == null) return;
+
+    if (fromCompletion && _repeatMode == TavernRepeatMode.one) {
+      await _restartActiveTrack();
+      return;
+    }
+
+    final nextTrack = _selectNextTrack(activeTrack, fromCompletion);
+    if (nextTrack == null) {
+      if (fromCompletion) {
+        await _persistActiveProgress();
+        await _playback.pause();
+      }
+      return;
+    }
+
+    await playTrack(nextTrack);
+  }
+
+  Future<void> playPreviousTrack() async {
+    final activeTrack = _activeTrack;
+    if (activeTrack == null) return;
+
+    final previousTrack = _selectPreviousTrack(activeTrack);
+    if (previousTrack == null) return;
+
+    await playTrack(previousTrack);
+  }
+
   Future<void> seek(Duration position) async {
     try {
       _position = position;
@@ -216,6 +292,83 @@ class TavernProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> _restartActiveTrack() async {
+    final activeTrack = _activeTrack;
+    if (activeTrack == null) return;
+
+    _position = Duration.zero;
+    _notify();
+    await _playback.seek(Duration.zero);
+    await _persistActiveProgress();
+    if (!_isPlaying) {
+      await _playback.play();
+    }
+  }
+
+  AudioTrack? _selectNextTrack(AudioTrack activeTrack, bool fromCompletion) {
+    final queue = _playbackQueue();
+    if (queue.isEmpty) return null;
+    if (queue.length == 1) {
+      return _repeatMode == TavernRepeatMode.all ||
+              _repeatMode == TavernRepeatMode.one
+          ? queue.single
+          : null;
+    }
+
+    if (_shuffleEnabled) {
+      final candidates = queue
+          .where((track) => !_isSameQueueTrack(track, activeTrack))
+          .toList();
+      if (candidates.isEmpty) return null;
+      return candidates[_random.nextInt(candidates.length)];
+    }
+
+    final index = _queueIndexOf(queue, activeTrack);
+    if (index < 0) return queue.first;
+    if (index < queue.length - 1) return queue[index + 1];
+    return _repeatMode == TavernRepeatMode.all ? queue.first : null;
+  }
+
+  AudioTrack? _selectPreviousTrack(AudioTrack activeTrack) {
+    final queue = _playbackQueue();
+    if (queue.isEmpty) return null;
+    if (queue.length == 1) return queue.single;
+
+    if (_shuffleEnabled) {
+      final candidates = queue
+          .where((track) => !_isSameQueueTrack(track, activeTrack))
+          .toList();
+      if (candidates.isEmpty) return null;
+      return candidates[_random.nextInt(candidates.length)];
+    }
+
+    final index = _queueIndexOf(queue, activeTrack);
+    if (index < 0) return queue.first;
+    if (index > 0) return queue[index - 1];
+    return _repeatMode == TavernRepeatMode.all ? queue.last : null;
+  }
+
+  List<AudioTrack> _playbackQueue() {
+    final queue = [..._tracks];
+    queue.sort((a, b) {
+      final created = a.createdAt.compareTo(b.createdAt);
+      if (created != 0) return created;
+      return (a.id ?? 0).compareTo(b.id ?? 0);
+    });
+    return queue;
+  }
+
+  int _queueIndexOf(List<AudioTrack> queue, AudioTrack track) {
+    return queue.indexWhere((candidate) => _isSameQueueTrack(candidate, track));
+  }
+
+  bool _isSameQueueTrack(AudioTrack first, AudioTrack second) {
+    if (first.id != null && second.id != null) {
+      return first.id == second.id;
+    }
+    return first.filePath == second.filePath;
+  }
+
   bool _isSameTrack(AudioTrack track) {
     final activeTrack = _activeTrack;
     if (activeTrack == null) return false;
@@ -245,6 +398,15 @@ class TavernProvider extends ChangeNotifier {
           _notify();
         }
         await _persistActiveProgress();
+        return;
+      case TavernPlaybackCommandType.previous:
+        await playPreviousTrack();
+        return;
+      case TavernPlaybackCommandType.next:
+        await playNextTrack();
+        return;
+      case TavernPlaybackCommandType.completed:
+        await playNextTrack(fromCompletion: true);
         return;
     }
   }

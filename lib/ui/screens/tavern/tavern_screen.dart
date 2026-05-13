@@ -116,7 +116,13 @@ class _TavernScreenState extends State<TavernScreen> {
                 isPlaying: provider.isPlaying,
                 position: provider.position,
                 duration: provider.duration,
+                shuffleEnabled: provider.shuffleEnabled,
+                repeatMode: provider.repeatMode,
+                onPrevious: provider.playPreviousTrack,
                 onTogglePlayPause: provider.togglePlayPause,
+                onNext: provider.playNextTrack,
+                onToggleShuffle: provider.toggleShuffle,
+                onCycleRepeat: provider.cycleRepeatMode,
               ),
           ],
         );
@@ -132,6 +138,7 @@ class _TavernScreenState extends State<TavernScreen> {
         type: FileType.custom,
         allowedExtensions: ['mp3', 'm4a', 'aac', 'wav', 'ogg', 'flac'],
         allowMultiple: true,
+        withReadStream: true,
       );
     } catch (_) {
       if (!context.mounted) return;
@@ -142,20 +149,8 @@ class _TavernScreenState extends State<TavernScreen> {
 
     final provider = context.read<TavernProvider>();
     for (final file in result.files) {
-      String? path;
       try {
-        path = file.path;
-      } catch (_) {
-        _showMessage(context, l10n.translate('audio_file_unavailable'));
-        continue;
-      }
-      if (path == null || path.isEmpty) {
-        _showMessage(context, l10n.translate('audio_file_unavailable'));
-        continue;
-      }
-
-      try {
-        final importedId = await provider.importTrackFromPath(path);
+        final importedId = await provider.importTrack(file);
         if (!context.mounted) return;
         if (importedId == null) {
           _showMessage(context, l10n.translate('audio_file_unavailable'));
@@ -299,14 +294,26 @@ class _MiniPlayer extends StatelessWidget {
     required this.isPlaying,
     required this.position,
     required this.duration,
+    required this.shuffleEnabled,
+    required this.repeatMode,
+    required this.onPrevious,
     required this.onTogglePlayPause,
+    required this.onNext,
+    required this.onToggleShuffle,
+    required this.onCycleRepeat,
   });
 
   final AudioTrack track;
   final bool isPlaying;
   final Duration position;
   final Duration? duration;
+  final bool shuffleEnabled;
+  final TavernRepeatMode repeatMode;
+  final VoidCallback onPrevious;
   final VoidCallback onTogglePlayPause;
+  final VoidCallback onNext;
+  final VoidCallback onToggleShuffle;
+  final VoidCallback onCycleRepeat;
 
   @override
   Widget build(BuildContext context) {
@@ -317,6 +324,14 @@ class _MiniPlayer extends StatelessWidget {
         : (position.inMilliseconds / durationValue.inMilliseconds)
               .clamp(0, 1)
               .toDouble();
+    final repeatIcon = repeatMode == TavernRepeatMode.one
+        ? Icons.repeat_one
+        : Icons.repeat;
+    final repeatTooltip = switch (repeatMode) {
+      TavernRepeatMode.off => l10n.translate('repeat_off'),
+      TavernRepeatMode.all => l10n.translate('repeat_all'),
+      TavernRepeatMode.one => l10n.translate('repeat_one'),
+    };
 
     return Material(
       color: AppTheme.surface,
@@ -352,11 +367,37 @@ class _MiniPlayer extends StatelessWidget {
                     ),
                   ),
                   IconButton(
+                    tooltip: shuffleEnabled
+                        ? l10n.translate('shuffle_on')
+                        : l10n.translate('shuffle_off'),
+                    icon: const Icon(Icons.shuffle),
+                    color: shuffleEnabled ? AppTheme.primary : null,
+                    onPressed: onToggleShuffle,
+                  ),
+                  IconButton(
+                    tooltip: l10n.translate('previous_track'),
+                    icon: const Icon(Icons.skip_previous),
+                    onPressed: onPrevious,
+                  ),
+                  IconButton(
                     tooltip: isPlaying
                         ? l10n.translate('pause')
                         : l10n.translate('start'),
                     icon: Icon(isPlaying ? Icons.pause : Icons.play_arrow),
                     onPressed: onTogglePlayPause,
+                  ),
+                  IconButton(
+                    tooltip: l10n.translate('next_track'),
+                    icon: const Icon(Icons.skip_next),
+                    onPressed: onNext,
+                  ),
+                  IconButton(
+                    tooltip: repeatTooltip,
+                    icon: Icon(repeatIcon),
+                    color: repeatMode == TavernRepeatMode.off
+                        ? null
+                        : AppTheme.primary,
+                    onPressed: onCycleRepeat,
                   ),
                 ],
               ),

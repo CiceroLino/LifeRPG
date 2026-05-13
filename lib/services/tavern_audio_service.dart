@@ -7,7 +7,7 @@ import '../data/models/audio_track.dart';
 
 export '../data/models/audio_track.dart';
 
-enum TavernPlaybackCommandType { pause, stop, seek }
+enum TavernPlaybackCommandType { pause, stop, seek, previous, next, completed }
 
 class TavernPlaybackCommand {
   const TavernPlaybackCommand(this.type, {this.position});
@@ -68,6 +68,7 @@ class TavernAudioHandler extends BaseAudioHandler with SeekHandler {
       StreamController<TavernPlaybackCommand>.broadcast();
   late final Stream<Duration?> _durationStream = _player.durationStream
       .asBroadcastStream();
+  just_audio.ProcessingState? _lastProcessingState;
 
   TavernAudioHandler() {
     _player.playbackEventStream.listen(_broadcastPlaybackState);
@@ -126,15 +127,45 @@ class TavernAudioHandler extends BaseAudioHandler with SeekHandler {
     );
   }
 
+  @override
+  Future<void> skipToNext() async {
+    _commandController.add(
+      const TavernPlaybackCommand(TavernPlaybackCommandType.next),
+    );
+  }
+
+  @override
+  Future<void> skipToPrevious() async {
+    _commandController.add(
+      const TavernPlaybackCommand(TavernPlaybackCommandType.previous),
+    );
+  }
+
   void _broadcastPlaybackState(just_audio.PlaybackEvent event) {
+    final completed =
+        event.processingState == just_audio.ProcessingState.completed &&
+        _lastProcessingState != just_audio.ProcessingState.completed;
+    _lastProcessingState = event.processingState;
+    if (completed) {
+      _commandController.add(
+        const TavernPlaybackCommand(TavernPlaybackCommandType.completed),
+      );
+    }
+
     playbackState.add(
       PlaybackState(
         controls: [
+          MediaControl.skipToPrevious,
           if (_player.playing) MediaControl.pause else MediaControl.play,
+          MediaControl.skipToNext,
           MediaControl.stop,
         ],
-        systemActions: const {MediaAction.seek},
-        androidCompactActionIndices: const [0, 1],
+        systemActions: const {
+          MediaAction.seek,
+          MediaAction.skipToPrevious,
+          MediaAction.skipToNext,
+        },
+        androidCompactActionIndices: const [0, 1, 2],
         processingState: _mapProcessingState(event.processingState),
         playing: _player.playing,
         updatePosition: event.updatePosition,

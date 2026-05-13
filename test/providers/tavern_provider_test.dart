@@ -1,11 +1,14 @@
 import 'dart:async';
+import 'dart:io';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'package:liferpg/data/database/database_helper.dart';
 import 'package:liferpg/data/repositories/audio_track_repository.dart';
 import 'package:liferpg/providers/tavern_provider.dart';
+import 'package:liferpg/services/local_media_import_service.dart';
 import 'package:liferpg/services/tavern_audio_service.dart';
 
 class FakeTavernPlayback implements TavernPlayback {
@@ -104,6 +107,7 @@ void main() {
   late FakeTavernPlayback playback;
   late TavernProvider provider;
   late AudioTrackRepository tracks;
+  late Directory tempDir;
 
   setUpAll(() {
     sqfliteFfiInit();
@@ -112,14 +116,21 @@ void main() {
 
   setUp(() async {
     await DatabaseHelper().resetForTesting();
+    tempDir = await Directory.systemTemp.createTemp('liferpg_tavern_provider_');
     playback = FakeTavernPlayback();
-    provider = TavernProvider(playback: playback);
+    provider = TavernProvider(
+      playback: playback,
+      mediaImporter: createLocalMediaImportService(basePath: tempDir.path),
+    );
     tracks = AudioTrackRepository();
   });
 
   tearDown(() async {
     provider.dispose();
     await playback.dispose();
+    if (await tempDir.exists()) {
+      await tempDir.delete(recursive: true);
+    }
   });
 
   test('imports local audio metadata and filters tracks', () async {
@@ -150,6 +161,29 @@ void main() {
       '/tmp/music/Arcane Melody.mp3',
     );
   });
+
+  test(
+    'imports picked audio into managed storage before saving track',
+    () async {
+      final id = await provider.importTrack(
+        PlatformFile(
+          name: 'Rain Ambience.mp3',
+          size: 4,
+          readStream: Stream.value([4, 3, 2, 1]),
+        ),
+      );
+
+      expect(id, isNotNull);
+      expect(provider.tracks.single.title, 'Rain Ambience');
+      expect(provider.tracks.single.filePath, contains('tavern'));
+      expect(await File(provider.tracks.single.filePath).readAsBytes(), [
+        4,
+        3,
+        2,
+        1,
+      ]);
+    },
+  );
 
   test('plays selected track and reflects playback streams', () async {
     final id = await provider.importTrackFromPath('/tmp/tavern-song.mp3');
@@ -291,6 +325,87 @@ void main() {
     expect(playback.playCount, 2);
     expect(provider.isPlaying, isTrue);
   });
+
+  test(
+    'plays next and previous tracks from the current library order',
+    () async {
+      final firstId = await provider.importTrackFromPath('/tmp/first.mp3');
+      final secondId = await provider.importTrackFromPath('/tmp/second.mp3');
+      await provider.playTrack((await tracks.getTrackById(firstId!))!);
+
+      playback.emitPosition(const Duration(seconds: 12));
+      await Future<void>.delayed(Duration.zero);
+
+      await provider.playNextTrack();
+
+      expect(provider.activeTrack!.id, secondId);
+      expect(playback.loadedTrack!.id, secondId);
+      expect(
+        (await tracks.getTrackById(firstId))!.position,
+        const Duration(seconds: 12),
+      );
+
+      await provider.playPreviousTrack();
+
+      expect(provider.activeTrack!.id, firstId);
+      expect(playback.loadedTrack!.id, firstId);
+    },
+  );
+
+  test(
+    'cycles repeat mode and restarts active track on repeat one completion',
+    () async {
+      final id = await provider.importTrackFromPath('/tmp/repeat-one.mp3');
+      await provider.playTrack((await tracks.getTrackById(id!))!);
+
+      expect(provider.repeatMode, TavernRepeatMode.off);
+      provider.cycleRepeatMode();
+      expect(provider.repeatMode, TavernRepeatMode.all);
+      provider.cycleRepeatMode();
+      expect(provider.repeatMode, TavernRepeatMode.one);
+
+      playback.emitCommand(
+        const TavernPlaybackCommand(TavernPlaybackCommandType.completed),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      expect(playback.seekPosition, Duration.zero);
+      expect(provider.activeTrack!.id, id);
+    },
+  );
+
+  test('shuffle next selects another track when possible', () async {
+    final firstId = await provider.importTrackFromPath('/tmp/shuffle-a.mp3');
+    final secondId = await provider.importTrackFromPath('/tmp/shuffle-b.mp3');
+    final thirdId = await provider.importTrackFromPath('/tmp/shuffle-c.mp3');
+    await provider.playTrack((await tracks.getTrackById(firstId!))!);
+
+    provider.toggleShuffle();
+    await provider.playNextTrack();
+
+    expect(provider.shuffleEnabled, isTrue);
+    expect(provider.activeTrack!.id, isNot(firstId));
+    expect(provider.activeTrack!.id, isIn([secondId, thirdId]));
+  });
+
+  test(
+    'completion with repeat off does not restart a single-track queue',
+    () async {
+      final id = await provider.importTrackFromPath('/tmp/no-repeat.mp3');
+      await provider.playTrack((await tracks.getTrackById(id!))!);
+
+      playback.emitPlaying(false);
+      await Future<void>.delayed(Duration.zero);
+      playback.emitCommand(
+        const TavernPlaybackCommand(TavernPlaybackCommandType.completed),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      expect(playback.loadCount, 1);
+      expect(playback.playCount, 1);
+      expect(playback.pauseCount, 1);
+    },
+  );
 
   test(
     'archiving active track stops playback and clears active state',

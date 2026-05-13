@@ -8,10 +8,10 @@ Add phase 3 as `Tavern`: a local-first audio library and player for LifeRPG. Thi
 
 - `Tavern` appears as a first-class navigation destination after `Tomes`.
 - The screen uses a library-first layout: search and import controls at the top, a compact track list in the main area, and a mini player fixed at the bottom.
-- Users can import local audio files through the platform file picker.
+- Users can import local audio files through the platform file picker; files are copied into managed internal media storage before metadata is saved.
 - Users can search tracks by title, artist, album, or file name.
 - Tapping a track starts playback.
-- The mini player shows the active track, play/pause, and basic progress.
+- The mini player shows the active track, play/pause, previous/next, shuffle, repeat, and basic progress.
 - Mobile playback must support background audio through the platform media session/notification/lock screen path.
 - The library starts empty. No seeded tracks are created.
 
@@ -33,7 +33,7 @@ Track fields:
 - `created_at`
 - `updated_at`
 
-Backup/restore includes `audio_tracks` metadata only. Audio files remain external local files and are not copied into backup payloads.
+Backup/restore includes `audio_tracks` metadata only. Managed audio files are not copied into backup payloads.
 
 ## Architecture
 
@@ -90,6 +90,5 @@ This is more work than an in-app-only player, but it matches the phase requireme
 - No video support in this phase.
 - No playlist authoring.
 - No cloud storage or streaming URLs.
-- No embedded file copying into app documents.
+- Audio files are copied into app-managed media storage on import.
 - No automatic metadata extraction requirement. If duration or tags are available through the playback layer, they may be stored opportunistically, but manual/local fallback labels must work.
-

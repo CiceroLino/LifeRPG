@@ -16,8 +16,8 @@ LifeRPG é um app Flutter que transforma tarefas reais em progressão de RPG.
 - Energia é exibida como HP e diminui/aumenta conforme tempo acordado e tempo dormindo, ou por ajuste manual.
 - Pomodoro é tratado como Focus Quest: uma sessão de foco com duração limitada que concede XP ao player.
 - Notebooks são cadernos locais para capturar notas livres fora do fluxo de missões.
-- Tomes são referências PDF locais catalogadas no app, com caminho do arquivo e progresso manual de leitura.
-- Tavern é uma biblioteca/player local de áudio com suporte a reprodução em background mobile via `audio_service`/`just_audio`.
+- Tomes são PDFs importados para storage interno do app, lidos em um viewer embutido com progresso de página salvo.
+- Tavern é uma biblioteca/player local de áudio importado para storage interno, com suporte a reprodução em background mobile via `audio_service`/`just_audio`.
 
 Referência de produto: o raciocínio de missões, atributos, RP, recompensas e HP segue a linha do artigo "LifeRPG Strategy Guide (v1.0.0)", de kolayāna, adaptado ao código atual deste app.
 
@@ -83,8 +83,8 @@ Tabelas principais:
 - `focus_sessions`: histórico de sessões Pomodoro/Focus Quest concluídas.
 - `notebooks`: cadernos de notas locais.
 - `notes`: notas vinculadas a um notebook.
-- `tomes`: PDFs locais catalogados como tomos, com metadados e progresso manual.
-- `audio_tracks`: metadados locais de áudio da Tavern e progresso de reprodução.
+- `tomes`: PDFs importados para a pasta interna de mídia do app, com metadados e progresso de leitura.
+- `audio_tracks`: metadados locais de áudio importado para a pasta interna de mídia do app e progresso de reprodução.
 
 Notas de migração:
 
@@ -443,6 +443,29 @@ Rótulo da UI:
 - Modo manual mostra `manual`.
 - Modo auto sem horários configurados mostra `set schedule`.
 - Modo auto configurado mostra tempo restante até dormir ou acordar.
+
+## Biblioteca Local de Mídia
+
+Dono de importação: `lib/services/local_media_import_service*.dart`.
+
+Regras:
+
+- PDFs e áudios selecionados pelo `file_picker` devem ser copiados para a pasta interna de mídia do app antes de serem persistidos no banco.
+- A UI deve chamar os métodos de importação dos providers (`TomeProvider.importTome` e `TavernProvider.importTrack`) em vez de salvar diretamente caminhos retornados pelo picker.
+- Use `withReadStream: true` ao abrir o picker para evitar carregar arquivos grandes inteiros em memória e para suportar seleções que não têm caminho estável.
+- O backup/restore continua preservando apenas metadados de `tomes` e `audio_tracks`; os arquivos de mídia internos não são serializados no JSON de backup.
+
+Tomes:
+
+- `Tome.filePath` deve apontar para o PDF gerenciado internamente.
+- A leitura usa `TomeReaderScreen` com `pdfrx`; não depende de app externo nem de `url_launcher`.
+- O reader atualiza `currentPage`, `totalPages` e `lastOpenedAt` por `TomeProvider`.
+
+Tavern:
+
+- `AudioTrack.filePath` deve apontar para o áudio gerenciado internamente.
+- `TavernProvider` é dono de fila, faixa ativa, progresso, shuffle e repeat (`off`, `all`, `one`).
+- `TavernAudioService` continua isolando `audio_service`/`just_audio` e repassa comandos de mídia de sistema como pause, stop, seek, previous, next e completed para o provider.
 
 ## Configurações e Reset
 
