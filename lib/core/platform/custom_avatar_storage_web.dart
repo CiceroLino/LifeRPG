@@ -4,12 +4,12 @@ import 'package:file_picker/file_picker.dart';
 
 Future<String?> pickAndStoreCustomAvatar() async {
   final result = await FilePicker.platform.pickFiles(
-    type: FileType.image,
+    type: FileType.custom,
     allowedExtensions: ['png', 'jpg', 'jpeg', 'svg', 'gif', 'webp'],
     withData: true,
   );
 
-  if (result == null || result.files.single.bytes == null) {
+  if (result == null || result.files.isEmpty || result.files.single.bytes == null) {
     return null;
   }
 

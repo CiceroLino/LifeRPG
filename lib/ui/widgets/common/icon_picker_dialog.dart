@@ -28,7 +28,6 @@ class _IconPickerDialogState extends State<IconPickerDialog> {
     'task': Icons.check_circle_outline,
     'flag': Icons.flag_outlined,
     'star': Icons.star_border,
-    'sword': FontAwesomeIcons.book,
     'book': FontAwesomeIcons.book,
     'brain': FontAwesomeIcons.brain,
     'bolt': FontAwesomeIcons.bolt,

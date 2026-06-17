@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/constants/default_content_templates.dart';
+import '../../../core/constants/icon_registry.dart';
 import '../../../data/models/reward.dart';
 import '../../../providers/reward_provider.dart';
 
@@ -36,7 +38,11 @@ class _RewardFormScreenState extends State<RewardFormScreen> {
     _stockController = TextEditingController(
       text: reward?.stockRemaining?.toString() ?? '',
     );
-    _icon = reward?.icon ?? 'card_giftcard';
+    final storedIcon = reward?.icon;
+    final isKnownIcon = LifeRPGIcons.rewardOptions.any(
+      (option) => option.key == storedIcon,
+    );
+    _icon = isKnownIcon ? storedIcon! : 'card_giftcard';
     _isUnlimitedStock = reward?.isUnlimitedStock ?? true;
   }
 
@@ -62,6 +68,10 @@ class _RewardFormScreenState extends State<RewardFormScreen> {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
+              if (!isEditing) ...[
+                _RewardTemplatePicker(onSelected: _applyRewardTemplate),
+                const SizedBox(height: 16),
+              ],
               TextFormField(
                 key: const Key('reward-name-field'),
                 controller: _nameController,
@@ -96,21 +106,23 @@ class _RewardFormScreenState extends State<RewardFormScreen> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
+                key: ValueKey(_icon),
                 initialValue: _icon,
                 decoration: const InputDecoration(labelText: 'Ícone'),
-                items: const [
-                  DropdownMenuItem(
-                    value: 'card_giftcard',
-                    child: Text('Presente'),
-                  ),
-                  DropdownMenuItem(value: 'movie', child: Text('Filme')),
-                  DropdownMenuItem(value: 'local_cafe', child: Text('Café')),
-                  DropdownMenuItem(
-                    value: 'sports_esports',
-                    child: Text('Jogo'),
-                  ),
-                  DropdownMenuItem(value: 'menu_book', child: Text('Livro')),
-                ],
+                items: LifeRPGIcons.rewardOptions
+                    .map(
+                      (option) => DropdownMenuItem(
+                        value: option.key,
+                        child: Row(
+                          children: [
+                            Icon(option.icon, size: 18),
+                            const SizedBox(width: 8),
+                            Text(option.label),
+                          ],
+                        ),
+                      ),
+                    )
+                    .toList(),
                 onChanged: (value) {
                   if (value == null) return;
                   setState(() => _icon = value);
@@ -155,6 +167,17 @@ class _RewardFormScreenState extends State<RewardFormScreen> {
     );
   }
 
+  void _applyRewardTemplate(RewardTemplate template) {
+    setState(() {
+      _nameController.text = template.name;
+      _descriptionController.text = template.description;
+      _priceController.text = template.priceRp.toString();
+      _icon = template.icon;
+      _isUnlimitedStock = true;
+      _stockController.clear();
+    });
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -181,5 +204,31 @@ class _RewardFormScreenState extends State<RewardFormScreen> {
 
     if (!mounted) return;
     Navigator.of(context).pop();
+  }
+}
+
+class _RewardTemplatePicker extends StatelessWidget {
+  final ValueChanged<RewardTemplate> onSelected;
+
+  const _RewardTemplatePicker({required this.onSelected});
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: DefaultContentTemplates.rewardTemplates
+          .map(
+            (template) => ActionChip(
+              avatar: Icon(
+                LifeRPGIcons.rewardIconFor(template.icon),
+                size: 16,
+              ),
+              label: Text(template.label),
+              onPressed: () => onSelected(template),
+            ),
+          )
+          .toList(),
+    );
   }
 }

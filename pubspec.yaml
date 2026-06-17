@@ -86,6 +86,10 @@ flutter:
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg
   assets:
+    - assets/liferpg_icons/missions/
+    - assets/liferpg_icons/profile/
+    - assets/liferpg_icons/rewards/
+    - assets/liferpg_icons/system/
     - assets/game-icons.net.svg/icons/ffffff/transparent/1x1/darkzaitzev/apothecary.svg
     - assets/game-icons.net.svg/icons/ffffff/transparent/1x1/darkzaitzev/hooded-assassin.svg
     - assets/game-icons.net.svg/icons/ffffff/transparent/1x1/darkzaitzev/hooded-figure.svg

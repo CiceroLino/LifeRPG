@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/constants/default_content_templates.dart';
 import '../../../core/platform/custom_avatar_storage.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/player.dart';
@@ -22,9 +23,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   late final TextEditingController _descriptionController;
   bool _showAvatar = true;
   String? _avatarPath;
+  bool _avatarSelectionInProgress = false;
   bool _isSaving = false;
   bool _hasUnsavedChanges = false;
+  bool _isHydratingPlayer = false;
   int? _loadedPlayerId;
+  String? _loadedPlayerFingerprint;
 
   @override
   void initState() {
@@ -42,8 +46,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     final player = context.read<PlayerProvider>().player;
-    if (player != null && _loadedPlayerId != player.id) {
+    if (player == null) return;
+
+    final nextFingerprint = _buildPlayerFingerprint(player);
+    final shouldRefresh = _loadedPlayerFingerprint != nextFingerprint;
+    if (!shouldRefresh) return;
+
+    if (!_hasUnsavedChanges) {
       _hydrateFromPlayer(player);
+      return;
+    }
+
+    if (!_avatarSelectionInProgress && _avatarPath != player.avatarPath) {
+      _syncAvatarFromPlayer(player);
     }
   }
 
@@ -55,19 +70,81 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.dispose();
   }
 
+  String _buildPlayerFingerprint(Player player) {
+    return '${player.id}|${player.name}|${player.title}|${player.description}|'
+        '${player.avatarPath ?? ''}|${player.updatedAt.toIso8601String()}';
+  }
+
+  void _selectPresetClass(String className) {
+    if (_titleController.text == className) return;
+    _titleController.text = className;
+    if (_loadedPlayerId == null) return;
+    setState(() {
+      _hasUnsavedChanges = true;
+    });
+  }
+
+  Widget _buildClassPresetChips() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Classes sugeridas',
+          style: TextStyle(
+            color: AppTheme.textSecondary,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: DefaultContentTemplates.profileClasses.map((preset) {
+            final isSelected = _titleController.text == preset.name;
+            return FilterChip(
+              label: Text(preset.name),
+              selected: isSelected,
+              selectedColor: AppTheme.primary.withValues(alpha: 0.18),
+              onSelected: (_) => _selectPresetClass(preset.name),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
   void _hydrateFromPlayer(Player player) {
+    if (_isHydratingPlayer) return;
+    _isHydratingPlayer = true;
     setState(() {
       _nameController.text = player.name;
       _titleController.text = player.title;
       _descriptionController.text = player.description;
       _avatarPath = player.avatarPath;
+      _avatarSelectionInProgress = false;
       _loadedPlayerId = player.id;
+      _loadedPlayerFingerprint = _buildPlayerFingerprint(player);
       _hasUnsavedChanges = false;
+      _isHydratingPlayer = false;
+    });
+  }
+
+  void _syncAvatarFromPlayer(Player player) {
+    if (_isHydratingPlayer) return;
+    _isHydratingPlayer = true;
+    setState(() {
+      _avatarPath = player.avatarPath;
+      _avatarSelectionInProgress = false;
+      _loadedPlayerFingerprint = _buildPlayerFingerprint(player);
+      _isHydratingPlayer = false;
     });
   }
 
   void _setUnsaved(bool value) {
-    if (_hasUnsavedChanges == value || _loadedPlayerId == null) return;
+    if (_isHydratingPlayer || _loadedPlayerId == null) return;
+    if (_hasUnsavedChanges == value) return;
     setState(() {
       _hasUnsavedChanges = value;
     });
@@ -109,6 +186,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       setState(() {
         _hasUnsavedChanges = false;
+        _avatarSelectionInProgress = false;
       });
 
       if (!mounted) return;
@@ -169,6 +247,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (avatarPath == null) return;
       setState(() {
         _avatarPath = avatarPath;
+        _avatarSelectionInProgress = true;
         _hasUnsavedChanges = true;
       });
     } catch (e) {
@@ -191,6 +270,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     setState(() {
       _avatarPath = selectedIcon;
+      _avatarSelectionInProgress = true;
       _hasUnsavedChanges = true;
     });
   }
@@ -221,7 +301,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           return const Center(child: CircularProgressIndicator());
         }
 
-        final avatarPath = _avatarPath;
+        final avatarPath = _avatarPath ?? player.avatarPath;
 
         return PopScope(
           canPop: !_hasUnsavedChanges,
@@ -260,15 +340,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   ),
                                 ),
                                 child:
-                                    _showAvatar &&
-                                        avatarPath != null &&
+                                    _showAvatar && avatarPath != null &&
                                         avatarPath.isNotEmpty
                                     ? ClipRRect(
                                         borderRadius: BorderRadius.circular(8),
                                         child: buildAvatarImage(
                                           avatarPath,
-                                          placeholderBuilder:
-                                              _buildAvatarPlaceholder,
+                                          placeholderBuilder: _buildAvatarPlaceholder,
                                           fit: BoxFit.cover,
                                         ),
                                       )
@@ -303,10 +381,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               decoration: BoxDecoration(
                                 color: AppTheme.surface,
                                 borderRadius: BorderRadius.circular(4),
-                                border: Border.all(
-                                  color: AppTheme.border,
-                                  width: 1,
-                                ),
+                                border: Border.all(color: AppTheme.border, width: 1),
                               ),
                               child: TextButton(
                                 onPressed: _pickAvatarFromGallery,
@@ -335,8 +410,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             children: [
                               TextFormField(
                                 controller: _nameController,
-                                validator: (value) =>
-                                    (value == null || value.trim().isEmpty)
+                                validator: (value) => (value == null ||
+                                        value.trim().isEmpty)
                                     ? 'Informe o nome do herói'
                                     : null,
                                 style: const TextStyle(
@@ -348,8 +423,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               const SizedBox(height: 24),
                               TextFormField(
                                 controller: _titleController,
-                                validator: (value) =>
-                                    (value == null || value.trim().isEmpty)
+                                validator: (value) => (value == null ||
+                                        value.trim().isEmpty)
                                     ? 'Informe o título/classe'
                                     : null,
                                 style: const TextStyle(
@@ -358,6 +433,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 ),
                                 decoration: _inputDecoration('Título/Classe'),
                               ),
+                              _buildClassPresetChips(),
                             ],
                           ),
                         ),
@@ -372,19 +448,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         color: AppTheme.textPrimary,
                         fontSize: 14,
                       ),
-                      decoration: _inputDecoration('Descrição do perfil')
-                          .copyWith(
-                            contentPadding: const EdgeInsets.only(top: 8),
-                            helperText: 'Máximo de 250 caracteres.',
-                          ),
+                      decoration: _inputDecoration('Descrição do perfil').copyWith(
+                        contentPadding: const EdgeInsets.only(top: 8),
+                        helperText: 'Máximo de 250 caracteres.',
+                      ),
                     ),
                     const SizedBox(height: 16),
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: !_hasUnsavedChanges || _isSaving
-                            ? null
-                            : _saveProfile,
+                        onPressed:
+                            !_hasUnsavedChanges || _isSaving ? null : _saveProfile,
                         child: _isSaving
                             ? const SizedBox(
                                 width: 16,

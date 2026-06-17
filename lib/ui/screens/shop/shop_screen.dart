@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/constants/icon_registry.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/reward.dart';
 import '../../../providers/inventory_provider.dart';
@@ -151,7 +152,7 @@ class _ShopRewardTile extends StatelessWidget {
           CircleAvatar(
             backgroundColor: AppTheme.accentAmber.withValues(alpha: 0.18),
             foregroundColor: AppTheme.accentAmber,
-            child: Icon(_iconFor(reward.icon)),
+            child: Icon(LifeRPGIcons.rewardIconFor(reward.icon)),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -222,14 +223,4 @@ class _MetaChip extends StatelessWidget {
       ),
     );
   }
-}
-
-IconData _iconFor(String? icon) {
-  return switch (icon) {
-    'movie' => Icons.movie_outlined,
-    'local_cafe' => Icons.local_cafe_outlined,
-    'sports_esports' => Icons.sports_esports_outlined,
-    'menu_book' => Icons.menu_book_outlined,
-    _ => Icons.card_giftcard_outlined,
-  };
 }

@@ -24,6 +24,7 @@ import '../widgets/common/game_snack_bar.dart';
 import '../widgets/common/liferpg_app_bar.dart';
 import '../widgets/player/player_stats_header.dart';
 import '../../core/theme/app_theme.dart';
+import '../../data/repositories/mission_completion_history_repository.dart';
 import '../../providers/mission_provider.dart';
 import '../../providers/inventory_provider.dart';
 import '../../providers/player_provider.dart';
@@ -46,6 +47,8 @@ class _MainScreenState extends State<MainScreen> {
   bool _showCompleted = false;
   Timer? _energyAutoRefreshTimer;
   bool _isExporting = false;
+  final MissionCompletionHistoryRepository _historyRepository =
+      MissionCompletionHistoryRepository();
 
   @override
   void initState() {
@@ -238,9 +241,19 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   void _goToProfile() {
-    setState(() {
-      _currentIndex = 9;
-    });
+    if (_currentIndex != 9) {
+      setState(() {
+        _currentIndex = 9;
+      });
+      return;
+    }
+
+    GameSnackBar.show(
+      context,
+      title: AppLocalizations.of(context).translate('profile'),
+      message: AppLocalizations.of(context).translate('profile_ready_to_edit'),
+      type: GameSnackBarType.info,
+    );
   }
 
   Future<void> _showCalendarPicker() async {
@@ -280,9 +293,43 @@ class _MainScreenState extends State<MainScreen> {
     final l10n = AppLocalizations.of(context);
     final player = context.read<PlayerProvider>().player;
     if (player == null) return;
-    final text =
-        'LifeRPG ${l10n.translate('profile')}\\nName: ${player.name}\\nTitle: ${player.title}\\nLevel: ${player.level}\\nXP: ${player.totalXP}\\nCoins: ${player.rewardPoints}';
+
+    final events = await _historyRepository.getAll();
+    if (!mounted) return;
+    final recentSessions = events.take(10).toList();
+
+    final sessionLines = recentSessions.isEmpty
+        ? ['Sem sessões registradas ainda.']
+        : List.generate(
+            recentSessions.length,
+            (index) =>
+                '${index + 1}. ${_formatDateTime(recentSessions[index].completedAt)} '
+                '- ${recentSessions[index].missionTitleSnapshot} '
+                '(XP: ${recentSessions[index].xpGranted} | RP: ${recentSessions[index].rewardPointsGranted})',
+          );
+
+    final text = [
+      'LifeRPG ${l10n.translate('profile')}',
+      'Nome: ${player.name}',
+      'Título/Classe: ${player.title}',
+      'Nível: ${player.level}',
+      'XP total: ${player.totalXP}',
+      'Moedas (RP): ${player.rewardPoints}',
+      'Compartilhado em: ${_formatDateTime(DateTime.now())}',
+      '',
+      'Últimas sessões:',
+      ...sessionLines,
+    ].join('\n');
     await Share.share(text, subject: 'LifeRPG ${l10n.translate('profile')}');
+  }
+
+  String _formatDateTime(DateTime value) {
+    final day = value.day.toString().padLeft(2, '0');
+    final month = value.month.toString().padLeft(2, '0');
+    final year = value.year;
+    final hour = value.hour.toString().padLeft(2, '0');
+    final minute = value.minute.toString().padLeft(2, '0');
+    return '$day/$month/$year $hour:$minute';
   }
 
   Future<void> _exportData() async {

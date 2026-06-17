@@ -4,6 +4,8 @@ import '../../../core/theme/app_theme.dart';
 import '../../../data/models/mission_completion_event.dart';
 import '../../../data/repositories/mission_completion_history_repository.dart';
 
+const int _maxSessionsInLog = 20;
+
 class StatisticsScreen extends StatefulWidget {
   const StatisticsScreen({super.key});
 
@@ -14,7 +16,7 @@ class StatisticsScreen extends StatefulWidget {
 class _StatisticsScreenState extends State<StatisticsScreen> {
   final MissionCompletionHistoryRepository _historyRepository =
       MissionCompletionHistoryRepository();
-  late Future<List<_DailyStats>> _statsFuture;
+  late Future<_StatisticsData> _statsFuture;
 
   @override
   void initState() {
@@ -24,14 +26,15 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<List<_DailyStats>>(
+    return FutureBuilder<_StatisticsData>(
       future: _statsFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
-        final stats = snapshot.data ?? const <_DailyStats>[];
-        final totals = _DailyStats.sum(stats);
+        final data = snapshot.data ?? const _StatisticsData();
+        final totals = _DailyStats.sum(data.dailyStats);
+        final sessions = data.recentSessions;
 
         return RefreshIndicator(
           onRefresh: () async {
@@ -86,7 +89,41 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                   border: Border.all(color: AppTheme.border),
                 ),
                 padding: const EdgeInsets.all(14),
-                child: Column(children: stats.map(_DailyStatsRow.new).toList()),
+                child: Column(
+                  children:
+                      data.dailyStats.map(_DailyStatsRow.new).toList(),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Text(
+                'Sessões',
+                style: const TextStyle(
+                  color: AppTheme.textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                decoration: BoxDecoration(
+                  color: AppTheme.surface,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppTheme.border),
+                ),
+                padding: const EdgeInsets.all(14),
+                child: sessions.isEmpty
+                    ? const Text(
+                        'Ainda não há sessões concluídas.',
+                        style: TextStyle(color: AppTheme.textSecondary),
+                      )
+                    : Column(
+                        children: List.generate(sessions.length, (index) {
+                          return _SessionHistoryRow(
+                            sessionIndex: index + 1,
+                            event: sessions[index],
+                          );
+                        }),
+                      ),
               ),
             ],
           ),
@@ -95,8 +132,11 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     );
   }
 
-  Future<List<_DailyStats>> _loadStats() async {
+  Future<_StatisticsData> _loadStats() async {
     final history = await _historyRepository.getAll();
+    final recentSessions =
+        history.take(_maxSessionsInLog).toList(growable: false);
+
     final now = DateTime.now();
     final start = DateTime(
       now.year,
@@ -119,8 +159,18 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
       days[index] = days[index].add(event);
     }
 
-    return days;
+    return _StatisticsData(dailyStats: days, recentSessions: recentSessions);
   }
+}
+
+class _StatisticsData {
+  final List<_DailyStats> dailyStats;
+  final List<MissionCompletionEvent> recentSessions;
+
+  const _StatisticsData({
+    this.dailyStats = const <_DailyStats>[],
+    this.recentSessions = const <MissionCompletionEvent>[],
+  });
 }
 
 class _DailyStats {
@@ -270,5 +320,71 @@ class _DailyStatsRow extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class _SessionHistoryRow extends StatelessWidget {
+  final int sessionIndex;
+  final MissionCompletionEvent event;
+
+  const _SessionHistoryRow({
+    required this.sessionIndex,
+    required this.event,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 38,
+            child: Text(
+              '#$sessionIndex',
+              style: const TextStyle(
+                color: AppTheme.primary,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  event.missionTitleSnapshot,
+                  style: const TextStyle(
+                    color: AppTheme.textPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${_formatDateTime(event.completedAt)} · XP ${event.xpGranted} | RP ${event.rewardPointsGranted}',
+                  style: const TextStyle(
+                    color: AppTheme.textSecondary,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatDateTime(DateTime value) {
+    final day = value.day.toString().padLeft(2, '0');
+    final month = value.month.toString().padLeft(2, '0');
+    final year = value.year;
+    final hour = value.hour.toString().padLeft(2, '0');
+    final minute = value.minute.toString().padLeft(2, '0');
+    return '$day/$month/$year $hour:$minute';
   }
 }

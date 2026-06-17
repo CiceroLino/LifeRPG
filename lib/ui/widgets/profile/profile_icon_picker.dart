@@ -1,30 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+import '../../../core/constants/icon_registry.dart';
 import '../../../core/theme/app_theme.dart';
-
-/// Lista de ícones SVG específicos para perfil (apenas ícones que existem no projeto)
-const List<String> _profileSvgIcons = [
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/darkzaitzev/hooded-figure.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/darkzaitzev/hooded-assassin.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/darkzaitzev/ninja-head.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/delapouite/person.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/delapouite/character.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/delapouite/black-knight-helm.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/delapouite/knight-banner.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/angel-wings.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/aura.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/feathered-wing.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/angel-outfit.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/delapouite/skills.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/darkzaitzev/apothecary.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/brain.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/edged-shield.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/fireball.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/compass.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/light-bulb.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/bookmark.svg',
-];
 
 /// Abre uma modal para selecionar um ícone de perfil.
 Future<String?> showProfileIconPicker(
@@ -74,8 +52,9 @@ class _ProfileIconPickerContentState extends State<_ProfileIconPickerContent> {
   }
 
   List<String> get _filteredSvgIcons {
-    if (_query.isEmpty) return _profileSvgIcons;
-    return _profileSvgIcons.where((path) {
+    final profileIcons = LifeRPGIcons.profileAssetPaths;
+    if (_query.isEmpty) return profileIcons;
+    return profileIcons.where((path) {
       final fileName = path
           .split('/')
           .last

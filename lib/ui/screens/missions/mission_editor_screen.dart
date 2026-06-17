@@ -9,6 +9,7 @@ import '../../../data/models/mission.dart';
 import '../../../data/models/mission_reward_drop.dart';
 import '../../../data/models/reward.dart';
 import '../../../data/models/skill.dart';
+import '../../../data/repositories/mission_completion_history_repository.dart';
 import '../../../data/repositories/mission_reward_drop_repository.dart';
 import '../../../providers/mission_provider.dart';
 import '../../../providers/reward_provider.dart';
@@ -47,6 +48,9 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
   List<MissionRewardDrop> _rewardDrops = [];
   final MissionRewardDropRepository _dropRepository =
       MissionRewardDropRepository();
+  final MissionCompletionHistoryRepository _historyRepository =
+      MissionCompletionHistoryRepository();
+  List<RewardPointHistorySample> _historicalRewardSamples = const [];
 
   @override
   void initState() {
@@ -84,6 +88,7 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
       context.read<MissionProvider>().loadMissions();
       context.read<RewardProvider>().loadRewards();
       _loadRewardDrops();
+      _loadRewardHistorySamples();
     });
   }
 
@@ -380,7 +385,27 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
         xpReward: _xpPreview,
         isChildMission: _parentMissionId != null,
         recurrenceType: _recurrence == 'once' ? null : _recurrence,
+        historicalSamples: _historicalRewardSamples,
       );
+
+  Future<void> _loadRewardHistorySamples() async {
+    try {
+      final events = await _historyRepository.getAll();
+      if (!mounted) return;
+      setState(() {
+        _historicalRewardSamples = events
+            .map(
+              (event) => RewardPointHistorySample(
+                xpReward: event.xpGranted,
+                rewardPoints: event.rewardPointsGranted,
+              ),
+            )
+            .toList();
+      });
+    } catch (_) {
+      // Keep non-blocking behavior when historical lookups fail.
+    }
+  }
 
   Future<void> _pickDate() async {
     final now = DateTime.now();
