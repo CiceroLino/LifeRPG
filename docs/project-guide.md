@@ -493,7 +493,7 @@ Padrões:
 
 Comportamento de reset:
 
-- `resetCharacter()` reseta XP, nível, RP, energia, modo de energia e horários de acordar/dormir do player.
+- `resetCharacter()` reseta nome, título/classe, descrição, avatar, XP, nível, RP, energia, modo de energia e horários de acordar/dormir do player. Missões, skills, recompensas, inventário, notebooks, tomes e tavern são preservados.
 - `factoryReset()` deleta dados de recompensas, inventário, histórico de conclusão, missões, skills e player; reinsere apenas o player padrão; limpa preferências e recarrega padrões.
 
 Estado inicial de skills:
@@ -581,6 +581,7 @@ Padrões comuns de UI:
 - Use `GameSnackBar` para eventos de feedback principais, principalmente conclusão de missão, compra, drop, backup e erros relevantes.
 - Use assets SVG de `assets/game-icons.net.svg/...` para ícones com tema RPG.
 - Use `normalizeMissionIconAsset` ao renderizar ícones salvos de missão.
+- Use `DefaultContentTemplates` para classes de perfil, templates de missão, presets de recompensa e cadernos sugeridos. Esses presets devem ser selecionáveis pelo usuário e não devem popular o banco automaticamente.
 - Mantenha textos curtos e escaneáveis. Muitas strings atuais estão em inglês mesmo em áreas do app em português; preserve o estilo local salvo quando a tarefa for localizar intencionalmente.
 
 Regras visuais do card de missão:
