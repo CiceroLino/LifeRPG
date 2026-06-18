@@ -235,7 +235,7 @@ class LifeRPGIcons {
     ),
   ];
 
-  static const List<AppIconOption> rewardOptions = [
+  static final List<AppIconOption> rewardOptions = [
     AppIconOption(
       key: 'card_giftcard',
       label: 'Presente',
@@ -270,12 +270,12 @@ class LifeRPGIcons {
     AppIconOption(
       key: 'trophy',
       label: 'Trofeu',
-      icon: FontAwesomeIcons.trophy,
+      icon: FontAwesomeIcons.trophy.data,
     ),
     AppIconOption(
       key: 'coins',
       label: 'Moedas',
-      icon: FontAwesomeIcons.coins,
+      icon: FontAwesomeIcons.coins.data,
     ),
   ];
 

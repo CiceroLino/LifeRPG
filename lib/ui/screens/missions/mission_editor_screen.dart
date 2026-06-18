@@ -191,7 +191,7 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
                 AttributeSliderRow(
                   label: 'Dificuldade',
                   attribute: MissionAttribute.difficulty,
-                  icon: FontAwesomeIcons.personHiking,
+                  icon: FontAwesomeIcons.personHiking.data,
                   value: _difficulty,
                   activeColor: const Color(0xFF00BCD4),
                   onChanged: (v) => setState(() => _difficulty = v),
@@ -199,7 +199,7 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
                 AttributeSliderRow(
                   label: 'Urgência',
                   attribute: MissionAttribute.urgency,
-                  icon: FontAwesomeIcons.personRunning,
+                  icon: FontAwesomeIcons.personRunning.data,
                   value: _urgency,
                   activeColor: const Color(0xFF2196F3),
                   onChanged: (v) => setState(() => _urgency = v),
@@ -207,7 +207,7 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
                 AttributeSliderRow(
                   label: 'Medo',
                   attribute: MissionAttribute.fear,
-                  icon: FontAwesomeIcons.mask,
+                  icon: FontAwesomeIcons.mask.data,
                   value: _fear,
                   activeColor: const Color(0xFF673AB7),
                   onChanged: (v) => setState(() => _fear = v),
