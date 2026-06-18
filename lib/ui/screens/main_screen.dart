@@ -88,15 +88,6 @@ class _MainScreenState extends State<MainScreen> {
     HelpScreen(),
   ];
 
-  // Índices que NÃO devem mostrar o header (Notebooks, Tomes, Tavern, Skills, Settings e Help)
-  bool get _shouldShowHeader =>
-      _currentIndex != 1 &&
-      _currentIndex != 2 &&
-      _currentIndex != 3 &&
-      _currentIndex != 7 &&
-      _currentIndex != 12 &&
-      _currentIndex != 13;
-
   @override
   Widget build(BuildContext context) {
     return Consumer<MissionProvider>(
@@ -139,9 +130,7 @@ class _MainScreenState extends State<MainScreen> {
             builder: (context, playerProvider, _) {
               _syncEnergyAutoRefreshTimer();
               final shouldShowHeader =
-                  _shouldShowHeader &&
-                  _isStatsExpanded &&
-                  playerProvider.player != null;
+                  _isStatsExpanded && playerProvider.player != null;
               return Column(
                 children: [
                   AnimatedSwitcher(

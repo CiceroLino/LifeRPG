@@ -610,7 +610,7 @@ class _LifeRPGAppBarState extends State<LifeRPGAppBar> {
       case 'shop':
         return l10n.translate('shop');
       case 'pomodoro':
-        return l10n.translate('pomodoro');
+        return l10n.translate('focus_quest');
       case 'settings':
         return l10n.translate('settings');
       case 'help':
@@ -700,7 +700,7 @@ class _LifeRPGAppBarState extends State<LifeRPGAppBar> {
     ),
     _AppBarDestination(
       index: 11,
-      label: l10n.translate('pomodoro'),
+      label: l10n.translate('focus_quest'),
       icon: Icons.hourglass_bottom_outlined,
     ),
     _AppBarDestination(
