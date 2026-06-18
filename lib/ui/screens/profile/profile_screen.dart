@@ -321,123 +321,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Column(
-                          children: [
-                            GestureDetector(
-                              onTap: _pickAvatarFromIconPicker,
-                              child: Container(
-                                width: 80,
-                                height: 80,
-                                decoration: BoxDecoration(
-                                  color: AppTheme.surface,
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                    color: AppTheme.border,
-                                    width: 1,
-                                  ),
-                                ),
-                                child:
-                                    _showAvatar && avatarPath != null &&
-                                        avatarPath.isNotEmpty
-                                    ? ClipRRect(
-                                        borderRadius: BorderRadius.circular(8),
-                                        child: buildAvatarImage(
-                                          avatarPath,
-                                          placeholderBuilder: _buildAvatarPlaceholder,
-                                          fit: BoxFit.cover,
-                                        ),
-                                      )
-                                    : _buildAvatarPlaceholder(),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Checkbox(
-                                  value: _showAvatar,
-                                  onChanged: (value) {
-                                    setState(() {
-                                      _showAvatar = value ?? true;
-                                    });
-                                  },
-                                  activeColor: AppTheme.primary,
-                                  checkColor: Colors.white,
-                                ),
-                                const Text(
-                                  'Exibir avatar',
-                                  style: TextStyle(
-                                    color: AppTheme.textPrimary,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Container(
-                              decoration: BoxDecoration(
-                                color: AppTheme.surface,
-                                borderRadius: BorderRadius.circular(4),
-                                border: Border.all(color: AppTheme.border, width: 1),
-                              ),
-                              child: TextButton(
-                                onPressed: _pickAvatarFromGallery,
-                                style: TextButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 8,
-                                  ),
-                                  minimumSize: const Size(80, 36),
-                                ),
-                                child: const Text(
-                                  'Personalizar',
-                                  style: TextStyle(
-                                    color: AppTheme.textPrimary,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(width: 24),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final isNarrow = constraints.maxWidth < 560;
+                        final avatarControls = _buildAvatarControls(avatarPath);
+                        final identityFields = _buildIdentityFields();
+
+                        if (isNarrow) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              TextFormField(
-                                controller: _nameController,
-                                validator: (value) => (value == null ||
-                                        value.trim().isEmpty)
-                                    ? 'Informe o nome do herói'
-                                    : null,
-                                style: const TextStyle(
-                                  color: AppTheme.textPrimary,
-                                  fontSize: 16,
-                                ),
-                                decoration: _inputDecoration('Nome'),
-                              ),
+                              Center(child: avatarControls),
                               const SizedBox(height: 24),
-                              TextFormField(
-                                controller: _titleController,
-                                validator: (value) => (value == null ||
-                                        value.trim().isEmpty)
-                                    ? 'Informe o título/classe'
-                                    : null,
-                                style: const TextStyle(
-                                  color: AppTheme.textPrimary,
-                                  fontSize: 16,
-                                ),
-                                decoration: _inputDecoration('Título/Classe'),
-                              ),
-                              _buildClassPresetChips(),
+                              identityFields,
                             ],
-                          ),
-                        ),
-                      ],
+                          );
+                        }
+
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            avatarControls,
+                            const SizedBox(width: 24),
+                            Expanded(child: identityFields),
+                          ],
+                        );
+                      },
                     ),
                     const SizedBox(height: 32),
                     TextFormField(
@@ -448,17 +357,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         color: AppTheme.textPrimary,
                         fontSize: 14,
                       ),
-                      decoration: _inputDecoration('Descrição do perfil').copyWith(
-                        contentPadding: const EdgeInsets.only(top: 8),
-                        helperText: 'Máximo de 250 caracteres.',
-                      ),
+                      decoration: _inputDecoration('Descrição do perfil')
+                          .copyWith(
+                            contentPadding: const EdgeInsets.only(top: 8),
+                            helperText: 'Máximo de 250 caracteres.',
+                          ),
                     ),
                     const SizedBox(height: 16),
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed:
-                            !_hasUnsavedChanges || _isSaving ? null : _saveProfile,
+                        onPressed: !_hasUnsavedChanges || _isSaving
+                            ? null
+                            : _saveProfile,
                         child: _isSaving
                             ? const SizedBox(
                                 width: 16,
@@ -478,6 +389,100 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildAvatarControls(String? avatarPath) {
+    return Column(
+      children: [
+        GestureDetector(
+          onTap: _pickAvatarFromIconPicker,
+          child: Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              color: AppTheme.surface,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppTheme.border),
+            ),
+            child: _showAvatar && avatarPath != null && avatarPath.isNotEmpty
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: buildAvatarImage(
+                      avatarPath,
+                      placeholderBuilder: _buildAvatarPlaceholder,
+                      fit: BoxFit.cover,
+                    ),
+                  )
+                : _buildAvatarPlaceholder(),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Checkbox(
+              value: _showAvatar,
+              onChanged: (value) {
+                setState(() {
+                  _showAvatar = value ?? true;
+                });
+              },
+              activeColor: AppTheme.primary,
+              checkColor: Colors.white,
+            ),
+            const Text(
+              'Exibir avatar',
+              style: TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: AppTheme.surface,
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(color: AppTheme.border),
+          ),
+          child: TextButton(
+            onPressed: _pickAvatarFromGallery,
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              minimumSize: const Size(96, 40),
+            ),
+            child: const Text(
+              'Personalizar',
+              style: TextStyle(color: AppTheme.textPrimary, fontSize: 12),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildIdentityFields() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextFormField(
+          controller: _nameController,
+          validator: (value) => (value == null || value.trim().isEmpty)
+              ? 'Informe o nome do herói'
+              : null,
+          style: const TextStyle(color: AppTheme.textPrimary, fontSize: 16),
+          decoration: _inputDecoration('Nome'),
+        ),
+        const SizedBox(height: 24),
+        TextFormField(
+          controller: _titleController,
+          validator: (value) => (value == null || value.trim().isEmpty)
+              ? 'Informe o título/classe'
+              : null,
+          style: const TextStyle(color: AppTheme.textPrimary, fontSize: 16),
+          decoration: _inputDecoration('Título/Classe'),
+        ),
+        _buildClassPresetChips(),
+      ],
     );
   }
 

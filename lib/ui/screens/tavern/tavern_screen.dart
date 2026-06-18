@@ -353,53 +353,79 @@ class _MiniPlayer extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 4),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      track.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppTheme.textPrimary,
-                        fontWeight: FontWeight.w700,
-                      ),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final controls = [
+                    IconButton(
+                      tooltip: shuffleEnabled
+                          ? l10n.translate('shuffle_on')
+                          : l10n.translate('shuffle_off'),
+                      icon: const Icon(Icons.shuffle),
+                      color: shuffleEnabled ? AppTheme.primary : null,
+                      onPressed: onToggleShuffle,
                     ),
-                  ),
-                  IconButton(
-                    tooltip: shuffleEnabled
-                        ? l10n.translate('shuffle_on')
-                        : l10n.translate('shuffle_off'),
-                    icon: const Icon(Icons.shuffle),
-                    color: shuffleEnabled ? AppTheme.primary : null,
-                    onPressed: onToggleShuffle,
-                  ),
-                  IconButton(
-                    tooltip: l10n.translate('previous_track'),
-                    icon: const Icon(Icons.skip_previous),
-                    onPressed: onPrevious,
-                  ),
-                  IconButton(
-                    tooltip: isPlaying
-                        ? l10n.translate('pause')
-                        : l10n.translate('start'),
-                    icon: Icon(isPlaying ? Icons.pause : Icons.play_arrow),
-                    onPressed: onTogglePlayPause,
-                  ),
-                  IconButton(
-                    tooltip: l10n.translate('next_track'),
-                    icon: const Icon(Icons.skip_next),
-                    onPressed: onNext,
-                  ),
-                  IconButton(
-                    tooltip: repeatTooltip,
-                    icon: Icon(repeatIcon),
-                    color: repeatMode == TavernRepeatMode.off
-                        ? null
-                        : AppTheme.primary,
-                    onPressed: onCycleRepeat,
-                  ),
-                ],
+                    IconButton(
+                      tooltip: l10n.translate('previous_track'),
+                      icon: const Icon(Icons.skip_previous),
+                      onPressed: onPrevious,
+                    ),
+                    IconButton(
+                      tooltip: isPlaying
+                          ? l10n.translate('pause')
+                          : l10n.translate('start'),
+                      icon: Icon(isPlaying ? Icons.pause : Icons.play_arrow),
+                      onPressed: onTogglePlayPause,
+                    ),
+                    IconButton(
+                      tooltip: l10n.translate('next_track'),
+                      icon: const Icon(Icons.skip_next),
+                      onPressed: onNext,
+                    ),
+                    IconButton(
+                      tooltip: repeatTooltip,
+                      icon: Icon(repeatIcon),
+                      color: repeatMode == TavernRepeatMode.off
+                          ? null
+                          : AppTheme.primary,
+                      onPressed: onCycleRepeat,
+                    ),
+                  ];
+                  final title = Text(
+                    track.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppTheme.textPrimary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  );
+
+                  if (constraints.maxWidth < 420) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        title,
+                        const SizedBox(height: 4),
+                        Align(
+                          alignment: Alignment.center,
+                          child: Wrap(
+                            alignment: WrapAlignment.center,
+                            spacing: 2,
+                            runSpacing: 2,
+                            children: controls,
+                          ),
+                        ),
+                      ],
+                    );
+                  }
+
+                  return Row(
+                    children: [
+                      Expanded(child: title),
+                      ...controls,
+                    ],
+                  );
+                },
               ),
               ClipRRect(
                 borderRadius: BorderRadius.circular(4),

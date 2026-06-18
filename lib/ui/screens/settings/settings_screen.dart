@@ -506,7 +506,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               );
             },
             child: Text(
-              AppLocalizations.of(context).translate('reset_button'),
+              AppLocalizations.of(
+                context,
+              ).translate('reset_button').toUpperCase(),
               style: const TextStyle(color: Colors.orange),
             ),
           ),

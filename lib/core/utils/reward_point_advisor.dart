@@ -7,6 +7,11 @@ class RewardPointAdvisor {
     String? recurrenceType,
     List<RewardPointHistorySample>? historicalSamples,
   }) {
+    final safeXP = xpReward < 0 ? 0 : xpReward;
+    if (safeXP == 0) {
+      return 0;
+    }
+
     final recurrence = recurrenceType?.toLowerCase();
     if (!isChildMission && recurrence == 'daily') {
       return 1;
@@ -15,7 +20,6 @@ class RewardPointAdvisor {
       return 1;
     }
 
-    final safeXP = xpReward < 0 ? 0 : xpReward;
     final baseRecommendation = isChildMission
         ? _recommendForChildMission(safeXP)
         : _recommendForStandaloneMission(safeXP);

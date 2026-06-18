@@ -133,6 +133,70 @@ class _RewardTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final icon = CircleAvatar(
+      backgroundColor: AppTheme.accentAmber.withValues(alpha: 0.18),
+      foregroundColor: AppTheme.accentAmber,
+      child: Icon(LifeRPGIcons.rewardIconFor(reward.icon)),
+    );
+    final details = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          reward.name,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: AppTheme.textPrimary,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        if (reward.description.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Text(
+            reward.description,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+          ),
+        ],
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 6,
+          children: [
+            _MetaChip(label: '${reward.priceRp} RP'),
+            _MetaChip(
+              label: reward.isUnlimitedStock
+                  ? 'Estoque ilimitado'
+                  : 'Estoque: ${reward.stockRemaining ?? 0}',
+            ),
+          ],
+        ),
+      ],
+    );
+    final actions = Wrap(
+      spacing: 4,
+      runSpacing: 4,
+      children: [
+        IconButton(
+          tooltip: 'Editar',
+          onPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => RewardFormScreen(reward: reward),
+              ),
+            );
+          },
+          icon: const Icon(Icons.edit_outlined),
+        ),
+        IconButton(
+          tooltip: 'Arquivar',
+          onPressed: onArchive,
+          icon: const Icon(Icons.archive_outlined),
+        ),
+      ],
+    );
+
     return Container(
       decoration: BoxDecoration(
         color: AppTheme.surface,
@@ -140,75 +204,37 @@ class _RewardTile extends StatelessWidget {
         border: Border.all(color: AppTheme.border),
       ),
       padding: const EdgeInsets.all(12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          CircleAvatar(
-            backgroundColor: AppTheme.accentAmber.withValues(alpha: 0.18),
-            foregroundColor: AppTheme.accentAmber,
-            child: Icon(LifeRPGIcons.rewardIconFor(reward.icon)),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth < 420) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  reward.name,
-                  style: const TextStyle(
-                    color: AppTheme.textPrimary,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                if (reward.description.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    reward.description,
-                    style: const TextStyle(
-                      color: AppTheme.textSecondary,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 6,
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _MetaChip(label: '${reward.priceRp} RP'),
-                    _MetaChip(
-                      label: reward.isUnlimitedStock
-                          ? 'Estoque ilimitado'
-                          : 'Estoque: ${reward.stockRemaining ?? 0}',
-                    ),
+                    icon,
+                    const SizedBox(width: 12),
+                    Expanded(child: details),
                   ],
                 ),
+                const SizedBox(height: 8),
+                Align(alignment: Alignment.centerRight, child: actions),
               ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          Column(
-            mainAxisSize: MainAxisSize.min,
+            );
+          }
+
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              IconButton(
-                tooltip: 'Editar',
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => RewardFormScreen(reward: reward),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.edit_outlined),
-              ),
-              IconButton(
-                tooltip: 'Arquivar',
-                onPressed: onArchive,
-                icon: const Icon(Icons.archive_outlined),
-              ),
+              icon,
+              const SizedBox(width: 12),
+              Expanded(child: details),
+              const SizedBox(width: 8),
+              actions,
             ],
-          ),
-        ],
+          );
+        },
       ),
     );
   }

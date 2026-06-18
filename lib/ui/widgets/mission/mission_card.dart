@@ -391,135 +391,120 @@ class MissionCard extends StatelessWidget {
                           ),
                           const SizedBox(height: 8),
                         ],
-                        IntrinsicHeight(
-                          child: Row(
-                            children: [
-                              DropdownButtonHideUnderline(
-                                child: DropdownButton<String>(
-                                  key: const Key('mission-status-select'),
-                                  value: mission.status,
-                                  isDense: true,
-                                  icon: const Icon(
-                                    Icons.expand_more,
-                                    color: AppTheme.textSecondary,
-                                    size: 18,
-                                  ),
-                                  onChanged: onStatusSelectChanged,
-                                  items: [
-                                    DropdownMenuItem(
-                                      value: 'active',
-                                      child: Text(l10n.translate('active')),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: 'completed',
-                                      child: Text(l10n.translate('completed')),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: 'archived',
-                                      child: Text(l10n.translate('archived')),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              IconButton(
-                                key: const Key('mission-edit-button'),
-                                tooltip: l10n.translate('edit_mission'),
+                        Wrap(
+                          spacing: 4,
+                          runSpacing: 4,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                key: const Key('mission-status-select'),
+                                value: mission.status,
+                                isDense: true,
                                 icon: const Icon(
-                                  Icons.edit,
-                                  color: AppTheme.primary,
-                                  size: 18,
-                                ),
-                                onPressed: onEdit,
-                              ),
-                              const SizedBox(width: 2),
-                              IconButton(
-                                key: const Key('mission-duplicate-button'),
-                                tooltip: l10n.translate('duplicate_mission'),
-                                icon: const Icon(
-                                  Icons.add,
-                                  color: AppTheme.accentAmber,
-                                  size: 18,
-                                ),
-                                onPressed: onDuplicate,
-                              ),
-                              const SizedBox(width: 2),
-                              IconButton(
-                                key: const Key('mission-adjust-button'),
-                                tooltip: l10n.translate('adjust_attributes'),
-                                icon: const Icon(
-                                  Icons.tune,
+                                  Icons.expand_more,
                                   color: AppTheme.textSecondary,
                                   size: 18,
                                 ),
-                                onPressed: onAdjustAttributes,
-                              ),
-                              const SizedBox(width: 2),
-                              IconButton(
-                                key: const Key('mission-notes-button'),
-                                tooltip: l10n.translate('edit_notes'),
-                                icon: const Icon(
-                                  Icons.note_alt,
-                                  color: AppTheme.textSecondary,
-                                  size: 18,
-                                ),
-                                onPressed: onEditNotes,
-                              ),
-                              PopupMenuButton<MissionCardQuickAction>(
-                                key: const Key('mission-quick-action-button'),
-                                tooltip: l10n.translate('menu_more_actions'),
-                                color: AppTheme.surface,
-                                icon: const Icon(
-                                  Icons.more_vert,
-                                  color: AppTheme.textSecondary,
-                                  size: 18,
-                                ),
-                                onSelected: onQuickActionSelected,
-                                itemBuilder: (context) => [
-                                  _missionQuickActionItem(
-                                    l10n.translate('delete'),
-                                    Icons.delete_outline,
-                                    MissionCardQuickAction.delete,
+                                onChanged: onStatusSelectChanged,
+                                items: [
+                                  DropdownMenuItem(
+                                    value: 'active',
+                                    child: Text(l10n.translate('active')),
                                   ),
-                                  _missionQuickActionItem(
-                                    l10n.translate('mission_menu_fail'),
-                                    Icons.cancel_outlined,
-                                    MissionCardQuickAction.fail,
+                                  DropdownMenuItem(
+                                    value: 'completed',
+                                    child: Text(l10n.translate('completed')),
                                   ),
-                                  _missionQuickActionItem(
-                                    l10n.translate('mission_menu_reschedule'),
-                                    Icons.event,
-                                    MissionCardQuickAction.reschedule,
-                                  ),
-                                  _missionQuickActionItem(
-                                    l10n.translate('mission_menu_recurrence'),
-                                    Icons.repeat,
-                                    MissionCardQuickAction.recurrence,
-                                  ),
-                                  _missionQuickActionItem(
-                                    l10n.translate('mission_menu_reward'),
-                                    Icons.auto_awesome,
-                                    MissionCardQuickAction.reward,
-                                  ),
-                                  _missionQuickActionItem(
-                                    l10n.translate('mission_menu_duration'),
-                                    Icons.timer,
-                                    MissionCardQuickAction.duration,
-                                  ),
-                                  _missionQuickActionItem(
-                                    l10n.translate('mission_menu_skills'),
-                                    Icons.track_changes,
-                                    MissionCardQuickAction.skills,
-                                  ),
-                                  _missionQuickActionItem(
-                                    l10n.translate('mission_menu_move'),
-                                    Icons.drive_file_move,
-                                    MissionCardQuickAction.move,
+                                  DropdownMenuItem(
+                                    value: 'archived',
+                                    child: Text(l10n.translate('archived')),
                                   ),
                                 ],
                               ),
-                            ],
-                          ),
+                            ),
+                            _compactActionButton(
+                              key: const Key('mission-edit-button'),
+                              tooltip: l10n.translate('edit_mission'),
+                              icon: Icons.edit,
+                              color: AppTheme.primary,
+                              onPressed: onEdit,
+                            ),
+                            _compactActionButton(
+                              key: const Key('mission-duplicate-button'),
+                              tooltip: l10n.translate('duplicate_mission'),
+                              icon: Icons.add,
+                              color: AppTheme.accentAmber,
+                              onPressed: onDuplicate,
+                            ),
+                            _compactActionButton(
+                              key: const Key('mission-adjust-button'),
+                              tooltip: l10n.translate('adjust_attributes'),
+                              icon: Icons.tune,
+                              color: AppTheme.textSecondary,
+                              onPressed: onAdjustAttributes,
+                            ),
+                            _compactActionButton(
+                              key: const Key('mission-notes-button'),
+                              tooltip: l10n.translate('edit_notes'),
+                              icon: Icons.note_alt,
+                              color: AppTheme.textSecondary,
+                              onPressed: onEditNotes,
+                            ),
+                            PopupMenuButton<MissionCardQuickAction>(
+                              key: const Key('mission-quick-action-button'),
+                              tooltip: l10n.translate('menu_more_actions'),
+                              color: AppTheme.surface,
+                              icon: const Icon(
+                                Icons.more_vert,
+                                color: AppTheme.textSecondary,
+                                size: 18,
+                              ),
+                              onSelected: onQuickActionSelected,
+                              itemBuilder: (context) => [
+                                _missionQuickActionItem(
+                                  l10n.translate('delete'),
+                                  Icons.delete_outline,
+                                  MissionCardQuickAction.delete,
+                                ),
+                                _missionQuickActionItem(
+                                  l10n.translate('mission_menu_fail'),
+                                  Icons.cancel_outlined,
+                                  MissionCardQuickAction.fail,
+                                ),
+                                _missionQuickActionItem(
+                                  l10n.translate('mission_menu_reschedule'),
+                                  Icons.event,
+                                  MissionCardQuickAction.reschedule,
+                                ),
+                                _missionQuickActionItem(
+                                  l10n.translate('mission_menu_recurrence'),
+                                  Icons.repeat,
+                                  MissionCardQuickAction.recurrence,
+                                ),
+                                _missionQuickActionItem(
+                                  l10n.translate('mission_menu_reward'),
+                                  Icons.auto_awesome,
+                                  MissionCardQuickAction.reward,
+                                ),
+                                _missionQuickActionItem(
+                                  l10n.translate('mission_menu_duration'),
+                                  Icons.timer,
+                                  MissionCardQuickAction.duration,
+                                ),
+                                _missionQuickActionItem(
+                                  l10n.translate('mission_menu_skills'),
+                                  Icons.track_changes,
+                                  MissionCardQuickAction.skills,
+                                ),
+                                _missionQuickActionItem(
+                                  l10n.translate('mission_menu_move'),
+                                  Icons.drive_file_move,
+                                  MissionCardQuickAction.move,
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ],
 
@@ -565,6 +550,24 @@ class MissionCard extends StatelessWidget {
       ),
     );
   }
+}
+
+Widget _compactActionButton({
+  required Key key,
+  required String tooltip,
+  required IconData icon,
+  required Color color,
+  required VoidCallback? onPressed,
+}) {
+  return IconButton(
+    key: key,
+    tooltip: tooltip,
+    constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+    padding: const EdgeInsets.all(8),
+    visualDensity: VisualDensity.compact,
+    icon: Icon(icon, color: color, size: 18),
+    onPressed: onPressed,
+  );
 }
 
 PopupMenuItem<MissionCardQuickAction> _missionQuickActionItem(
