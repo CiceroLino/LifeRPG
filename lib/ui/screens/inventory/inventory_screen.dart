@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/constants/icon_registry.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/inventory_item.dart';
 import '../../../providers/inventory_provider.dart';
@@ -123,7 +124,10 @@ class _InventoryTile extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(_iconFor(item.icon), color: AppTheme.accentAmber),
+              Icon(
+                LifeRPGIcons.rewardIconFor(item.icon),
+                color: AppTheme.accentAmber,
+              ),
               const Spacer(),
               Text(
                 'x${item.quantity}',
@@ -169,14 +173,4 @@ class _InventoryTile extends StatelessWidget {
       ),
     );
   }
-}
-
-IconData _iconFor(String? icon) {
-  return switch (icon) {
-    'movie' => Icons.movie_outlined,
-    'local_cafe' => Icons.local_cafe_outlined,
-    'sports_esports' => Icons.sports_esports_outlined,
-    'menu_book' => Icons.menu_book_outlined,
-    _ => Icons.card_giftcard_outlined,
-  };
 }

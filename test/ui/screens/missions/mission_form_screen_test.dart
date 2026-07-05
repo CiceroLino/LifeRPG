@@ -225,4 +225,40 @@ void main() {
     expect(missionProvider.addedMission!.fear, 30);
     expect(missionProvider.addedMission!.xpReward, 3250);
   });
+
+  testWidgets('mission template fills and saves preset values', (tester) async {
+    await _setLargeSurface(tester);
+    final skillProvider = FakeSkillProvider();
+    final missionProvider = FakeMissionProvider();
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: _providers(
+          skillProvider: skillProvider,
+          missionProvider: missionProvider,
+        ),
+        child: const MaterialApp(home: MissionFormScreen()),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ActionChip, 'Deep work'));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('save-mission-button')),
+      400,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.byKey(const Key('save-mission-button')).last);
+    await tester.pumpAndSettle();
+
+    expect(missionProvider.addedMission, isNotNull);
+    expect(missionProvider.addedMission!.title, 'Deep work block');
+    expect(missionProvider.addedMission!.difficulty, 70);
+    expect(missionProvider.addedMission!.urgency, 55);
+    expect(missionProvider.addedMission!.fear, 35);
+    expect(missionProvider.addedMission!.estimatedDuration, 60);
+    expect(missionProvider.addedMission!.notes, contains('Session 1'));
+  });
 }

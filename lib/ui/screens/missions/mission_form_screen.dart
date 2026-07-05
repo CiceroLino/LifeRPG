@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
+import '../../../core/constants/default_content_templates.dart';
 import '../../../core/utils/reward_point_advisor.dart';
 import '../../../core/utils/xp_calculator.dart';
 import '../../../core/theme/app_theme.dart';
@@ -10,6 +11,7 @@ import '../../../data/models/mission.dart';
 import '../../../data/models/mission_reward_drop.dart';
 import '../../../data/models/reward.dart';
 import '../../../data/models/skill.dart';
+import '../../../data/repositories/mission_completion_history_repository.dart';
 import '../../../providers/mission_provider.dart';
 import '../../../providers/reward_provider.dart';
 import '../../../providers/settings_provider.dart';
@@ -49,6 +51,9 @@ class _MissionFormScreenState extends State<MissionFormScreen> {
   String _iconAsset = missionIconOptions.first;
   bool _isCompleted = false;
   MissionLocationSelection? _location;
+  final MissionCompletionHistoryRepository _historyRepository =
+      MissionCompletionHistoryRepository();
+  List<RewardPointHistorySample> _historicalRewardSamples = const [];
 
   @override
   void initState() {
@@ -59,6 +64,7 @@ class _MissionFormScreenState extends State<MissionFormScreen> {
       context.read<SkillProvider>().loadSkills();
       context.read<MissionProvider>().loadMissions();
       context.read<RewardProvider>().loadRewards();
+      _loadRewardHistorySamples();
     });
   }
 
@@ -91,6 +97,9 @@ class _MissionFormScreenState extends State<MissionFormScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            _Section(title: 'Templates'),
+            _MissionTemplatePicker(onSelected: _applyMissionTemplate),
+            const SizedBox(height: 16),
             TextFormField(
               controller: _titleController,
               decoration: const InputDecoration(labelText: 'Missão (Título)'),
@@ -211,6 +220,7 @@ class _MissionFormScreenState extends State<MissionFormScreen> {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
+              key: ValueKey(_recurrence),
               initialValue: _recurrence,
               decoration: const InputDecoration(labelText: 'Repetition'),
               items: const [
@@ -369,7 +379,54 @@ class _MissionFormScreenState extends State<MissionFormScreen> {
         xpReward: _xpPreview,
         isChildMission: _parentMissionId != null,
         recurrenceType: _recurrence == 'once' ? null : _recurrence,
+        historicalSamples: _historicalRewardSamples,
       );
+
+  void _applyMissionTemplate(MissionTemplate template) {
+    final xpReward = XPCalculator.calculateMissionXP(
+      difficulty: template.difficulty,
+      urgency: template.urgency,
+      fear: template.fear,
+    );
+    setState(() {
+      _titleController.text = template.title;
+      _descController.text = template.description;
+      _notesController.text = template.notes;
+      _durationController.text = template.durationMinutes.toString();
+      _difficulty = template.difficulty.toDouble();
+      _urgency = template.urgency.toDouble();
+      _fear = template.fear.toDouble();
+      _recurrence = template.recurrence;
+      _iconAsset = template.iconAsset;
+      _rewardPoints = RewardPointAdvisor.recommendMissionRewardPoints(
+        xpReward: xpReward,
+        isChildMission: _parentMissionId != null,
+        recurrenceType: template.recurrence == 'once'
+            ? null
+            : template.recurrence,
+        historicalSamples: _historicalRewardSamples,
+      );
+    });
+  }
+
+  Future<void> _loadRewardHistorySamples() async {
+    try {
+      final events = await _historyRepository.getAll();
+      if (!mounted) return;
+      setState(() {
+        _historicalRewardSamples = events
+            .map(
+              (event) => RewardPointHistorySample(
+                xpReward: event.xpGranted,
+                rewardPoints: event.rewardPointsGranted,
+              ),
+            )
+            .toList();
+      });
+    } catch (_) {
+      // Keep fallback behavior when historical data is temporarily unavailable.
+    }
+  }
 
   Future<void> _pickDate() async {
     final now = DateTime.now();
@@ -871,6 +928,29 @@ class _Section extends StatelessWidget {
           color: AppTheme.textSecondary,
         ),
       ),
+    );
+  }
+}
+
+class _MissionTemplatePicker extends StatelessWidget {
+  final ValueChanged<MissionTemplate> onSelected;
+
+  const _MissionTemplatePicker({required this.onSelected});
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: DefaultContentTemplates.missionTemplates
+          .map(
+            (template) => ActionChip(
+              avatar: const Icon(Icons.auto_awesome_outlined, size: 16),
+              label: Text(template.label),
+              onPressed: () => onSelected(template),
+            ),
+          )
+          .toList(),
     );
   }
 }

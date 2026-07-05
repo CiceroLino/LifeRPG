@@ -131,5 +131,32 @@ void main() {
         75,
       );
     });
+
+    test('blends reward recommendation with similar historical rewards', () {
+      expect(
+        RewardPointAdvisor.recommendMissionRewardPoints(
+          xpReward: 1100,
+          isChildMission: false,
+          historicalSamples: const [
+            RewardPointHistorySample(xpReward: 1000, rewardPoints: 80),
+            RewardPointHistorySample(xpReward: 1200, rewardPoints: 90),
+          ],
+        ),
+        greaterThan(25),
+      );
+    });
+
+    test('keeps zero XP missions at zero RP even when history exists', () {
+      expect(
+        RewardPointAdvisor.recommendMissionRewardPoints(
+          xpReward: 0,
+          isChildMission: false,
+          historicalSamples: const [
+            RewardPointHistorySample(xpReward: 1000, rewardPoints: 80),
+          ],
+        ),
+        0,
+      );
+    });
   });
 }

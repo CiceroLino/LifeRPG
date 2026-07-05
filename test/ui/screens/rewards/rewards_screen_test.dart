@@ -67,4 +67,24 @@ void main() {
     expect(find.byKey(const Key('reward-name-field')), findsOneWidget);
     expect(find.byKey(const Key('reward-price-field')), findsOneWidget);
   });
+
+  testWidgets('reward template fills new reward form', (tester) async {
+    await tester.pumpWidget(
+      ChangeNotifierProvider<RewardProvider>.value(
+        value: FakeRewardProvider(const []),
+        child: const MaterialApp(home: RewardFormScreen()),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ActionChip, 'Break'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Short break'), findsOneWidget);
+    expect(
+      find.text('A guilt-free pause after finishing a quest.'),
+      findsOneWidget,
+    );
+    expect(find.text('15'), findsOneWidget);
+  });
 }

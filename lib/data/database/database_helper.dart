@@ -657,9 +657,13 @@ class DatabaseHelper {
     final db = await database;
     final now = DateTime.now().toIso8601String();
     await db.update('player', {
+      'name': 'Player',
+      'title': 'Adventurer',
+      'description': '',
       'total_xp': 0,
       'level': 1,
       'reward_points': 0,
+      'avatar_path': null,
       'current_energy': 100,
       'energy_mode': 'manual',
       'wake_up_time': null,

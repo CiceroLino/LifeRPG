@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/constants/default_content_templates.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/notebook.dart';
 import '../../../l10n/app_localizations.dart';
@@ -86,6 +87,22 @@ class _NotebooksScreenState extends State<NotebooksScreen> {
                     tooltip: l10n.translate('new_notebook'),
                     icon: const Icon(Icons.add),
                     onPressed: () => _showNotebookDialog(context),
+                  ),
+                  const SizedBox(width: 4),
+                  PopupMenuButton<NotebookTemplate>(
+                    tooltip: 'Templates',
+                    icon: const Icon(Icons.library_add_outlined),
+                    onSelected: (template) =>
+                        _createNotebookFromTemplate(context, template),
+                    itemBuilder: (context) => DefaultContentTemplates
+                        .notebookTemplates
+                        .map(
+                          (template) => PopupMenuItem(
+                            value: template,
+                            child: Text(template.name),
+                          ),
+                        )
+                        .toList(),
                   ),
                 ],
               ),
@@ -204,6 +221,15 @@ class _NotebooksScreenState extends State<NotebooksScreen> {
         notebook.copyWith(name: name, description: description),
       );
     }
+  }
+
+  Future<void> _createNotebookFromTemplate(
+    BuildContext context,
+    NotebookTemplate template,
+  ) async {
+    await context.read<NotebookProvider>().addNotebook(
+      Notebook(name: template.name, description: template.description),
+    );
   }
 }
 

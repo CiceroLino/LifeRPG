@@ -49,6 +49,7 @@ class FakePlayerProvider extends PlayerProvider {
 
 class FakeSettingsProvider extends SettingsProvider {
   int factoryResetCalls = 0;
+  int resetCharacterCalls = 0;
   String _language = 'en';
 
   @override
@@ -69,6 +70,11 @@ class FakeSettingsProvider extends SettingsProvider {
   @override
   Future<void> factoryReset() async {
     factoryResetCalls++;
+  }
+
+  @override
+  Future<void> resetCharacter() async {
+    resetCharacterCalls++;
   }
 }
 
@@ -102,6 +108,42 @@ Widget _settingsHarness({
 }
 
 void main() {
+  testWidgets('character profile reset reloads player data after confirmation', (
+    tester,
+  ) async {
+    final settings = FakeSettingsProvider();
+    final player = FakePlayerProvider();
+
+    await tester.pumpWidget(
+      _settingsHarness(
+        settings: settings,
+        mission: FakeMissionProvider(),
+        skill: FakeSkillProvider(),
+        player: player,
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.text('Reset Character Profile'),
+      300,
+      scrollable: find.byType(Scrollable),
+    );
+    await tester.ensureVisible(
+      find.widgetWithText(ListTile, 'Reset Character Profile'),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ListTile, 'Reset Character Profile'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(TextButton, 'RESET'));
+    await tester.pumpAndSettle();
+
+    expect(settings.resetCharacterCalls, 1);
+    expect(player.loadPlayerCalls, 1);
+  });
+
   testWidgets('factory reset recarrega providers de dados', (tester) async {
     final settings = FakeSettingsProvider();
     final mission = FakeMissionProvider();

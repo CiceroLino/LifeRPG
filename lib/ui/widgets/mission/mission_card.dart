@@ -134,7 +134,7 @@ class MissionCard extends StatelessWidget {
     }
 
     // Ícone padrão baseado no título ou tipo
-    IconData defaultIcon = FontAwesomeIcons.bullseye;
+    FaIconData defaultIcon = FontAwesomeIcons.bullseye;
     final titleLower = mission.title.toLowerCase();
     if (titleLower.contains('chore') || titleLower.contains('tarefa')) {
       defaultIcon = FontAwesomeIcons.broom;
@@ -312,7 +312,7 @@ class MissionCard extends StatelessWidget {
                           Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(
+                              FaIcon(
                                 FontAwesomeIcons.gem,
                                 size: 12,
                                 color: AppTheme.accentAmber,
