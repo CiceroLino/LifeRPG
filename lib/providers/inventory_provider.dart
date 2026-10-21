@@ -1,3 +1,4 @@
+import '../data/database/data_operations.dart';
 import 'package:flutter/foundation.dart';
 
 import '../data/models/inventory_item.dart';
@@ -14,11 +15,10 @@ class InventoryProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  Future<void> loadItems() async {
+  Future<void> loadItems() => DataOperations.instance.run(() async {
     _isLoading = true;
     _error = null;
     notifyListeners();
-
     try {
       _items = await _inventoryRepo.getAll();
     } catch (e) {
@@ -27,9 +27,9 @@ class InventoryProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
-  }
+  }, readOnly: true);
 
-  Future<void> consumeItem(int id) async {
+  Future<void> consumeItem(int id) => DataOperations.instance.run(() async {
     try {
       _error = null;
       await _inventoryRepo.consumeItem(id);
@@ -38,5 +38,5 @@ class InventoryProvider extends ChangeNotifier {
       _error = 'Erro ao usar item: $e';
       notifyListeners();
     }
-  }
+  }, readOnly: false);
 }

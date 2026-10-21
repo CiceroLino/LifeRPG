@@ -1,3 +1,4 @@
+import '../data/database/data_operations.dart';
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
@@ -82,39 +83,37 @@ class PomodoroProvider extends ChangeNotifier {
     _notify();
   }
 
-  Future<FocusSessionResult?> completeNow() async {
-    if (_isCompleting) return null;
-    _isCompleting = true;
-    _sessionKey ??= const Uuid().v4();
-    _timer?.cancel();
-    _timer = null;
-    _notify();
-
-    try {
-      final elapsedSeconds = (_plannedMinutes * 60 - _remainingSeconds).clamp(
-        0,
-        _plannedMinutes * 60,
-      );
-      final completedMinutes = elapsedSeconds == 0
-          ? _plannedMinutes
-          : (elapsedSeconds / 60).ceil();
-      final result = await _service.completeSession(
-        plannedMinutes: _plannedMinutes,
-        completedMinutes: completedMinutes,
-        startedAt: _startedAt,
-        sessionKey: _sessionKey,
-      );
-      _startedAt = null;
-      _sessionKey = null;
-      _error = null;
-      _remainingSeconds = _plannedMinutes * 60;
-      if (!_disposed) await _onCompleted?.call();
-      return result;
-    } finally {
-      _isCompleting = false;
-      _notify();
-    }
-  }
+  Future<FocusSessionResult?> completeNow() =>
+      DataOperations.instance.run(() async {
+        if (_isCompleting) return null;
+        _isCompleting = true;
+        _sessionKey ??= const Uuid().v4();
+        _timer?.cancel();
+        _timer = null;
+        _notify();
+        try {
+          final elapsedSeconds = (_plannedMinutes * 60 - _remainingSeconds)
+              .clamp(0, _plannedMinutes * 60);
+          final completedMinutes = elapsedSeconds == 0
+              ? _plannedMinutes
+              : (elapsedSeconds / 60).ceil();
+          final result = await _service.completeSession(
+            plannedMinutes: _plannedMinutes,
+            completedMinutes: completedMinutes,
+            startedAt: _startedAt,
+            sessionKey: _sessionKey,
+          );
+          _startedAt = null;
+          _sessionKey = null;
+          _error = null;
+          _remainingSeconds = _plannedMinutes * 60;
+          if (!_disposed) await _onCompleted?.call();
+          return result;
+        } finally {
+          _isCompleting = false;
+          _notify();
+        }
+      }, readOnly: false);
 
   Future<void> _completeAutomatically() async {
     try {

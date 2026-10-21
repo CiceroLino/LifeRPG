@@ -1,3 +1,4 @@
+import '../data/database/data_operations.dart';
 import 'package:flutter/foundation.dart';
 import '../data/models/player.dart';
 import '../data/repositories/player_repository.dart';
@@ -22,10 +23,9 @@ class PlayerProvider extends ChangeNotifier {
     return xpInCurrentLevel / xpForNextLevel;
   }
 
-  Future<void> loadPlayer() async {
+  Future<void> loadPlayer() => DataOperations.instance.run(() async {
     _isLoading = true;
     notifyListeners();
-
     try {
       _player = await _playerRepo.get();
     } catch (e) {
@@ -34,44 +34,49 @@ class PlayerProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
-  }
+  }, readOnly: true);
 
-  Future<void> updatePlayer(Player player) async {
-    try {
-      await _playerRepo.updateProfile(player);
-      await loadPlayer();
-    } catch (e) {
-      debugPrint('Erro ao atualizar player: $e');
-      rethrow;
-    }
-  }
+  Future<void> updatePlayer(Player player) =>
+      DataOperations.instance.run(() async {
+        try {
+          await _playerRepo.updateProfile(player);
+          await loadPlayer();
+        } catch (e) {
+          debugPrint('Erro ao atualizar player: $e');
+          rethrow;
+        }
+      }, readOnly: false);
 
-  Future<void> setEnergyMode(String mode) async {
-    if (mode != 'manual' && mode != 'auto') return;
-    final current = _player;
-    if (current == null) return;
-    await _playerRepo.updateEnergy(mode: mode);
-    await loadPlayer();
-  }
+  Future<void> setEnergyMode(String mode) =>
+      DataOperations.instance.run(() async {
+        if (mode != 'manual' && mode != 'auto') return;
+        final current = _player;
+        if (current == null) return;
+        await _playerRepo.updateEnergy(mode: mode);
+        await loadPlayer();
+      }, readOnly: false);
 
-  Future<void> setWakeUpTime(String wakeUpTime) async {
-    final current = _player;
-    if (current == null) return;
-    await _playerRepo.updateEnergy(wakeUpTime: wakeUpTime);
-    await loadPlayer();
-  }
+  Future<void> setWakeUpTime(String wakeUpTime) =>
+      DataOperations.instance.run(() async {
+        final current = _player;
+        if (current == null) return;
+        await _playerRepo.updateEnergy(wakeUpTime: wakeUpTime);
+        await loadPlayer();
+      }, readOnly: false);
 
-  Future<void> setSleepTime(String sleepTime) async {
-    final current = _player;
-    if (current == null) return;
-    await _playerRepo.updateEnergy(sleepTime: sleepTime);
-    await loadPlayer();
-  }
+  Future<void> setSleepTime(String sleepTime) =>
+      DataOperations.instance.run(() async {
+        final current = _player;
+        if (current == null) return;
+        await _playerRepo.updateEnergy(sleepTime: sleepTime);
+        await loadPlayer();
+      }, readOnly: false);
 
-  Future<void> setManualEnergy(int value) async {
-    final current = _player;
-    if (current == null) return;
-    await _playerRepo.updateEnergy(value: value);
-    await loadPlayer();
-  }
+  Future<void> setManualEnergy(int value) =>
+      DataOperations.instance.run(() async {
+        final current = _player;
+        if (current == null) return;
+        await _playerRepo.updateEnergy(value: value);
+        await loadPlayer();
+      }, readOnly: false);
 }

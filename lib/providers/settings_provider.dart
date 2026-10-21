@@ -1,3 +1,4 @@
+import '../data/database/data_operations.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -44,10 +45,9 @@ class SettingsProvider extends ChangeNotifier {
   bool get use24HourFormat => _use24HourFormat;
   bool get showXpBar => _showXpBar;
 
-  Future<void> initialize() async {
+  Future<void> initialize() => DataOperations.instance.run(() async {
     _isLoading = true;
     notifyListeners();
-
     try {
       _prefs = await SharedPreferences.getInstance();
       _loadSettings();
@@ -57,7 +57,7 @@ class SettingsProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
-  }
+  }, readOnly: true);
 
   void _loadSettings() {
     if (_prefs == null) return;
@@ -77,66 +77,73 @@ class SettingsProvider extends ChangeNotifier {
     _showXpBar = _prefs!.getBool(_keyShowXpBar) ?? true;
   }
 
-  Future<void> setLanguage(String value) async {
-    final normalized = AppLocalizations.normalizeLanguageCode(value);
-    if (_language == normalized) return;
-    _language = normalized;
-    await _prefs?.setString(_keyLanguage, normalized);
-    notifyListeners();
-  }
+  Future<void> setLanguage(String value) =>
+      DataOperations.instance.run(() async {
+        final normalized = AppLocalizations.normalizeLanguageCode(value);
+        if (_language == normalized) return;
+        _language = normalized;
+        await _prefs?.setString(_keyLanguage, normalized);
+        notifyListeners();
+      }, readOnly: false);
 
-  Future<void> setSoundEffectsEnabled(bool value) async {
-    if (_soundEffectsEnabled == value) return;
-    _soundEffectsEnabled = value;
-    await _prefs?.setBool(_keySoundEffects, value);
-    notifyListeners();
-  }
+  Future<void> setSoundEffectsEnabled(bool value) =>
+      DataOperations.instance.run(() async {
+        if (_soundEffectsEnabled == value) return;
+        _soundEffectsEnabled = value;
+        await _prefs?.setBool(_keySoundEffects, value);
+        notifyListeners();
+      }, readOnly: false);
 
-  Future<void> setNotificationSoundsEnabled(bool value) async {
-    if (_notificationSoundsEnabled == value) return;
-    _notificationSoundsEnabled = value;
-    await _prefs?.setBool(_keyNotificationSounds, value);
-    await _reminders.reconcile(await MissionRepository().getAll());
-    notifyListeners();
-  }
+  Future<void> setNotificationSoundsEnabled(bool value) =>
+      DataOperations.instance.run(() async {
+        if (_notificationSoundsEnabled == value) return;
+        _notificationSoundsEnabled = value;
+        await _prefs?.setBool(_keyNotificationSounds, value);
+        await _reminders.reconcile(await MissionRepository().getAll());
+        notifyListeners();
+      }, readOnly: false);
 
-  Future<void> setNotificationsEnabled(bool value) async {
-    if (_notificationsEnabled == value) return;
-    _notificationsEnabled = value && await _reminders.requestPermissions();
-    notificationNotice = value && !_notificationsEnabled
-        ? _reminders.lastWarning
-        : null;
-    await _prefs?.setBool(_keyNotifications, _notificationsEnabled);
-    if (_notificationsEnabled) {
-      await _reminders.reconcile(await MissionRepository().getAll());
-    } else {
-      await _reminders.cancelAll();
-    }
-    notifyListeners();
-  }
+  Future<void> setNotificationsEnabled(bool value) =>
+      DataOperations.instance.run(() async {
+        if (_notificationsEnabled == value) return;
+        _notificationsEnabled = value && await _reminders.requestPermissions();
+        notificationNotice = value && !_notificationsEnabled
+            ? _reminders.lastWarning
+            : null;
+        await _prefs?.setBool(_keyNotifications, _notificationsEnabled);
+        if (_notificationsEnabled) {
+          await _reminders.reconcile(await MissionRepository().getAll());
+        } else {
+          await _reminders.cancelAll();
+        }
+        notifyListeners();
+      }, readOnly: false);
 
-  Future<void> setStartWeekOnMonday(bool value) async {
-    if (_startWeekOnMonday == value) return;
-    _startWeekOnMonday = value;
-    await _prefs?.setBool(_keyStartWeekOnMonday, value);
-    notifyListeners();
-  }
+  Future<void> setStartWeekOnMonday(bool value) =>
+      DataOperations.instance.run(() async {
+        if (_startWeekOnMonday == value) return;
+        _startWeekOnMonday = value;
+        await _prefs?.setBool(_keyStartWeekOnMonday, value);
+        notifyListeners();
+      }, readOnly: false);
 
-  Future<void> setUse24HourFormat(bool value) async {
-    if (_use24HourFormat == value) return;
-    _use24HourFormat = value;
-    await _prefs?.setBool(_keyUse24HourFormat, value);
-    notifyListeners();
-  }
+  Future<void> setUse24HourFormat(bool value) =>
+      DataOperations.instance.run(() async {
+        if (_use24HourFormat == value) return;
+        _use24HourFormat = value;
+        await _prefs?.setBool(_keyUse24HourFormat, value);
+        notifyListeners();
+      }, readOnly: false);
 
-  Future<void> setShowXpBar(bool value) async {
-    if (_showXpBar == value) return;
-    _showXpBar = value;
-    await _prefs?.setBool(_keyShowXpBar, value);
-    notifyListeners();
-  }
+  Future<void> setShowXpBar(bool value) =>
+      DataOperations.instance.run(() async {
+        if (_showXpBar == value) return;
+        _showXpBar = value;
+        await _prefs?.setBool(_keyShowXpBar, value);
+        notifyListeners();
+      }, readOnly: false);
 
-  Future<bool> exportData() async {
+  Future<bool> exportData() => DataOperations.instance.run(() async {
     try {
       final success = await _backupService.createBackupFile();
       if (!success) {
@@ -148,9 +155,12 @@ class SettingsProvider extends ChangeNotifier {
       debugPrint('Erro ao exportar dados: $e');
       return false;
     }
-  }
+  }, readOnly: false);
 
-  Future<String> importData() async {
+  Future<BackupRestoreResult> restoreBackup() =>
+      DataOperations.instance.run(_backupService.restoreBackupFile);
+
+  Future<String> importData() => DataOperations.instance.run(() async {
     try {
       final result = await _backupService.restoreBackupFile();
       return result.message;
@@ -158,20 +168,18 @@ class SettingsProvider extends ChangeNotifier {
       debugPrint('Erro ao importar dados: $e');
       return 'Error: ${e.toString()}';
     }
-  }
+  }, readOnly: false);
 
-  Future<void> resetCharacter() async {
+  Future<void> resetCharacter() => DataOperations.instance.run(() async {
     await _dbHelper.resetCharacterStats();
-  }
+  }, readOnly: false);
 
-  Future<void> factoryReset() async {
+  Future<void> factoryReset() => DataOperations.instance.run(() async {
     await _reminders.cancelAll();
     await _dbHelper.factoryReset();
-
     if (_prefs != null) {
       await _prefs!.clear();
     }
-
     _language = 'en';
     _soundEffectsEnabled = false;
     _notificationSoundsEnabled = true;
@@ -179,7 +187,6 @@ class SettingsProvider extends ChangeNotifier {
     _startWeekOnMonday = false;
     _use24HourFormat = false;
     _showXpBar = true;
-
     await initialize();
-  }
+  }, readOnly: false);
 }

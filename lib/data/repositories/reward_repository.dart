@@ -1,3 +1,4 @@
+import '../database/data_operations.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../database/database_helper.dart';
@@ -8,12 +9,12 @@ import '../models/reward_redemption.dart';
 class RewardRepository {
   final DatabaseHelper _dbHelper = DatabaseHelper();
 
-  Future<int> insert(Reward reward) async {
+  Future<int> insert(Reward reward) => DataOperations.instance.run(() async {
     final db = await _dbHelper.database;
     return db.insert('rewards', reward.toMap());
-  }
+  }, readOnly: false);
 
-  Future<List<Reward>> getActive() async {
+  Future<List<Reward>> getActive() => DataOperations.instance.run(() async {
     final db = await _dbHelper.database;
     final maps = await db.query(
       'rewards',
@@ -21,16 +22,16 @@ class RewardRepository {
       orderBy: 'created_at DESC',
     );
     return maps.map(Reward.fromMap).toList();
-  }
+  }, readOnly: true);
 
-  Future<Reward?> getById(int id) async {
+  Future<Reward?> getById(int id) => DataOperations.instance.run(() async {
     final db = await _dbHelper.database;
     final maps = await db.query('rewards', where: 'id = ?', whereArgs: [id]);
     if (maps.isEmpty) return null;
     return Reward.fromMap(maps.first);
-  }
+  }, readOnly: true);
 
-  Future<int> update(Reward reward) async {
+  Future<int> update(Reward reward) => DataOperations.instance.run(() async {
     final db = await _dbHelper.database;
     return db.update(
       'rewards',
@@ -38,9 +39,9 @@ class RewardRepository {
       where: 'id = ?',
       whereArgs: [reward.id],
     );
-  }
+  }, readOnly: false);
 
-  Future<int> archive(int id) async {
+  Future<int> archive(int id) => DataOperations.instance.run(() async {
     final db = await _dbHelper.database;
     return db.update(
       'rewards',
@@ -48,73 +49,74 @@ class RewardRepository {
       where: 'id = ?',
       whereArgs: [id],
     );
-  }
+  }, readOnly: false);
 
-  Future<List<RewardRedemption>> getRedemptions() async {
-    final db = await _dbHelper.database;
-    final maps = await db.query(
-      'reward_redemptions',
-      orderBy: 'redeemed_at DESC',
-    );
-    return maps.map(RewardRedemption.fromMap).toList();
-  }
-
-  Future<RewardPurchaseResult> purchaseReward(int rewardId) async {
-    final db = await _dbHelper.database;
-    return db.transaction((txn) async {
-      final reward = await _requireActiveReward(txn, rewardId);
-      if (!reward.isUnlimitedStock && (reward.stockRemaining ?? 0) <= 0) {
-        throw RewardOutOfStockException();
-      }
-
-      final playerMaps = await txn.query('player', where: 'id = 1', limit: 1);
-      final rewardPoints = playerMaps.first['reward_points'] as int? ?? 0;
-      if (rewardPoints < reward.priceRp) {
-        throw InsufficientRewardPointsException();
-      }
-
-      final now = DateTime.now().toIso8601String();
-      await txn.update('player', {
-        'reward_points': rewardPoints - reward.priceRp,
-        'updated_at': now,
-      }, where: 'id = 1');
-
-      if (!reward.isUnlimitedStock) {
-        await txn.update(
-          'rewards',
-          {
-            'stock_remaining': (reward.stockRemaining ?? 0) - 1,
-            'updated_at': now,
-          },
-          where: 'id = ?',
-          whereArgs: [reward.id],
+  Future<List<RewardRedemption>> getRedemptions() =>
+      DataOperations.instance.run(() async {
+        final db = await _dbHelper.database;
+        final maps = await db.query(
+          'reward_redemptions',
+          orderBy: 'redeemed_at DESC',
         );
-      }
+        return maps.map(RewardRedemption.fromMap).toList();
+      }, readOnly: true);
 
-      final inventoryItemId = await _createOrIncrementInventoryItem(
-        txn,
-        reward,
-        now,
-      );
-      final redemptionId = await txn.insert(
-        'reward_redemptions',
-        RewardRedemption(
-          rewardId: reward.id,
-          inventoryItemId: inventoryItemId,
-          rewardNameSnapshot: reward.name,
-          rewardDescriptionSnapshot: reward.description,
-          rewardIconSnapshot: reward.icon,
-          pricePaidRp: reward.priceRp,
-        ).toMap(),
-      );
-
-      return RewardPurchaseResult(
-        rewardId: rewardId,
-        inventoryItemId: inventoryItemId,
-        redemptionId: redemptionId,
-      );
-    });
-  }
+  Future<RewardPurchaseResult> purchaseReward(int rewardId) =>
+      DataOperations.instance.run(() async {
+        final db = await _dbHelper.database;
+        return db.transaction((txn) async {
+          final reward = await _requireActiveReward(txn, rewardId);
+          if (!reward.isUnlimitedStock && (reward.stockRemaining ?? 0) <= 0) {
+            throw RewardOutOfStockException();
+          }
+          final playerMaps = await txn.query(
+            'player',
+            where: 'id = 1',
+            limit: 1,
+          );
+          final rewardPoints = playerMaps.first['reward_points'] as int? ?? 0;
+          if (rewardPoints < reward.priceRp) {
+            throw InsufficientRewardPointsException();
+          }
+          final now = DateTime.now().toIso8601String();
+          await txn.update('player', {
+            'reward_points': rewardPoints - reward.priceRp,
+            'updated_at': now,
+          }, where: 'id = 1');
+          if (!reward.isUnlimitedStock) {
+            await txn.update(
+              'rewards',
+              {
+                'stock_remaining': (reward.stockRemaining ?? 0) - 1,
+                'updated_at': now,
+              },
+              where: 'id = ?',
+              whereArgs: [reward.id],
+            );
+          }
+          final inventoryItemId = await _createOrIncrementInventoryItem(
+            txn,
+            reward,
+            now,
+          );
+          final redemptionId = await txn.insert(
+            'reward_redemptions',
+            RewardRedemption(
+              rewardId: reward.id,
+              inventoryItemId: inventoryItemId,
+              rewardNameSnapshot: reward.name,
+              rewardDescriptionSnapshot: reward.description,
+              rewardIconSnapshot: reward.icon,
+              pricePaidRp: reward.priceRp,
+            ).toMap(),
+          );
+          return RewardPurchaseResult(
+            rewardId: rewardId,
+            inventoryItemId: inventoryItemId,
+            redemptionId: redemptionId,
+          );
+        });
+      }, readOnly: false);
 
   Future<Reward> _requireActiveReward(
     DatabaseExecutor txn,

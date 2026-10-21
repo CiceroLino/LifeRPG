@@ -1,3 +1,4 @@
+import '../data/database/data_operations.dart';
 import '../data/models/focus_session.dart';
 import '../data/repositories/focus_session_repository.dart';
 import '../data/repositories/player_repository.dart';
@@ -37,14 +38,13 @@ class FocusSessionService {
     DateTime? startedAt,
     DateTime? completedAt,
     String? sessionKey,
-  }) async {
+  }) => DataOperations.instance.run(() async {
     final safePlanned = _validateMinutes(plannedMinutes);
     final safeCompleted = _validateMinutes(completedMinutes);
     final xpGranted = safeCompleted;
     final finishedAt = completedAt ?? DateTime.now();
     final started =
         startedAt ?? finishedAt.subtract(Duration(minutes: safeCompleted));
-
     if (sessionKey != null && sessionKey.trim().isEmpty) {
       throw ArgumentError.value(sessionKey, 'sessionKey');
     }
@@ -77,10 +77,9 @@ class FocusSessionService {
         executor: txn,
         sessionKey: sessionKey,
       );
-
       return FocusSessionResult(sessionId: sessionId, xpGranted: xpGranted);
     });
-  }
+  }, readOnly: false);
 
   int _validateMinutes(int minutes) {
     if (minutes < 1) {

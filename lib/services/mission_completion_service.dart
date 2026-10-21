@@ -1,3 +1,4 @@
+import '../data/database/data_operations.dart';
 import 'package:sqflite/sqflite.dart';
 import 'dart:math';
 
@@ -59,73 +60,67 @@ class MissionCompletionService {
     : _random = random ?? Random(),
       _clock = clock ?? DateTime.now;
 
-  Future<MissionCompletionResult> completeMission(int missionId) async {
-    final db = await _dbHelper.database;
-    return db.transaction((txn) async {
-      final mission = await _getMission(txn, missionId);
-      final skillIds = await _getMissionSkillIds(txn, missionId);
-      final missionWithSkills = mission.copyWith(skillIds: skillIds);
-      final now = _clock();
-
-      if (_isDuplicateCompletion(missionWithSkills, now)) {
-        return MissionCompletionResult(
-          mission: missionWithSkills,
-          status: MissionCompletionStatus.duplicateBlocked,
-          xpGranted: 0,
-          rewardPointsGranted: 0,
-        );
-      }
-
-      final resultingStreak = mission.isRecurring ? mission.streak + 1 : 0;
-      final eventId = await txn.insert('mission_completion_events', {
-        'mission_id': missionId,
-        'mission_title_snapshot': mission.title,
-        'xp_granted': mission.xpReward,
-        'reward_points_granted': mission.rewardPoints,
-        'completed_at': now.toIso8601String(),
-        'recurrence_type': mission.recurrenceType,
-        'resulting_streak': resultingStreak,
-      });
-
-      final skillRewards = await _rewardSkills(
-        txn,
-        eventId: eventId,
-        skillIds: skillIds,
-        xpReward: mission.xpReward,
-        now: now,
-      );
-
-      await _rewardPlayer(
-        txn,
-        xpReward: mission.xpReward,
-        rewardPoints: mission.rewardPoints,
-        now: now,
-      );
-
-      final rewardDrops = await _rollRewardDrops(
-        txn,
-        eventId: eventId,
-        missionId: missionId,
-        now: now,
-      );
-
-      final updatedMission = await _updateMissionAfterCompletion(
-        txn,
-        mission,
-        now,
-        resultingStreak,
-      );
-
-      return MissionCompletionResult(
-        mission: updatedMission.copyWith(skillIds: skillIds),
-        status: _statusFor(updatedMission),
-        xpGranted: mission.xpReward,
-        rewardPointsGranted: mission.rewardPoints,
-        skillRewards: skillRewards,
-        rewardDrops: rewardDrops,
-      );
-    });
-  }
+  Future<MissionCompletionResult> completeMission(int missionId) =>
+      DataOperations.instance.run(() async {
+        final db = await _dbHelper.database;
+        return db.transaction((txn) async {
+          final mission = await _getMission(txn, missionId);
+          final skillIds = await _getMissionSkillIds(txn, missionId);
+          final missionWithSkills = mission.copyWith(skillIds: skillIds);
+          final now = _clock();
+          if (_isDuplicateCompletion(missionWithSkills, now)) {
+            return MissionCompletionResult(
+              mission: missionWithSkills,
+              status: MissionCompletionStatus.duplicateBlocked,
+              xpGranted: 0,
+              rewardPointsGranted: 0,
+            );
+          }
+          final resultingStreak = mission.isRecurring ? mission.streak + 1 : 0;
+          final eventId = await txn.insert('mission_completion_events', {
+            'mission_id': missionId,
+            'mission_title_snapshot': mission.title,
+            'xp_granted': mission.xpReward,
+            'reward_points_granted': mission.rewardPoints,
+            'completed_at': now.toIso8601String(),
+            'recurrence_type': mission.recurrenceType,
+            'resulting_streak': resultingStreak,
+          });
+          final skillRewards = await _rewardSkills(
+            txn,
+            eventId: eventId,
+            skillIds: skillIds,
+            xpReward: mission.xpReward,
+            now: now,
+          );
+          await _rewardPlayer(
+            txn,
+            xpReward: mission.xpReward,
+            rewardPoints: mission.rewardPoints,
+            now: now,
+          );
+          final rewardDrops = await _rollRewardDrops(
+            txn,
+            eventId: eventId,
+            missionId: missionId,
+            now: now,
+          );
+          final updatedMission = await _updateMissionAfterCompletion(
+            txn,
+            mission,
+            now,
+            resultingStreak,
+          );
+          return MissionCompletionResult(
+            mission: updatedMission.copyWith(skillIds: skillIds),
+            status: _statusFor(updatedMission),
+            xpGranted: mission.xpReward,
+            rewardPointsGranted: mission.rewardPoints,
+            skillRewards: skillRewards,
+            rewardDrops: rewardDrops,
+          );
+        });
+      }, readOnly: false);
 
   bool _isDuplicateCompletion(Mission mission, DateTime now) {
     if (!mission.isRecurring) {
@@ -440,8 +435,9 @@ class MissionCompletionService {
             monday,
             days: eligibleWeek * 7 + day - 1,
           );
-          if (candidate.isAfter(now) && candidate.isAfter(reference))
+          if (candidate.isAfter(now) && candidate.isAfter(reference)) {
             return candidate;
+          }
         }
         eligibleWeek += interval;
       }
@@ -463,8 +459,9 @@ class MissionCompletionService {
       final candidate = type == 'monthly'
           ? _calendarOffset(next, months: interval)
           : _calendarOffset(next, years: interval);
-      if (!candidate.isAfter(next))
+      if (!candidate.isAfter(next)) {
         throw StateError('Recurrence must advance.');
+      }
       next = candidate;
     }
     return next;

@@ -1,3 +1,4 @@
+import '../data/database/data_operations.dart';
 import 'dart:async';
 import 'dart:math';
 
@@ -52,7 +53,12 @@ class TavernProvider extends ChangeNotifier {
       _notify();
     });
     _commandSubscription = _playback.commandStream.listen((command) {
-      unawaited(_handlePlaybackCommand(command));
+      if (DataOperations.instance.isReplacing) return;
+      unawaited(
+        _handlePlaybackCommand(command).catchError((Object error) {
+          debugPrint('Error handling playback command: $error');
+        }),
+      );
     });
   }
 
@@ -81,10 +87,9 @@ class TavernProvider extends ChangeNotifier {
         .toList();
   }
 
-  Future<void> loadTracks() async {
+  Future<void> loadTracks() => DataOperations.instance.run(() async {
     _isLoading = true;
     _notify();
-
     try {
       _tracks = await _repo.getActiveTracks();
     } catch (e) {
@@ -93,7 +98,7 @@ class TavernProvider extends ChangeNotifier {
       _isLoading = false;
       _notify();
     }
-  }
+  }, readOnly: true);
 
   void setSearchQuery(String value) {
     if (_searchQuery == value) return;
@@ -101,95 +106,92 @@ class TavernProvider extends ChangeNotifier {
     _notify();
   }
 
-  Future<int?> importTrackFromPath(String filePath) async {
-    final trimmedPath = filePath.trim();
-    final title = path.basenameWithoutExtension(trimmedPath).trim();
-    if (trimmedPath.isEmpty || title.isEmpty) return null;
-
-    try {
-      final id = await _repo.insertTrack(
-        AudioTrack(title: title, filePath: trimmedPath),
-      );
-      await loadTracks();
-      return id;
-    } catch (e) {
-      debugPrint('Error importing audio track: $e');
-      return null;
-    }
-  }
-
-  Future<int?> importTrack(PlatformFile file) async {
-    try {
-      final imported = await _mediaImporter.importPlatformFile(
-        file,
-        library: LocalMediaLibrary.tavern,
-        allowedExtensions: const ['mp3', 'm4a', 'aac', 'wav', 'ogg', 'flac'],
-      );
-      return importTrackFromPath(imported.path);
-    } catch (e) {
-      debugPrint('Error importing audio track: $e');
-      return null;
-    }
-  }
-
-  Future<void> playTrack(AudioTrack track) async {
-    if (_isSameTrack(track)) {
-      if (!_isPlaying) {
+  Future<int?> importTrackFromPath(String filePath) =>
+      DataOperations.instance.run(() async {
+        final trimmedPath = filePath.trim();
+        final title = path.basenameWithoutExtension(trimmedPath).trim();
+        if (trimmedPath.isEmpty || title.isEmpty) return null;
         try {
-          await _playback.play();
+          final id = await _repo.insertTrack(
+            AudioTrack(title: title, filePath: trimmedPath),
+          );
+          await loadTracks();
+          return id;
         } catch (e) {
-          debugPrint('Error resuming audio track: $e');
-          rethrow;
+          debugPrint('Error importing audio track: $e');
+          return null;
         }
-      }
-      return;
-    }
+      }, readOnly: false);
 
-    final previousTrack = _activeTrack;
-    final previousPosition = _position;
-    final previousDuration = _duration;
-    final previousIsPlaying = _isPlaying;
-
-    if (previousTrack != null) {
-      await _persistActiveProgress();
-    }
-
-    _activeTrack = track;
-    _position = track.position;
-    _duration = track.duration;
-    _notify();
-
-    try {
-      _duration = await _playback.load(track);
-      await _playback.play();
-
-      final id = track.id;
-      if (id != null) {
-        await _repo.markPlayed(id);
-        await _repo.updatePlaybackProgress(
-          id: id,
-          position: _position,
-          duration: _duration,
+  Future<int?> importTrack(PlatformFile file) => DataOperations.instance.run(
+    () async {
+      try {
+        final imported = await _mediaImporter.importPlatformFile(
+          file,
+          library: LocalMediaLibrary.tavern,
+          allowedExtensions: const ['mp3', 'm4a', 'aac', 'wav', 'ogg', 'flac'],
         );
+        return importTrackFromPath(imported.path);
+      } catch (e) {
+        debugPrint('Error importing audio track: $e');
+        return null;
       }
+    },
+    readOnly: false,
+  );
 
-      await loadTracks();
-    } catch (e) {
-      _activeTrack = previousTrack;
-      _position = previousTrack == null ? Duration.zero : previousPosition;
-      _duration = previousTrack == null ? null : previousDuration;
-      _isPlaying = previousTrack == null ? false : previousIsPlaying;
-      _notify();
-      debugPrint('Error playing audio track: $e');
-      rethrow;
-    } finally {
-      _notify();
-    }
-  }
+  Future<void> playTrack(AudioTrack track) =>
+      DataOperations.instance.run(() async {
+        if (_isSameTrack(track)) {
+          if (!_isPlaying) {
+            try {
+              await _playback.play();
+            } catch (e) {
+              debugPrint('Error resuming audio track: $e');
+              rethrow;
+            }
+          }
+          return;
+        }
+        final previousTrack = _activeTrack;
+        final previousPosition = _position;
+        final previousDuration = _duration;
+        final previousIsPlaying = _isPlaying;
+        if (previousTrack != null) {
+          await _persistActiveProgress();
+        }
+        _activeTrack = track;
+        _position = track.position;
+        _duration = track.duration;
+        _notify();
+        try {
+          _duration = await _playback.load(track);
+          await _playback.play();
+          final id = track.id;
+          if (id != null) {
+            await _repo.markPlayed(id);
+            await _repo.updatePlaybackProgress(
+              id: id,
+              position: _position,
+              duration: _duration,
+            );
+          }
+          await loadTracks();
+        } catch (e) {
+          _activeTrack = previousTrack;
+          _position = previousTrack == null ? Duration.zero : previousPosition;
+          _duration = previousTrack == null ? null : previousDuration;
+          _isPlaying = previousTrack == null ? false : previousIsPlaying;
+          _notify();
+          debugPrint('Error playing audio track: $e');
+          rethrow;
+        } finally {
+          _notify();
+        }
+      }, readOnly: false);
 
-  Future<void> togglePlayPause() async {
+  Future<void> togglePlayPause() => DataOperations.instance.run(() async {
     if (_activeTrack == null) return;
-
     try {
       if (_isPlaying) {
         await _persistActiveProgress();
@@ -200,7 +202,7 @@ class TavernProvider extends ChangeNotifier {
     } catch (e) {
       debugPrint('Error toggling tavern playback: $e');
     }
-  }
+  }, readOnly: false);
 
   void toggleShuffle() {
     _shuffleEnabled = !_shuffleEnabled;
@@ -216,38 +218,34 @@ class TavernProvider extends ChangeNotifier {
     _notify();
   }
 
-  Future<void> playNextTrack({bool fromCompletion = false}) async {
+  Future<void> playNextTrack({bool fromCompletion = false}) =>
+      DataOperations.instance.run(() async {
+        final activeTrack = _activeTrack;
+        if (activeTrack == null) return;
+        if (fromCompletion && _repeatMode == TavernRepeatMode.one) {
+          await _restartActiveTrack();
+          return;
+        }
+        final nextTrack = _selectNextTrack(activeTrack, fromCompletion);
+        if (nextTrack == null) {
+          if (fromCompletion) {
+            await _persistActiveProgress();
+            await _playback.pause();
+          }
+          return;
+        }
+        await playTrack(nextTrack);
+      }, readOnly: false);
+
+  Future<void> playPreviousTrack() => DataOperations.instance.run(() async {
     final activeTrack = _activeTrack;
     if (activeTrack == null) return;
-
-    if (fromCompletion && _repeatMode == TavernRepeatMode.one) {
-      await _restartActiveTrack();
-      return;
-    }
-
-    final nextTrack = _selectNextTrack(activeTrack, fromCompletion);
-    if (nextTrack == null) {
-      if (fromCompletion) {
-        await _persistActiveProgress();
-        await _playback.pause();
-      }
-      return;
-    }
-
-    await playTrack(nextTrack);
-  }
-
-  Future<void> playPreviousTrack() async {
-    final activeTrack = _activeTrack;
-    if (activeTrack == null) return;
-
     final previousTrack = _selectPreviousTrack(activeTrack);
     if (previousTrack == null) return;
-
     await playTrack(previousTrack);
-  }
+  }, readOnly: false);
 
-  Future<void> seek(Duration position) async {
+  Future<void> seek(Duration position) => DataOperations.instance.run(() async {
     try {
       _position = position;
       _notify();
@@ -256,9 +254,9 @@ class TavernProvider extends ChangeNotifier {
     } catch (e) {
       debugPrint('Error seeking tavern playback: $e');
     }
-  }
+  }, readOnly: false);
 
-  Future<void> archiveTrack(int id) async {
+  Future<void> archiveTrack(int id) => DataOperations.instance.run(() async {
     try {
       if (_activeTrack?.id == id) {
         await _persistActiveProgress();
@@ -269,15 +267,18 @@ class TavernProvider extends ChangeNotifier {
         _isPlaying = false;
         _notify();
       }
-
       await _repo.archiveTrack(id);
       await loadTracks();
     } catch (e) {
       debugPrint('Error archiving audio track: $e');
     }
-  }
+  }, readOnly: false);
 
   Future<void> _persistActiveProgress() async {
+    if (DataOperations.instance.isReplacing &&
+        !DataOperations.instance.ownsOperation) {
+      return;
+    }
     final id = _activeTrack?.id;
     if (id == null) return;
 
@@ -290,6 +291,16 @@ class TavernProvider extends ChangeNotifier {
     } catch (e) {
       debugPrint('Error persisting audio progress: $e');
     }
+  }
+
+  Future<void> prepareForDataReplacement() async {
+    await _persistActiveProgress();
+    await _playback.stop();
+    _activeTrack = null;
+    _isPlaying = false;
+    _position = Duration.zero;
+    _duration = null;
+    _notify();
   }
 
   Future<void> _restartActiveTrack() async {

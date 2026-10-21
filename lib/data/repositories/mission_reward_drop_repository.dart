@@ -1,24 +1,26 @@
+import '../database/data_operations.dart';
 import '../database/database_helper.dart';
 import '../models/mission_reward_drop.dart';
 
 class MissionRewardDropRepository {
   final DatabaseHelper _dbHelper = DatabaseHelper();
 
-  Future<List<MissionRewardDrop>> getByMissionId(int missionId) async {
-    final db = await _dbHelper.database;
-    final maps = await db.query(
-      'mission_reward_drops',
-      where: 'mission_id = ?',
-      whereArgs: [missionId],
-      orderBy: 'id ASC',
-    );
-    return maps.map(MissionRewardDrop.fromMap).toList();
-  }
+  Future<List<MissionRewardDrop>> getByMissionId(int missionId) =>
+      DataOperations.instance.run(() async {
+        final db = await _dbHelper.database;
+        final maps = await db.query(
+          'mission_reward_drops',
+          where: 'mission_id = ?',
+          whereArgs: [missionId],
+          orderBy: 'id ASC',
+        );
+        return maps.map(MissionRewardDrop.fromMap).toList();
+      }, readOnly: true);
 
   Future<void> replaceForMission(
     int missionId,
     List<MissionRewardDrop> drops,
-  ) async {
+  ) => DataOperations.instance.run(() async {
     final db = await _dbHelper.database;
     await db.transaction((txn) async {
       await txn.delete(
@@ -33,5 +35,5 @@ class MissionRewardDropRepository {
         );
       }
     });
-  }
+  }, readOnly: false);
 }

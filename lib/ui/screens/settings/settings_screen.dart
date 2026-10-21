@@ -3,11 +3,10 @@ import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../l10n/app_localizations.dart';
-import '../../../providers/mission_provider.dart';
 import '../../../providers/player_provider.dart';
 import '../../../providers/settings_provider.dart';
-import '../../../providers/skill_provider.dart';
 import '../../widgets/common/game_snack_bar.dart';
+import '../../app_data_actions.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -88,8 +87,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   value: settings.notificationsEnabled,
                   onChanged: (value) async {
                     await settings.setNotificationsEnabled(value ?? true);
-                    if (!context.mounted || settings.notificationNotice == null)
+                    if (!context.mounted || settings.notificationNotice == null) {
                       return;
+                    }
                     GameSnackBar.show(
                       context,
                       title: 'Notifications',
@@ -357,44 +357,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _isImporting = true);
 
     try {
-      final message = await settings.importData();
+      final result = await createAppDataCoordinator(this.context).replaceData(
+        settings.restoreBackup,
+        wasReplaced: (result) => result.success,
+      );
       if (mounted) {
         ScaffoldMessenger.of(this.context).showSnackBar(
           SnackBar(
-            content: Text(message),
-            backgroundColor: message.toLowerCase().contains('success')
+            content: Text(result.message),
+            backgroundColor: result.success
                 ? AppTheme.successGreen
                 : AppTheme.accentRed,
             duration: const Duration(seconds: 4),
           ),
         );
-
-        if (message.toLowerCase().contains('success')) {
-          showDialog(
-            context: this.context,
-            barrierDismissible: false,
-            builder: (context) => AlertDialog(
-              backgroundColor: AppTheme.surface,
-              title: Text(
-                AppLocalizations.of(context).translate('restart_required'),
-                style: const TextStyle(color: AppTheme.textPrimary),
-              ),
-              content: Text(
-                AppLocalizations.of(context).translate('restart_message'),
-                style: const TextStyle(color: AppTheme.textSecondary),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text(
-                    AppLocalizations.of(context).translate('ok'),
-                    style: const TextStyle(color: AppTheme.primary),
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
       }
     } catch (e) {
       if (mounted) {
@@ -553,14 +529,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           TextButton(
             onPressed: () async {
-              final playerProvider = context.read<PlayerProvider>();
-              final missionProvider = context.read<MissionProvider>();
-              final skillProvider = context.read<SkillProvider>();
+              final coordinator = createAppDataCoordinator(this.context);
               final navigator = Navigator.of(context);
-              await settings.factoryReset();
-              await playerProvider.loadPlayer();
-              await missionProvider.loadMissions();
-              await skillProvider.loadSkills();
+              await coordinator.replaceData(settings.factoryReset);
               navigator.pop();
               if (!mounted) return;
               ScaffoldMessenger.of(this.context).showSnackBar(

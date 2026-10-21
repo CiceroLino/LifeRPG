@@ -1,3 +1,4 @@
+import '../../data/database/data_operations.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:provider/provider.dart';
@@ -89,7 +90,29 @@ class _MainScreenState extends State<MainScreen> {
   ];
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: DataOperations.instance,
+    builder: (context, _) => PopScope(
+      canPop: !DataOperations.instance.isReplacing,
+      child: Stack(
+        children: [
+          AbsorbPointer(
+            absorbing: DataOperations.instance.isReplacing,
+            child: _buildScaffold(context),
+          ),
+          if (DataOperations.instance.isReplacing)
+            const Positioned.fill(
+              child: ColoredBox(
+                color: Color(0x99000000),
+                child: Center(child: CircularProgressIndicator()),
+              ),
+            ),
+        ],
+      ),
+    ),
+  );
+
+  Widget _buildScaffold(BuildContext context) {
     return Consumer<MissionProvider>(
       builder: (context, missionProvider, _) {
         return Scaffold(
