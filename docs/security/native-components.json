@@ -22,5 +22,14 @@
     "Android SDK is absent locally.",
     "Apple and Windows builds/runtime require their respective runners.",
     "Pub OSV result does not cover native parsers/system libraries."
-  ]
+  ],
+  "desktopAudio": {
+    "packages": {
+      "just_audio_media_kit": "2.1.0",
+      "media_kit": "1.2.6",
+      "media_kit_libs_linux": "1.2.1",
+      "media_kit_libs_windows_audio": "1.0.9"
+    },
+    "validation": "Linux real WAV decoded through native backend; Windows runtime and libmpv/FFmpeg component CVE mapping need platform review."
+  }
 }

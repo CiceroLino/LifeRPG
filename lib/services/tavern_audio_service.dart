@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:audio_service/audio_service.dart';
 import 'package:just_audio/just_audio.dart' as just_audio;
+import 'package:just_audio_media_kit/just_audio_media_kit.dart';
 
 import '../data/models/audio_track.dart';
 
@@ -57,6 +58,8 @@ class TavernAudioService implements TavernPlayback {
 
   TavernAudioService(this._handler);
 
+  Future<void> dispose() => _handler.dispose();
+
   @override
   Stream<bool> get playingStream => _handler.playingStream;
 
@@ -92,9 +95,18 @@ class TavernAudioHandler extends BaseAudioHandler with SeekHandler {
   late final Stream<Duration?> _durationStream = _player.durationStream
       .asBroadcastStream();
   just_audio.ProcessingState? _lastProcessingState;
+  late final StreamSubscription<just_audio.PlaybackEvent> _eventSubscription;
 
   TavernAudioHandler() {
-    _player.playbackEventStream.listen(_broadcastPlaybackState);
+    _eventSubscription = _player.playbackEventStream.listen(
+      _broadcastPlaybackState,
+    );
+  }
+
+  Future<void> dispose() async {
+    await _eventSubscription.cancel();
+    await _player.dispose();
+    await _commandController.close();
   }
 
   Stream<bool> get playingStream => _player.playingStream;
@@ -210,6 +222,8 @@ class TavernAudioHandler extends BaseAudioHandler with SeekHandler {
 }
 
 Future<TavernAudioService> initTavernAudioService() async {
+  JustAudioMediaKit.ensureInitialized();
+  JustAudioMediaKit.title = 'LifeRPG';
   final handler = await AudioService.init<TavernAudioHandler>(
     builder: TavernAudioHandler.new,
     config: const AudioServiceConfig(

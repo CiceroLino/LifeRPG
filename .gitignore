@@ -49,3 +49,8 @@ app.*.map.json
 .fvm/
 
 .superpowers
+
+# Release credentials belong outside the repository.
+*.jks
+*.keystore
+/android/key.properties

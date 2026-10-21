@@ -5,6 +5,14 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+val releaseStorePath = providers.environmentVariable("LIFERPG_KEYSTORE_PATH").orNull
+val releaseStorePassword = providers.environmentVariable("LIFERPG_KEYSTORE_PASSWORD").orNull
+val releaseKeyAlias = providers.environmentVariable("LIFERPG_KEY_ALIAS").orNull
+val releaseKeyPassword = providers.environmentVariable("LIFERPG_KEY_PASSWORD").orNull
+val releaseApplicationId = providers.environmentVariable("LIFERPG_APPLICATION_ID").orNull
+val hasReleaseCredentials = listOf(releaseStorePath, releaseStorePassword, releaseKeyAlias, releaseKeyPassword)
+    .all { !it.isNullOrBlank() }
+
 android {
     namespace = "com.example.liferpg"
     compileSdk = flutter.compileSdkVersion
@@ -21,8 +29,8 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.liferpg"
+        // Keep the development identity; release identity must be chosen explicitly.
+        applicationId = releaseApplicationId ?: "com.example.liferpg"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
@@ -31,13 +39,35 @@ android {
         versionName = flutter.versionName
     }
 
-    buildTypes {
-        release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+    signingConfigs {
+        if (hasReleaseCredentials) {
+            create("release") {
+                storeFile = file(releaseStorePath!!)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
         }
     }
+
+    buildTypes {
+        release {
+            signingConfig = signingConfigs.findByName("release")
+        }
+    }
+}
+
+val validateReleaseCredentials = tasks.register("validateReleaseCredentials") {
+    doLast {
+        check(hasReleaseCredentials && !releaseApplicationId.isNullOrBlank()) {
+            "Release requires LIFERPG_APPLICATION_ID, LIFERPG_KEYSTORE_PATH, " +
+            "LIFERPG_KEYSTORE_PASSWORD, LIFERPG_KEY_ALIAS and LIFERPG_KEY_PASSWORD. " +
+            "Use the installed application ID and signing certificate to preserve updates."
+        }
+    }
+}
+tasks.matching { it.name == "preReleaseBuild" }.configureEach {
+    dependsOn(validateReleaseCredentials)
 }
 
 flutter {
