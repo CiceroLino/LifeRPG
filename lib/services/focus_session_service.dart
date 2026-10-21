@@ -1,6 +1,7 @@
 import '../data/models/focus_session.dart';
 import '../data/repositories/focus_session_repository.dart';
 import '../data/repositories/player_repository.dart';
+import '../data/database/database_helper.dart';
 
 class FocusSessionLimitException implements Exception {
   final String message;
@@ -35,6 +36,7 @@ class FocusSessionService {
     required int completedMinutes,
     DateTime? startedAt,
     DateTime? completedAt,
+    String? sessionKey,
   }) async {
     final safePlanned = _validateMinutes(plannedMinutes);
     final safeCompleted = _validateMinutes(completedMinutes);
@@ -43,19 +45,41 @@ class FocusSessionService {
     final started =
         startedAt ?? finishedAt.subtract(Duration(minutes: safeCompleted));
 
-    await _players.addXP(xpGranted);
-    final sessionId = await _sessions.insert(
-      FocusSession(
-        plannedMinutes: safePlanned,
-        completedMinutes: safeCompleted,
-        xpGranted: xpGranted,
-        status: 'completed',
-        startedAt: started,
-        completedAt: finishedAt,
-      ),
-    );
+    if (sessionKey != null && sessionKey.trim().isEmpty) {
+      throw ArgumentError.value(sessionKey, 'sessionKey');
+    }
+    final db = await DatabaseHelper().database;
+    return db.transaction((txn) async {
+      if (sessionKey != null) {
+        final existing = await txn.query(
+          'focus_sessions',
+          where: 'session_key = ?',
+          whereArgs: [sessionKey],
+          limit: 1,
+        );
+        if (existing.isNotEmpty) {
+          return FocusSessionResult(
+            sessionId: existing.single['id'] as int,
+            xpGranted: 0,
+          );
+        }
+      }
+      await _players.addXP(xpGranted, executor: txn);
+      final sessionId = await _sessions.insert(
+        FocusSession(
+          plannedMinutes: safePlanned,
+          completedMinutes: safeCompleted,
+          xpGranted: xpGranted,
+          status: 'completed',
+          startedAt: started,
+          completedAt: finishedAt,
+        ),
+        executor: txn,
+        sessionKey: sessionKey,
+      );
 
-    return FocusSessionResult(sessionId: sessionId, xpGranted: xpGranted);
+      return FocusSessionResult(sessionId: sessionId, xpGranted: xpGranted);
+    });
   }
 
   int _validateMinutes(int minutes) {

@@ -40,7 +40,11 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => PlayerProvider()..loadPlayer()),
-        ChangeNotifierProvider(create: (_) => PomodoroProvider()),
+        ChangeNotifierProvider(
+          create: (context) => PomodoroProvider(
+            onCompleted: context.read<PlayerProvider>().loadPlayer,
+          ),
+        ),
         ChangeNotifierProvider(create: (_) => RewardProvider()..loadRewards()),
         ChangeNotifierProvider(create: (_) => InventoryProvider()..loadItems()),
         ChangeNotifierProvider(

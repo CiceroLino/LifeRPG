@@ -353,7 +353,7 @@ class BackupDocument {
     'mission_completion_reward_drops':
         'id event_id reward_id inventory_item_id reward_name_snapshot quantity chance_percent was_awarded',
     'focus_sessions':
-        'id planned_minutes completed_minutes xp_granted status started_at completed_at',
+        'id session_key planned_minutes completed_minutes xp_granted status started_at completed_at',
     'notebooks': 'id name description is_active created_at updated_at',
     'notes': 'id notebook_id title body created_at updated_at',
     'tomes':

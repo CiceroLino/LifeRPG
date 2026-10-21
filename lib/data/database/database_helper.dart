@@ -176,6 +176,12 @@ class DatabaseHelper {
     if (oldVersion < 13) {
       await _createAudioTrackTables(db);
     }
+    if (oldVersion < 14) {
+      await _addColumnIfMissing(db, 'focus_sessions', 'session_key', 'TEXT');
+      await db.execute(
+        'CREATE UNIQUE INDEX IF NOT EXISTS idx_focus_session_key ON focus_sessions(session_key)',
+      );
+    }
   }
 
   Future<void> _migrateMissionNotesV8(Database db) async {
@@ -519,6 +525,7 @@ class DatabaseHelper {
     await db.execute('''
       CREATE TABLE IF NOT EXISTS focus_sessions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_key TEXT,
         planned_minutes INTEGER NOT NULL CHECK(planned_minutes BETWEEN 1 AND 240),
         completed_minutes INTEGER NOT NULL CHECK(completed_minutes BETWEEN 1 AND 240),
         xp_granted INTEGER NOT NULL DEFAULT 0,
@@ -530,6 +537,9 @@ class DatabaseHelper {
 
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_focus_sessions_completed_at ON focus_sessions(completed_at)',
+    );
+    await db.execute(
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_focus_session_key ON focus_sessions(session_key)',
     );
   }
 
