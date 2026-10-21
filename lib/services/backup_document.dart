@@ -57,8 +57,9 @@ class BackupDocument {
           table != 'skills') {
         tables[table] = [];
       } else {
-        if (raw is! List)
+        if (raw is! List) {
           throw FormatException('Invalid or missing table: $table.');
+        }
         tables[table] = raw.map((value) => row(value, table)).toList();
       }
     }
@@ -85,8 +86,9 @@ class BackupDocument {
       }
     }
     _validateRow('player', player);
-    if (player['id'] != 1)
+    if (player['id'] != 1) {
       throw const FormatException('Backup requires player id 1.');
+    }
     for (final entry in tables.entries) {
       final ids = <int>{};
       for (final value in entry.value) {
@@ -98,6 +100,7 @@ class BackupDocument {
     }
     final document = BackupDocument._(player, tables);
     document._validateReferences();
+    document._sortMissions();
     return document;
   }
 
@@ -109,8 +112,9 @@ class BackupDocument {
     for (final entry in row.entries) {
       final field = entry.key;
       final value = entry.value;
-      if (!columns.contains(field))
+      if (!columns.contains(field)) {
         throw FormatException('Unknown $table.$field.');
+      }
       if (value == null) continue;
       if (_integerFields.contains(field)) {
         if (value is! int || value.abs() > 9007199254740991) {
@@ -156,8 +160,9 @@ class BackupDocument {
           throw FormatException('Invalid $table.$field.');
         }
       } else {
-        if (value is! String)
+        if (value is! String) {
           throw FormatException('Invalid text $table.$field.');
+        }
         if ((field.endsWith('_at') || field == 'due_date') &&
             DateTime.tryParse(value) == null) {
           throw FormatException('Invalid date $table.$field.');
@@ -230,6 +235,26 @@ class BackupDocument {
         throw const FormatException('Duplicate mission skill link.');
       }
     }
+  }
+
+  void _sortMissions() {
+    final ordered = <Map<String, Object?>>[];
+    final children = <int, List<Map<String, Object?>>>{};
+    for (final row in tables['missions']!) {
+      final parent = row['parent_mission_id'];
+      if (parent == null) {
+        ordered.add(row);
+      } else {
+        children.putIfAbsent(parent as int, () => []).add(row);
+      }
+    }
+    for (var i = 0; i < ordered.length; i++) {
+      ordered.addAll(children[ordered[i]['id']] ?? const []);
+    }
+    if (ordered.length != tables['missions']!.length) {
+      throw const FormatException('Cyclic mission hierarchy.');
+    }
+    tables['missions'] = ordered;
   }
 
   Map<String, dynamic> toMap() => {

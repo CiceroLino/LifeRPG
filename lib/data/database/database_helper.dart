@@ -611,50 +611,20 @@ class DatabaseHelper {
 
   Future<Map<String, dynamic>> getAllDataForBackup() async {
     final db = await database;
-
-    final playerMaps = await db.query('player');
-    final missionsMaps = await db.query('missions');
-    final skillsMaps = await db.query('skills');
-    final missionSkillsMaps = await db.query('mission_skills');
-    final completionEventsMaps = await db.query('mission_completion_events');
-    final completionSkillRewardsMaps = await db.query(
-      'mission_completion_skill_rewards',
-    );
-    final rewardsMaps = await db.query('rewards');
-    final inventoryItemsMaps = await db.query('inventory_items');
-    final rewardRedemptionsMaps = await db.query('reward_redemptions');
-    final missionRewardDropsMaps = await db.query('mission_reward_drops');
-    final completionRewardDropsMaps = await db.query(
-      'mission_completion_reward_drops',
-    );
-    final focusSessionsMaps = await db.query('focus_sessions');
-    final notebooksMaps = await db.query('notebooks');
-    final notesMaps = await db.query('notes');
-    final tomesMaps = await db.query('tomes');
-    final audioTracksMaps = await db.query('audio_tracks');
-
-    return {
-      'version': '2.0',
-      'formatVersion': 2,
-      'schemaVersion': DatabaseSchema.version,
-      'timestamp': DateTime.now().toIso8601String(),
-      'player': playerMaps.isNotEmpty ? playerMaps.first : null,
-      'missions': missionsMaps,
-      'skills': skillsMaps,
-      'mission_skills': missionSkillsMaps,
-      'mission_completion_events': completionEventsMaps,
-      'mission_completion_skill_rewards': completionSkillRewardsMaps,
-      'rewards': rewardsMaps,
-      'inventory_items': inventoryItemsMaps,
-      'reward_redemptions': rewardRedemptionsMaps,
-      'mission_reward_drops': missionRewardDropsMaps,
-      'mission_completion_reward_drops': completionRewardDropsMaps,
-      'focus_sessions': focusSessionsMaps,
-      'notebooks': notebooksMaps,
-      'notes': notesMaps,
-      'tomes': tomesMaps,
-      'audio_tracks': audioTracksMaps,
-    };
+    return db.transaction((txn) async {
+      final players = await txn.query('player');
+      final data = <String, dynamic>{
+        'version': '2.0',
+        'formatVersion': 2,
+        'schemaVersion': DatabaseSchema.version,
+        'timestamp': DateTime.now().toIso8601String(),
+        'player': players.isEmpty ? null : players.single,
+      };
+      for (final table in BackupDocument.tableNames) {
+        data[table] = await txn.query(table);
+      }
+      return data;
+    });
   }
 
   Future<void> resetCharacterStats() async {
@@ -676,177 +646,34 @@ class DatabaseHelper {
     }, where: 'id = 1');
   }
 
+  Future<void> _clearData(DatabaseExecutor txn) async {
+    for (final table in BackupDocument.tableNames.reversed) {
+      await txn.delete(table);
+    }
+    await txn.delete('player');
+  }
+
   Future<void> factoryReset() async {
     final db = await database;
     await db.transaction((txn) async {
-      await txn.delete('reward_redemptions');
-      await txn.delete('focus_sessions');
-      await txn.delete('notes');
-      await txn.delete('notebooks');
-      await txn.delete('tomes');
-      await txn.delete('audio_tracks');
-      await txn.delete('mission_completion_reward_drops');
-      await txn.delete('mission_reward_drops');
-      await txn.delete('inventory_items');
-      await txn.delete('rewards');
-      await txn.delete('mission_completion_skill_rewards');
-      await txn.delete('mission_completion_events');
-      await txn.delete('mission_skills');
-      await txn.delete('missions');
-      await txn.delete('skills');
-      await txn.delete('player');
+      await _clearData(txn);
       await _insertDefaultPlayer(txn);
     });
   }
 
   Future<void> restoreData(Map<String, dynamic> data) async {
-    data = BackupDocument.parse(data).toMap();
+    final backup = BackupDocument.parse(data);
     final db = await database;
-
     await db.transaction((txn) async {
-      await txn.delete('reward_redemptions');
-      await txn.delete('focus_sessions');
-      await txn.delete('notes');
-      await txn.delete('notebooks');
-      await txn.delete('tomes');
-      await txn.delete('audio_tracks');
-      await txn.delete('mission_completion_reward_drops');
-      await txn.delete('mission_reward_drops');
-      await txn.delete('inventory_items');
-      await txn.delete('rewards');
-      await txn.delete('mission_completion_skill_rewards');
-      await txn.delete('mission_completion_events');
-      await txn.delete('mission_skills');
-      await txn.delete('missions');
-      await txn.delete('skills');
-      await txn.delete('player');
-
-      final playerData = data['player'] as Map<String, dynamic>?;
-      if (playerData != null) {
-        await txn.insert('player', playerData);
-      }
-
-      final skills = data['skills'] as List<dynamic>?;
-      if (skills != null) {
-        for (final skill in skills) {
-          await txn.insert('skills', skill as Map<String, dynamic>);
+      await _clearData(txn);
+      await txn.insert('player', backup.player);
+      for (final table in BackupDocument.tableNames) {
+        for (final row in backup.tables[table]!) {
+          await txn.insert(table, row);
         }
       }
-
-      final missions = data['missions'] as List<dynamic>?;
-      if (missions != null) {
-        for (final mission in missions) {
-          await txn.insert('missions', mission as Map<String, dynamic>);
-        }
-      }
-
-      final missionSkills = data['mission_skills'] as List<dynamic>?;
-      if (missionSkills != null) {
-        for (final ms in missionSkills) {
-          await txn.insert('mission_skills', ms as Map<String, dynamic>);
-        }
-      }
-
-      final completionEvents =
-          data['mission_completion_events'] as List<dynamic>?;
-      if (completionEvents != null) {
-        for (final event in completionEvents) {
-          await txn.insert(
-            'mission_completion_events',
-            event as Map<String, dynamic>,
-          );
-        }
-      }
-
-      final completionSkillRewards =
-          data['mission_completion_skill_rewards'] as List<dynamic>?;
-      if (completionSkillRewards != null) {
-        for (final reward in completionSkillRewards) {
-          await txn.insert(
-            'mission_completion_skill_rewards',
-            reward as Map<String, dynamic>,
-          );
-        }
-      }
-
-      final rewards = data['rewards'] as List<dynamic>?;
-      if (rewards != null) {
-        for (final reward in rewards) {
-          await txn.insert('rewards', reward as Map<String, dynamic>);
-        }
-      }
-
-      final missionRewardDrops = data['mission_reward_drops'] as List<dynamic>?;
-      if (missionRewardDrops != null) {
-        for (final drop in missionRewardDrops) {
-          await txn.insert(
-            'mission_reward_drops',
-            drop as Map<String, dynamic>,
-          );
-        }
-      }
-
-      final inventoryItems = data['inventory_items'] as List<dynamic>?;
-      if (inventoryItems != null) {
-        for (final item in inventoryItems) {
-          await txn.insert('inventory_items', item as Map<String, dynamic>);
-        }
-      }
-
-      final rewardRedemptions = data['reward_redemptions'] as List<dynamic>?;
-      if (rewardRedemptions != null) {
-        for (final redemption in rewardRedemptions) {
-          await txn.insert(
-            'reward_redemptions',
-            redemption as Map<String, dynamic>,
-          );
-        }
-      }
-
-      final completionRewardDrops =
-          data['mission_completion_reward_drops'] as List<dynamic>?;
-      if (completionRewardDrops != null) {
-        for (final drop in completionRewardDrops) {
-          await txn.insert(
-            'mission_completion_reward_drops',
-            drop as Map<String, dynamic>,
-          );
-        }
-      }
-
-      final focusSessions = data['focus_sessions'] as List<dynamic>?;
-      if (focusSessions != null) {
-        for (final session in focusSessions) {
-          await txn.insert('focus_sessions', session as Map<String, dynamic>);
-        }
-      }
-
-      final notebooks = data['notebooks'] as List<dynamic>?;
-      if (notebooks != null) {
-        for (final notebook in notebooks) {
-          await txn.insert('notebooks', notebook as Map<String, dynamic>);
-        }
-      }
-
-      final notes = data['notes'] as List<dynamic>?;
-      if (notes != null) {
-        for (final note in notes) {
-          await txn.insert('notes', note as Map<String, dynamic>);
-        }
-      }
-
-      final tomes = data['tomes'] as List<dynamic>?;
-      if (tomes != null) {
-        for (final tome in tomes) {
-          await txn.insert('tomes', tome as Map<String, dynamic>);
-        }
-      }
-
-      final audioTracks = data['audio_tracks'] as List<dynamic>?;
-      if (audioTracks != null) {
-        for (final track in audioTracks) {
-          await txn.insert('audio_tracks', track as Map<String, dynamic>);
-        }
+      if ((await txn.rawQuery('PRAGMA foreign_key_check')).isNotEmpty) {
+        throw const FormatException('Restored data violates foreign keys.');
       }
     });
   }

@@ -6,7 +6,6 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-import 'package:liferpg/data/database/database_helper.dart';
 import 'package:liferpg/data/repositories/audio_track_repository.dart';
 import 'package:liferpg/providers/tavern_provider.dart';
 import 'package:liferpg/services/local_media_import_service.dart';

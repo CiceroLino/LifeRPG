@@ -65,9 +65,9 @@ class PlayerRepository {
     String? sleepTime,
   }) => _patch({
     if (value != null) 'current_energy': value.clamp(0, 100),
-    if (mode != null) 'energy_mode': mode,
-    if (wakeUpTime != null) 'wake_up_time': wakeUpTime,
-    if (sleepTime != null) 'sleep_time': sleepTime,
+    'energy_mode': ?mode,
+    'wake_up_time': ?wakeUpTime,
+    'sleep_time': ?sleepTime,
   });
 
   Future<void> _patch(Map<String, Object?> fields) async {
