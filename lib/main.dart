@@ -1,3 +1,4 @@
+import 'core/third_party_licenses.dart';
 import 'package:flutter/material.dart';
 
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -23,6 +24,7 @@ import 'l10n/app_localizations.dart';
 import 'ui/screens/main_screen.dart';
 
 void main() async {
+  registerThirdPartyLicenses();
   WidgetsFlutterBinding.ensureInitialized();
 
   try {

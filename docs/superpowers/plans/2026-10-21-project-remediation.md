@@ -251,4 +251,4 @@ Cada tarefa deve registrar comandos, resultados e plataforma, sem confundir buil
 
 Antes de considerar encerrado: todos os P1 resolvidos, P2 corrigidos ou com escopo/limitação explícita aprovado, nenhum teste com acesso destrutivo a storage real, scan refeito e inventário nativo concluído ou claramente pendente. Não declarar “zero CVEs” com base apenas no ecossistema Pub.
 
-**Resultado desta sessão:** plano entregue para revisão e priorização; nenhuma tarefa de implementação acima foi iniciada.
+**Execução autorizada e realizada:** as 16 frentes receberam implementação e verificações locais; consulte [resultado e limites](../../audits/2026-10-21-remediation-results.md). Os checklists acima preservam os critérios originais de aceite; validações de SOs/dispositivos e inventário nativo ainda pendentes estão explicitados no relatório, sem marcar evidência inexistente.
