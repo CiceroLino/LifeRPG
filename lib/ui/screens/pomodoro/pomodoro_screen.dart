@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../l10n/app_localizations.dart';
-import '../../../providers/player_provider.dart';
 import '../../../providers/pomodoro_provider.dart';
 import '../../widgets/common/game_snack_bar.dart';
 
@@ -175,6 +174,11 @@ class PomodoroScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
+            if (provider.error != null)
+              Text(
+                provider.error!,
+                style: const TextStyle(color: AppTheme.accentRed),
+              ),
             const _RulePanel(),
           ],
         );
@@ -186,17 +190,26 @@ class PomodoroScreen extends StatelessWidget {
     BuildContext context,
     PomodoroProvider provider,
   ) async {
-    final result = await provider.completeNow();
-    if (result == null || !context.mounted) return;
-    await context.read<PlayerProvider>().loadPlayer();
-    if (!context.mounted) return;
-    GameSnackBar.show(
-      context,
-      title: AppLocalizations.of(context).translate('focus_quest_complete'),
-      message:
-          '+${result.xpGranted} ${AppLocalizations.of(context).translate('xp_earned')}',
-      type: GameSnackBarType.success,
-    );
+    try {
+      final result = await provider.completeNow();
+      if (result == null || !context.mounted) return;
+      GameSnackBar.show(
+        context,
+        title: AppLocalizations.of(context).translate('focus_quest_complete'),
+        message:
+            '+${result.xpGranted} ${AppLocalizations.of(context).translate('xp_earned')}',
+        type: GameSnackBarType.success,
+      );
+    } catch (error) {
+      if (context.mounted) {
+        GameSnackBar.show(
+          context,
+          title: 'Focus',
+          message: 'Unable to save session: $error',
+          type: GameSnackBarType.error,
+        );
+      }
+    }
   }
 
   static String _formatTime(int totalSeconds) {

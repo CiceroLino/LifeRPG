@@ -21,6 +21,7 @@ class _RewardFormScreenState extends State<RewardFormScreen> {
   late final TextEditingController _descriptionController;
   late final TextEditingController _priceController;
   late final TextEditingController _stockController;
+  bool _isSaving = false;
   String _icon = 'card_giftcard';
   bool _isUnlimitedStock = true;
 
@@ -156,7 +157,7 @@ class _RewardFormScreenState extends State<RewardFormScreen> {
               ],
               const SizedBox(height: 24),
               FilledButton.icon(
-                onPressed: _save,
+                onPressed: _isSaving ? null : _save,
                 icon: const Icon(Icons.save_outlined),
                 label: const Text('Salvar'),
               ),
@@ -179,7 +180,7 @@ class _RewardFormScreenState extends State<RewardFormScreen> {
   }
 
   Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (_isSaving || !_formKey.currentState!.validate()) return;
 
     final reward = Reward(
       id: widget.reward?.id,
@@ -196,14 +197,24 @@ class _RewardFormScreenState extends State<RewardFormScreen> {
     );
 
     final provider = context.read<RewardProvider>();
-    if (widget.reward == null) {
-      await provider.addReward(reward);
-    } else {
-      await provider.updateReward(reward);
+    setState(() => _isSaving = true);
+    try {
+      if (widget.reward == null) {
+        await provider.addReward(reward);
+      } else {
+        await provider.updateReward(reward);
+      }
+      if (provider.error != null) throw StateError(provider.error!);
+      if (mounted) Navigator.of(context).pop();
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao salvar recompensa: $error')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
-
-    if (!mounted) return;
-    Navigator.of(context).pop();
   }
 }
 
@@ -220,10 +231,7 @@ class _RewardTemplatePicker extends StatelessWidget {
       children: DefaultContentTemplates.rewardTemplates
           .map(
             (template) => ActionChip(
-              avatar: Icon(
-                LifeRPGIcons.rewardIconFor(template.icon),
-                size: 16,
-              ),
+              avatar: Icon(LifeRPGIcons.rewardIconFor(template.icon), size: 16),
               label: Text(template.label),
               onPressed: () => onSelected(template),
             ),

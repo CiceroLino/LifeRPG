@@ -27,6 +27,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isSaving = false;
   bool _hasUnsavedChanges = false;
   bool _isHydratingPlayer = false;
+  PlayerProvider? _playerProvider;
   int? _loadedPlayerId;
   String? _loadedPlayerFingerprint;
 
@@ -45,7 +46,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final player = context.read<PlayerProvider>().player;
+    final provider = context.read<PlayerProvider>();
+    if (_playerProvider != provider) {
+      _playerProvider?.removeListener(_onPlayerChanged);
+      _playerProvider = provider;
+      provider.addListener(_onPlayerChanged);
+    }
+    _syncPlayer();
+  }
+
+  void _onPlayerChanged() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _syncPlayer();
+    });
+  }
+
+  void _syncPlayer() {
+    final player = _playerProvider?.player;
     if (player == null) return;
 
     final nextFingerprint = _buildPlayerFingerprint(player);
@@ -64,6 +81,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   void dispose() {
+    _playerProvider?.removeListener(_onPlayerChanged);
     _nameController.dispose();
     _titleController.dispose();
     _descriptionController.dispose();

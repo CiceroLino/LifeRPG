@@ -23,6 +23,16 @@ class FakePlayerProvider extends PlayerProvider {
   }
 }
 
+class LatePlayerProvider extends PlayerProvider {
+  Player? value;
+  @override
+  Player? get player => value;
+  void emit(Player player) {
+    value = player;
+    notifyListeners();
+  }
+}
+
 void main() {
   void setViewport(WidgetTester tester, Size size) {
     tester.view.physicalSize = size;
@@ -32,6 +42,28 @@ void main() {
       tester.view.resetDevicePixelRatio();
     });
   }
+
+  testWidgets('late player hydrates editor and updates preserve dirty input', (
+    tester,
+  ) async {
+    final provider = LatePlayerProvider();
+    await tester.pumpWidget(
+      ChangeNotifierProvider<PlayerProvider>.value(
+        value: provider,
+        child: const MaterialApp(home: Scaffold(body: ProfileScreen())),
+      ),
+    );
+    await tester.pump();
+    provider.emit(Player(name: 'Loaded hero', title: 'Mage'));
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('Loaded hero'), findsOneWidget);
+    await tester.enterText(find.byType(TextFormField).first, 'Unsaved hero');
+    provider.emit(Player(name: 'External hero', title: 'Mage', totalXP: 100));
+    await tester.pumpAndSettle();
+    expect(find.text('Unsaved hero'), findsOneWidget);
+    expect(find.text('External hero'), findsNothing);
+  });
 
   testWidgets('profile editor fits a small mobile viewport', (tester) async {
     setViewport(tester, const Size(360, 740));

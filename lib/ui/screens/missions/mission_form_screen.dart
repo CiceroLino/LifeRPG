@@ -38,6 +38,7 @@ class _MissionFormScreenState extends State<MissionFormScreen> {
   final _reminderNoteController = TextEditingController();
   final _durationController = TextEditingController(text: '30');
 
+  bool _isSaving = false;
   int _rewardPoints = 5;
   double _difficulty = 50;
   double _urgency = 50;
@@ -89,7 +90,7 @@ class _MissionFormScreenState extends State<MissionFormScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Nova Missão')),
       floatingActionButton: FloatingActionButton(
-        onPressed: _save,
+        onPressed: _isSaving ? null : _save,
         child: const Icon(Icons.check),
       ),
       body: Form(
@@ -357,7 +358,7 @@ class _MissionFormScreenState extends State<MissionFormScreen> {
             const SizedBox(height: 24),
             ElevatedButton.icon(
               key: const Key('save-mission-button'),
-              onPressed: _save,
+              onPressed: _isSaving ? null : _save,
               icon: const Icon(Icons.save),
               label: const Text('Salvar Missão'),
             ),
@@ -520,7 +521,7 @@ class _MissionFormScreenState extends State<MissionFormScreen> {
   }
 
   Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (_isSaving || !_formKey.currentState!.validate()) return;
 
     final duration = int.tryParse(_durationController.text.trim()) ?? 0;
 
@@ -554,14 +555,26 @@ class _MissionFormScreenState extends State<MissionFormScreen> {
       skillIds: _selectedSkills.toList(),
     );
 
-    await context.read<MissionProvider>().addMission(
-      mission,
-      notificationsEnabled: context
-          .read<SettingsProvider>()
-          .notificationsEnabled,
-      rewardDrops: _rewardDrops,
-    );
-    if (mounted) Navigator.pop(context);
+    final provider = context.read<MissionProvider>();
+    final enabled = context.read<SettingsProvider>().notificationsEnabled;
+    setState(() => _isSaving = true);
+    try {
+      final id = await provider.addMission(
+        mission,
+        notificationsEnabled: enabled,
+        rewardDrops: _rewardDrops,
+      );
+      if (id == null) throw StateError(provider.error ?? 'Save failed');
+      if (mounted) Navigator.pop(context);
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao salvar missão: $error')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
   }
 
   Future<void> _pickRewardDrop() async {

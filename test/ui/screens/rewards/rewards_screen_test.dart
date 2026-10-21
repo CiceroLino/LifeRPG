@@ -22,6 +22,14 @@ class FakeRewardProvider extends RewardProvider {
   Future<void> loadRewards() async {}
 }
 
+class FailingRewardProvider extends FakeRewardProvider {
+  FailingRewardProvider() : super([]);
+  @override
+  String? get error => 'Storage unavailable';
+  @override
+  Future<void> addReward(Reward reward) async {}
+}
+
 void main() {
   testWidgets('shows registered reward price, stock, and admin actions', (
     tester,
@@ -53,6 +61,27 @@ void main() {
     expect(find.byTooltip('Editar'), findsOneWidget);
     expect(find.byTooltip('Arquivar'), findsOneWidget);
     expect(find.widgetWithText(FilledButton, 'Comprar'), findsNothing);
+  });
+
+  testWidgets('failed reward save keeps entered data and shows error', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ChangeNotifierProvider<RewardProvider>.value(
+        value: FailingRewardProvider(),
+        child: const MaterialApp(home: RewardFormScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('reward-name-field')),
+      'Keep me',
+    );
+    await tester.enterText(find.byKey(const Key('reward-price-field')), '10');
+    await tester.tap(find.text('Salvar'));
+    await tester.pumpAndSettle();
+    expect(find.text('Keep me'), findsOneWidget);
+    expect(find.textContaining('Storage unavailable'), findsOneWidget);
   });
 
   testWidgets('reward form shows fields for a new reward', (tester) async {
