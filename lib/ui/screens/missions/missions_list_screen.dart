@@ -137,12 +137,9 @@ class _MissionsListScreenState extends State<MissionsListScreen> {
   }
 
   Future<void> _editMission(Mission mission) async {
-    final updated = await Navigator.of(context).push<Mission>(
+    await Navigator.of(context).push<Mission>(
       MaterialPageRoute(builder: (_) => MissionEditorScreen(initial: mission)),
     );
-
-    if (!mounted || updated == null) return;
-    await _updateMission(updated);
   }
 
   Future<void> _updateMission(Mission mission) async {

@@ -1,3 +1,4 @@
+import 'package:liferpg/ui/screens/missions/mission_editor_screen.dart';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -54,8 +55,19 @@ class FakeMissionProvider extends MissionProvider {
     List<MissionRewardDrop> rewardDrops = const [],
   }) async {
     addedMission = mission;
-    return mission.id;
+    return mission.id ?? 1;
   }
+}
+
+class FailingMissionProvider extends FakeMissionProvider {
+  @override
+  String? get error => 'Disk unavailable';
+  @override
+  Future<int?> addMission(
+    Mission mission, {
+    bool notificationsEnabled = true,
+    List<MissionRewardDrop> rewardDrops = const [],
+  }) async => null;
 }
 
 class FakeRewardProvider extends RewardProvider {
@@ -81,6 +93,37 @@ Future<void> _setLargeSurface(WidgetTester tester) async {
 }
 
 void main() {
+  for (final editor in [false, true]) {
+    testWidgets(
+      'mission ${editor ? 'editor' : 'form'} retains input after failed save',
+      (tester) async {
+        await _setLargeSurface(tester);
+        await tester.pumpWidget(
+          MultiProvider(
+            providers: _providers(
+              skillProvider: FakeSkillProvider(),
+              missionProvider: FailingMissionProvider(),
+            ),
+            child: MaterialApp(
+              home: editor
+                  ? const MissionEditorScreen()
+                  : const MissionFormScreen(),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        await tester.enterText(find.byType(TextFormField).first, 'Keep quest');
+        final save = editor
+            ? find.text('Salvar')
+            : find.byType(FloatingActionButton);
+        await tester.tap(save.first);
+        await tester.pumpAndSettle();
+        expect(find.text('Keep quest'), findsOneWidget);
+        expect(find.textContaining('Disk unavailable'), findsOneWidget);
+      },
+    );
+  }
+
   testWidgets('creates and auto-selects new skill from mission form', (
     tester,
   ) async {

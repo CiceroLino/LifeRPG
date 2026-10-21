@@ -12,15 +12,30 @@ import '../providers/tome_provider.dart';
 import '../services/app_data_coordinator.dart';
 
 AppDataCoordinator createAppDataCoordinator(BuildContext context) {
-  final player = context.read<PlayerProvider>();
-  final missions = context.read<MissionProvider>();
-  final skills = context.read<SkillProvider>();
-  final rewards = context.read<RewardProvider>();
-  final inventory = context.read<InventoryProvider>();
-  final notebooks = context.read<NotebookProvider>();
-  final tomes = context.read<TomeProvider>();
-  final tavern = context.read<TavernProvider>();
-  final focus = context.read<PomodoroProvider>();
+  return appDataCoordinatorFor(
+    player: context.read<PlayerProvider>(),
+    missions: context.read<MissionProvider>(),
+    skills: context.read<SkillProvider>(),
+    rewards: context.read<RewardProvider>(),
+    inventory: context.read<InventoryProvider>(),
+    notebooks: context.read<NotebookProvider>(),
+    tomes: context.read<TomeProvider>(),
+    tavern: context.read<TavernProvider>(),
+    focus: context.read<PomodoroProvider>(),
+  );
+}
+
+AppDataCoordinator appDataCoordinatorFor({
+  required PlayerProvider player,
+  required MissionProvider missions,
+  required SkillProvider skills,
+  required RewardProvider rewards,
+  required InventoryProvider inventory,
+  required NotebookProvider notebooks,
+  required TomeProvider tomes,
+  required TavernProvider tavern,
+  required PomodoroProvider focus,
+}) {
   return AppDataCoordinator(
     quiesce: () async {
       focus.pause();

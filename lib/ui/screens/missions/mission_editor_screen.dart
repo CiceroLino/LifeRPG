@@ -34,6 +34,7 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
   late TextEditingController _reminderNoteController;
   late TextEditingController _durationController;
 
+  bool _isSaving = false;
   double _difficulty = 50;
   double _urgency = 50;
   double _fear = 30;
@@ -128,7 +129,7 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: _save,
+            onPressed: _isSaving ? null : _save,
             child: const Text(
               'Salvar',
               style: TextStyle(
@@ -656,9 +657,10 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
   }
 
   Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (_isSaving || !_formKey.currentState!.validate()) return;
     final base = widget.initial;
-    final estimatedDuration = int.tryParse(_durationController.text.trim()) ?? 30;
+    final estimatedDuration =
+        int.tryParse(_durationController.text.trim()) ?? 30;
     final mission = Mission(
       id: base?.id,
       title: _titleController.text.trim(),
@@ -693,18 +695,30 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
       skillIds: _selectedSkillIds.toList(),
     );
 
-    if (mission.id != null) {
-      await _dropRepository.replaceForMission(
-        mission.id!,
-        _rewardDrops
-            .map((drop) => drop.copyWith(missionId: mission.id!))
-            .toList(),
-      );
+    final provider = context.read<MissionProvider>();
+    setState(() => _isSaving = true);
+    try {
+      if (mission.id == null) {
+        final id = await provider.addMission(
+          mission,
+          rewardDrops: _rewardDrops,
+        );
+        if (id == null) throw StateError(provider.error ?? 'Save failed');
+      } else {
+        await provider.updateMission(mission, rewardDrops: _rewardDrops);
+        if (provider.error != null) throw StateError(provider.error!);
+      }
+      widget.onSave?.call(mission);
+      if (mounted) Navigator.pop(context, mission);
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao salvar missão: $error')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
-
-    widget.onSave?.call(mission);
-    if (!mounted) return;
-    Navigator.pop(context, mission);
   }
 }
 

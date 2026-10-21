@@ -110,11 +110,10 @@ class TavernProvider extends ChangeNotifier {
     _notify();
   }
 
-  Future<int?> importTrackFromPath(String filePath, {String? displayTitle}) =>
+  Future<int?> importTrackFromPath(String filePath) =>
       DataOperations.instance.run(() async {
         final trimmedPath = filePath.trim();
-        final title =
-            displayTitle ?? path.basenameWithoutExtension(trimmedPath).trim();
+        final title = path.basenameWithoutExtension(trimmedPath).trim();
         if (trimmedPath.isEmpty || title.isEmpty) return null;
         try {
           final id = await _repo.insertTrack(
@@ -426,8 +425,10 @@ class TavernProvider extends ChangeNotifier {
   }
 
   Future<void> _handlePlaybackCommand(TavernPlaybackCommand command) async {
-    if (command.filePath != null && command.filePath != _activeTrack?.filePath)
+    if (command.filePath != null &&
+        command.filePath != _activeTrack?.filePath) {
       return;
+    }
     switch (command.type) {
       case TavernPlaybackCommandType.pause:
         await _persistActiveProgress();

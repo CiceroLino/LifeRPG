@@ -6,10 +6,11 @@ import '../models/mission.dart';
 class MissionRepository {
   final DatabaseHelper _dbHelper = DatabaseHelper();
 
-  Future<int> insert(Mission mission) => DataOperations.instance.run(() async {
-    final db = await _dbHelper.database;
-    return await db.insert('missions', mission.toMap());
-  }, readOnly: false);
+  Future<int> insert(Mission mission, {DatabaseExecutor? executor}) =>
+      DataOperations.instance.run(() async {
+        final db = executor ?? await _dbHelper.database;
+        return await db.insert('missions', mission.toMap());
+      }, readOnly: false);
 
   Future<List<Mission>> getAll() => DataOperations.instance.run(() async {
     final db = await _dbHelper.database;
@@ -83,15 +84,16 @@ class MissionRepository {
         .toList();
   }
 
-  Future<int> update(Mission mission) => DataOperations.instance.run(() async {
-    final db = await _dbHelper.database;
-    return await db.update(
-      'missions',
-      mission.copyWith(updatedAt: DateTime.now()).toMap(),
-      where: 'id = ?',
-      whereArgs: [mission.id],
-    );
-  }, readOnly: false);
+  Future<int> update(Mission mission, {DatabaseExecutor? executor}) =>
+      DataOperations.instance.run(() async {
+        final db = executor ?? await _dbHelper.database;
+        return await db.update(
+          'missions',
+          mission.copyWith(updatedAt: DateTime.now()).toMap(),
+          where: 'id = ?',
+          whereArgs: [mission.id],
+        );
+      }, readOnly: false);
 
   Future<void> complete(int id) => DataOperations.instance.run(() async {
     final db = await _dbHelper.database;
@@ -112,21 +114,24 @@ class MissionRepository {
     return await db.delete('missions', where: 'id = ?', whereArgs: [id]);
   }, readOnly: false);
 
-  Future<void> linkSkills(int missionId, List<int> skillIds) =>
-      DataOperations.instance.run(() async {
-        final db = await _dbHelper.database;
-        await db.delete(
-          'mission_skills',
-          where: 'mission_id = ?',
-          whereArgs: [missionId],
-        );
-        for (final skillId in skillIds) {
-          await db.insert('mission_skills', {
-            'mission_id': missionId,
-            'skill_id': skillId,
-          });
-        }
-      }, readOnly: false);
+  Future<void> linkSkills(
+    int missionId,
+    List<int> skillIds, {
+    DatabaseExecutor? executor,
+  }) => DataOperations.instance.run(() async {
+    final db = executor ?? await _dbHelper.database;
+    await db.delete(
+      'mission_skills',
+      where: 'mission_id = ?',
+      whereArgs: [missionId],
+    );
+    for (final skillId in skillIds) {
+      await db.insert('mission_skills', {
+        'mission_id': missionId,
+        'skill_id': skillId,
+      });
+    }
+  }, readOnly: false);
 
   Future<int> countByStatus(String status) =>
       DataOperations.instance.run(() async {

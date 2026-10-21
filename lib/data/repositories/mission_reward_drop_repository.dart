@@ -1,3 +1,4 @@
+import 'package:sqflite/sqflite.dart';
 import '../database/data_operations.dart';
 import '../database/database_helper.dart';
 import '../models/mission_reward_drop.dart';
@@ -19,10 +20,10 @@ class MissionRewardDropRepository {
 
   Future<void> replaceForMission(
     int missionId,
-    List<MissionRewardDrop> drops,
-  ) => DataOperations.instance.run(() async {
-    final db = await _dbHelper.database;
-    await db.transaction((txn) async {
+    List<MissionRewardDrop> drops, {
+    DatabaseExecutor? executor,
+  }) => DataOperations.instance.run(() async {
+    Future<void> apply(DatabaseExecutor txn) async {
       await txn.delete(
         'mission_reward_drops',
         where: 'mission_id = ?',
@@ -34,6 +35,10 @@ class MissionRewardDropRepository {
           drop.copyWith(missionId: missionId).toMap(),
         );
       }
-    });
+    }
+
+    if (executor != null) return apply(executor);
+    final db = await _dbHelper.database;
+    await db.transaction(apply);
   }, readOnly: false);
 }

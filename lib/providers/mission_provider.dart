@@ -1,3 +1,4 @@
+import '../services/mission_save_service.dart';
 import '../data/database/data_operations.dart';
 import 'package:flutter/foundation.dart';
 import '../data/models/mission.dart';
@@ -218,6 +219,8 @@ class MissionProvider extends ChangeNotifier {
     notifyListeners();
     try {
       _missions = await _missionRepo.getAll();
+      await _reminders.reconcile(_missions);
+      _warning = _reminders.lastWarning;
     } catch (e) {
       _error = 'Erro ao carregar missões: $e';
     } finally {
@@ -232,16 +235,10 @@ class MissionProvider extends ChangeNotifier {
     List<MissionRewardDrop> rewardDrops = const [],
   }) => DataOperations.instance.run(() async {
     try {
-      final id = await _missionRepo.insert(mission);
-      if (mission.skillIds.isNotEmpty) {
-        await _missionRepo.linkSkills(id, mission.skillIds);
-      }
-      if (rewardDrops.isNotEmpty) {
-        await _dropRepo.replaceForMission(
-          id,
-          rewardDrops.map((drop) => drop.copyWith(missionId: id)).toList(),
-        );
-      }
+      final id = await MissionSaveService(
+        missions: _missionRepo,
+        drops: _dropRepo,
+      ).save(mission, create: true, rewardDrops: rewardDrops);
       await _reminders.scheduleForMission(
         mission.copyWith(id: id),
         notificationsEnabled: notificationsEnabled,
@@ -307,16 +304,10 @@ class MissionProvider extends ChangeNotifier {
     List<MissionRewardDrop>? rewardDrops,
   }) => DataOperations.instance.run(() async {
     try {
-      await _missionRepo.update(mission);
-      await _missionRepo.linkSkills(mission.id!, mission.skillIds);
-      if (rewardDrops != null) {
-        await _dropRepo.replaceForMission(
-          mission.id!,
-          rewardDrops
-              .map((drop) => drop.copyWith(missionId: mission.id!))
-              .toList(),
-        );
-      }
+      await MissionSaveService(
+        missions: _missionRepo,
+        drops: _dropRepo,
+      ).save(mission, create: false, rewardDrops: rewardDrops);
       await _reminders.scheduleForMission(
         mission,
         notificationsEnabled: notificationsEnabled,
