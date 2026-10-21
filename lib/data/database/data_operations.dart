@@ -13,6 +13,16 @@ class DataOperations extends ChangeNotifier {
   final _pending = <Future<void>>{};
   Completer<void>? _reopened;
   bool _replacing = false;
+  int _revision = 0;
+  int get revision => _revision;
+
+  void recordReplacement() {
+    if (!_replacing || !ownsOperation) {
+      throw StateError('Replacement owner required.');
+    }
+    _revision++;
+  }
+
   bool get isReplacing => _replacing;
   bool get ownsOperation =>
       (Zone.current[_zoneKey] as _OperationToken?)?.active ?? false;

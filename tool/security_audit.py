@@ -24,6 +24,8 @@ def pub_queries(lock):
 
 
 def maven_queries(report):
+    if re.search(r'\bFAILED\b|Could not resolve|Could not find', report):
+        raise ValueError('Incomplete Maven dependency resolution; refusing scan.')
     selected = set()
     pattern = r'\b([\w.-]+):([\w.-]+):([^\s()]+)(?: -> ([^\s()]+))?'
     for group, artifact, requested, resolved in re.findall(pattern, report):

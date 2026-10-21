@@ -1,3 +1,4 @@
+import '../../widgets/common/mission_warning.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -120,7 +121,8 @@ class _MissionsListScreenState extends State<MissionsListScreen> {
       title: status == 'completed'
           ? l10n.translate('mission_marked_completed')
           : l10n.translate('mission_status_updated'),
-      message: '${mission.title} · ${status.toUpperCase()}',
+      message:
+          '${mission.title} · ${status.toUpperCase()}${missionProvider.warning == null ? '' : '\n${missionProvider.warning}'}',
       type: status == 'completed'
           ? GameSnackBarType.reward
           : GameSnackBarType.info,
@@ -148,6 +150,7 @@ class _MissionsListScreenState extends State<MissionsListScreen> {
     final existingDrops = await _dropsRepo.getByMissionId(mission.id!);
     if (!mounted) return;
     await missionProvider.updateMission(mission, rewardDrops: existingDrops);
+    if (mounted) showMissionWarning(context, missionProvider.warning);
   }
 
   Future<void> _duplicateMission(Mission mission) async {
@@ -166,6 +169,7 @@ class _MissionsListScreenState extends State<MissionsListScreen> {
     final drops = await _dropsRepo.getByMissionId(mission.id!);
     if (!mounted) return;
     await missionProvider.addMission(duplicate, rewardDrops: drops);
+    if (mounted) showMissionWarning(context, missionProvider.warning);
   }
 
   Future<void> _editMissionNotes(Mission mission) async {

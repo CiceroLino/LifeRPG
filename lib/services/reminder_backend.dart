@@ -9,6 +9,7 @@ abstract class ReminderBackend {
   bool get supportsScheduling;
   Future<bool> initialize();
   Future<bool> requestPermissions();
+  Future<bool> hasPermission();
   Future<void> schedule(Mission mission, {required bool soundEnabled});
   Future<void> cancel(int missionId);
   Future<void> cancelAll();
@@ -82,6 +83,37 @@ class PlatformReminderBackend implements ReminderBackend {
                 >()
                 ?.requestPermissions(alert: true, badge: true, sound: true) ??
             false;
+      case TargetPlatform.windows:
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  @override
+  Future<bool> hasPermission() async {
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.android:
+        return await _plugin
+                .resolvePlatformSpecificImplementation<
+                  AndroidFlutterLocalNotificationsPlugin
+                >()
+                ?.areNotificationsEnabled() ??
+            false;
+      case TargetPlatform.iOS:
+        final state = await _plugin
+            .resolvePlatformSpecificImplementation<
+              IOSFlutterLocalNotificationsPlugin
+            >()
+            ?.checkPermissions();
+        return state?.isEnabled == true || state?.isProvisionalEnabled == true;
+      case TargetPlatform.macOS:
+        final state = await _plugin
+            .resolvePlatformSpecificImplementation<
+              MacOSFlutterLocalNotificationsPlugin
+            >()
+            ?.checkPermissions();
+        return state?.isEnabled == true || state?.isProvisionalEnabled == true;
       case TargetPlatform.windows:
         return true;
       default:

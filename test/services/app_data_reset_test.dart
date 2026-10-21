@@ -41,6 +41,8 @@ class NoReminders implements ReminderBackend {
   @override
   Future<bool> initialize() async => false;
   @override
+  Future<bool> hasPermission() async => false;
+  @override
   Future<bool> requestPermissions() async => false;
   @override
   Future<void> cancel(int id) async {}

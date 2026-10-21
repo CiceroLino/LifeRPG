@@ -104,6 +104,10 @@ class MissionReminderService {
             'The mission was saved. Scheduled reminders are unavailable on this device.';
         return ReminderScheduleResult.unsupported;
       }
+      if (!requestPermission && !await _backend.hasPermission()) {
+        lastWarning = 'Notification permission was not granted.';
+        return ReminderScheduleResult.permissionDenied;
+      }
       if (requestPermission && !await _requestPermissions()) {
         return ReminderScheduleResult.permissionDenied;
       }
@@ -130,10 +134,19 @@ class MissionReminderService {
   Future<void> reconcile(Iterable<Mission> missions) {
     final snapshot = missions.toList(growable: false);
     return _run(() async {
-      await initialize();
-      if (_available) await _backend.cancelAll();
-      for (final mission in snapshot) {
-        await _schedule(mission, requestPermission: false);
+      final warnings = <String>{};
+      lastWarning = null;
+      try {
+        await initialize();
+        if (_available) await _backend.cancelAll();
+        for (final mission in snapshot) {
+          await _schedule(mission, requestPermission: false);
+          if (lastWarning != null) warnings.add(lastWarning!);
+        }
+        lastWarning = warnings.isEmpty ? null : warnings.join('\n');
+      } catch (error) {
+        lastWarning = 'Could not update scheduled reminders.';
+        debugPrint('Reminder reconciliation failed: $error');
       }
     });
   }

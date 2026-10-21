@@ -1,3 +1,4 @@
+import '../../widgets/common/mission_warning.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
@@ -565,7 +566,10 @@ class _MissionFormScreenState extends State<MissionFormScreen> {
         rewardDrops: _rewardDrops,
       );
       if (id == null) throw StateError(provider.error ?? 'Save failed');
-      if (mounted) Navigator.pop(context);
+      if (mounted) {
+        showMissionWarning(context, provider.warning);
+        Navigator.pop(context);
+      }
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

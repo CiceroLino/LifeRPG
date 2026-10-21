@@ -1,3 +1,4 @@
+import 'package:liferpg/services/app_data_coordinator.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
@@ -63,6 +64,42 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Unsaved hero'), findsOneWidget);
     expect(find.text('External hero'), findsNothing);
+  });
+
+  testWidgets('replacement clears old draft, rejected restore preserves it', (
+    tester,
+  ) async {
+    final provider = LatePlayerProvider()
+      ..value = Player(name: 'Previous data', title: 'Mage');
+    await tester.pumpWidget(
+      ChangeNotifierProvider<PlayerProvider>.value(
+        value: provider,
+        child: const MaterialApp(home: Scaffold(body: ProfileScreen())),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byType(TextFormField).first,
+      'Previous data draft',
+    );
+    final coordinator = AppDataCoordinator(
+      quiesce: () async {},
+      reload: [
+        () async {
+          provider.emit(Player(name: 'Player', title: 'Adventurer'));
+        },
+      ],
+    );
+    await coordinator.replaceData(
+      () async => false,
+      wasReplaced: (value) => value,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Previous data draft'), findsOneWidget);
+    await coordinator.replaceData(() async => true);
+    await tester.pumpAndSettle();
+    expect(find.text('Previous data draft'), findsNothing);
+    expect(find.text('Player'), findsOneWidget);
   });
 
   testWidgets('profile editor fits a small mobile viewport', (tester) async {

@@ -18,7 +18,10 @@ class AppDataCoordinator {
     change: () async {
       try {
         final result = await change();
-        if (wasReplaced?.call(result) ?? true) afterReplacement?.call();
+        if (wasReplaced?.call(result) ?? true) {
+          DataOperations.instance.recordReplacement();
+          afterReplacement?.call();
+        }
         return result;
       } finally {
         await Future.wait(reload.map((load) => load()));

@@ -18,6 +18,12 @@ sdks:
             'package': {'name': 'archive', 'ecosystem': 'Pub'}, 'version': '4.0.9',
         }])
 
+    def test_unresolved_maven_graph_cannot_pass_scan(self):
+        for report in ['+--- org.example:core:1.0 FAILED',
+                       '+--- org.example:core:1.0 -> 1.2 FAILED']:
+            with self.subTest(report=report), self.assertRaises(ValueError):
+                maven_queries(report)
+
     def test_maven_inventory_uses_the_selected_version(self):
         report = '+--- org.example:core:1.0 -> 1.2\n\\--- org.example:core:1.2 (*)\n'
         self.assertEqual(maven_queries(report), [{

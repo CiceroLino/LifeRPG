@@ -1,3 +1,4 @@
+import '../../../data/database/data_operations.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -28,12 +29,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _hasUnsavedChanges = false;
   bool _isHydratingPlayer = false;
   PlayerProvider? _playerProvider;
+  int _loadedRevision = DataOperations.instance.revision;
   int? _loadedPlayerId;
   String? _loadedPlayerFingerprint;
 
   @override
   void initState() {
     super.initState();
+    DataOperations.instance.addListener(_onPlayerChanged);
     _nameController = TextEditingController();
     _titleController = TextEditingController();
     _descriptionController = TextEditingController();
@@ -65,6 +68,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final player = _playerProvider?.player;
     if (player == null) return;
 
+    if (_loadedRevision != DataOperations.instance.revision) {
+      _hydrateFromPlayer(player);
+      return;
+    }
     final nextFingerprint = _buildPlayerFingerprint(player);
     final shouldRefresh = _loadedPlayerFingerprint != nextFingerprint;
     if (!shouldRefresh) return;
@@ -82,6 +89,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void dispose() {
     _playerProvider?.removeListener(_onPlayerChanged);
+    DataOperations.instance.removeListener(_onPlayerChanged);
     _nameController.dispose();
     _titleController.dispose();
     _descriptionController.dispose();
@@ -143,6 +151,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _avatarPath = player.avatarPath;
       _avatarSelectionInProgress = false;
       _loadedPlayerId = player.id;
+      _loadedRevision = DataOperations.instance.revision;
       _loadedPlayerFingerprint = _buildPlayerFingerprint(player);
       _hasUnsavedChanges = false;
       _isHydratingPlayer = false;

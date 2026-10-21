@@ -18,6 +18,8 @@ class _Backend implements ReminderBackend {
   @override
   Future<bool> initialize() async => true;
   @override
+  Future<bool> hasPermission() async => allowed;
+  @override
   Future<bool> requestPermissions() async {
     requests++;
     return allowed;
@@ -88,6 +90,54 @@ void main() {
       expect(service.lastWarning, isNotNull);
     },
   );
+  test(
+    'reconciliation retains denial and aggregates warnings across missions',
+    () async {
+      final backend = _Backend()..allowed = false;
+      final service = MissionReminderService(
+        backend: backend,
+        readPreferences: () async => const ReminderPreferences(enabled: true),
+      );
+      final provider = MissionProvider(reminders: service);
+      await provider.addMission(reminder().copyWith(id: null));
+      expect(backend.pending, isEmpty);
+      expect(provider.warning, contains('permission'));
+      await service.reconcile([reminder(), Mission(id: 2, title: 'No alert')]);
+      expect(service.lastWarning, contains('permission'));
+      expect(backend.pending, isEmpty);
+      expect(backend.requests, 1);
+      provider.dispose();
+    },
+  );
+
+  test(
+    'unsupported warning survives a later mission without reminder',
+    () async {
+      final backend = _Backend()..supportsScheduling = false;
+      final service = MissionReminderService(backend: backend);
+      await service.reconcile([reminder(), Mission(id: 2, title: 'No alert')]);
+      expect(service.lastWarning, contains('unavailable'));
+    },
+  );
+
+  test(
+    'startup reconciliation reads OS permission without prompting',
+    () async {
+      final backend = _Backend()..allowed = false;
+      final service = MissionReminderService(
+        backend: backend,
+        readPreferences: () async => const ReminderPreferences(enabled: true),
+      );
+      await service.reconcile([reminder()]);
+      expect(backend.pending, isEmpty);
+      expect(service.lastWarning, contains('permission'));
+      backend.allowed = true;
+      await service.reconcile([reminder()]);
+      expect(backend.pending, {1});
+      expect(backend.requests, 0);
+    },
+  );
+
   test('turning notifications off cancels alerts already scheduled', () async {
     final backend = _Backend();
     final service = MissionReminderService(backend: backend);

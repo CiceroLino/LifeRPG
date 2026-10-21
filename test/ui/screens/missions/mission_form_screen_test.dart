@@ -70,6 +70,11 @@ class FailingMissionProvider extends FakeMissionProvider {
   }) async => null;
 }
 
+class ReminderWarningProvider extends FakeMissionProvider {
+  @override
+  String? get warning => 'Mission saved; reminder unavailable';
+}
+
 class FakeRewardProvider extends RewardProvider {
   @override
   Future<void> loadRewards() async {}
@@ -123,6 +128,39 @@ void main() {
       },
     );
   }
+
+  testWidgets('saved mission exposes reminder warning after returning', (
+    tester,
+  ) async {
+    await _setLargeSurface(tester);
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: _providers(
+          skillProvider: FakeSkillProvider(),
+          missionProvider: ReminderWarningProvider(),
+        ),
+        child: MaterialApp(
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: TextButton(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const MissionFormScreen()),
+                ),
+                child: const Text('New mission'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('New mission'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField).first, 'Reminder quest');
+    await tester.tap(find.byType(FloatingActionButton));
+    await tester.pumpAndSettle();
+    expect(find.byType(MissionFormScreen), findsNothing);
+    expect(find.text('Mission saved; reminder unavailable'), findsOneWidget);
+  });
 
   testWidgets('creates and auto-selects new skill from mission form', (
     tester,

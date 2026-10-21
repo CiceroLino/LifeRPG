@@ -1,3 +1,4 @@
+import '../../widgets/common/mission_warning.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
@@ -709,7 +710,10 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
         if (provider.error != null) throw StateError(provider.error!);
       }
       widget.onSave?.call(mission);
-      if (mounted) Navigator.pop(context, mission);
+      if (mounted) {
+        showMissionWarning(context, provider.warning);
+        Navigator.pop(context, mission);
+      }
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
