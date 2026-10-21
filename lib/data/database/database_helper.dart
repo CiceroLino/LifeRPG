@@ -1,5 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
+import '../../services/backup_document.dart';
+import 'database_schema.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper _instance = DatabaseHelper._internal();
@@ -20,7 +22,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 13,
+      version: DatabaseSchema.version,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
       },
@@ -632,7 +634,9 @@ class DatabaseHelper {
     final audioTracksMaps = await db.query('audio_tracks');
 
     return {
-      'version': '1.0',
+      'version': '2.0',
+      'formatVersion': 2,
+      'schemaVersion': DatabaseSchema.version,
       'timestamp': DateTime.now().toIso8601String(),
       'player': playerMaps.isNotEmpty ? playerMaps.first : null,
       'missions': missionsMaps,
@@ -696,6 +700,7 @@ class DatabaseHelper {
   }
 
   Future<void> restoreData(Map<String, dynamic> data) async {
+    data = BackupDocument.parse(data).toMap();
     final db = await database;
 
     await db.transaction((txn) async {

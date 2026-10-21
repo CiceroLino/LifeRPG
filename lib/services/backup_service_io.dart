@@ -7,6 +7,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
 
 import '../data/database/database_helper.dart';
+import 'backup_document.dart';
 
 class BackupService {
   final DatabaseHelper _dbHelper = DatabaseHelper();
@@ -103,12 +104,12 @@ class BackupService {
   }
 
   bool _validateBackupStructure(Map<String, dynamic> data) {
-    if (!data.containsKey('version')) return false;
-    if (!data.containsKey('player')) return false;
-    if (!data.containsKey('missions')) return false;
-    if (!data.containsKey('skills')) return false;
-
-    return true;
+    try {
+      BackupDocument.parse(data);
+      return true;
+    } on FormatException {
+      return false;
+    }
   }
 
   Future<BackupInfo> getBackupInfo(String filePath) async {
