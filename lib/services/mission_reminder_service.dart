@@ -96,15 +96,17 @@ class MissionReminderService {
         return ReminderScheduleResult.noReminder;
       }
       final prefs = await _readPreferences();
-      if (!notificationsEnabled || !prefs.enabled)
+      if (!notificationsEnabled || !prefs.enabled) {
         return ReminderScheduleResult.disabled;
+      }
       if (!_available || !_backend.supportsScheduling) {
         lastWarning =
             'The mission was saved. Scheduled reminders are unavailable on this device.';
         return ReminderScheduleResult.unsupported;
       }
-      if (requestPermission && !await _requestPermissions())
+      if (requestPermission && !await _requestPermissions()) {
         return ReminderScheduleResult.permissionDenied;
+      }
       await _backend.schedule(mission, soundEnabled: prefs.soundEnabled);
       return ReminderScheduleResult.scheduled;
     } catch (error) {

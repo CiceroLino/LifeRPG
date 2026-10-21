@@ -226,7 +226,7 @@ class TavernAudioHandler extends BaseAudioHandler with SeekHandler {
 }
 
 Future<TavernAudioService> initTavernAudioService() async {
-  JustAudioMediaKit.ensureInitialized();
+  JustAudioMediaKit.ensureInitialized(windows: false);
   JustAudioMediaKit.title = 'LifeRPG';
   final handler = await AudioService.init<TavernAudioHandler>(
     builder: TavernAudioHandler.new,

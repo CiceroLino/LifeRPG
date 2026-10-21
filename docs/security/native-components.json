@@ -28,8 +28,13 @@
       "just_audio_media_kit": "2.1.0",
       "media_kit": "1.2.6",
       "media_kit_libs_linux": "1.2.1",
-      "media_kit_libs_windows_audio": "1.0.9"
+      "just_audio_windows": "0.2.3"
     },
-    "validation": "Linux real WAV decoded through native backend; Windows runtime and libmpv/FFmpeg component CVE mapping need platform review."
-  }
+    "validation": "Linux real WAV decoded using system libmpv 0.41.0-6 and FFmpeg 9.0.1-4. Windows uses OS WinRT MediaPlayer; removed bundled 2023 libmpv archive. Native Windows runtime pending."
+  },
+  "linuxArtifactSha256": {
+    "libpdfium.so": "d106072a29b3689a5d6739948f98a97fe3ec82f5a1c309dc44e86f6c549fb44e",
+    "libsqlite3.so": "148c51687ac3be3487873845690ddbf3d8ee099a5521a193c856008907fb7361"
+  },
+  "nativeArtifactLimits": "Hashes identify the locally built Linux files, not a proof of security. Other OS artifacts and PDFium revision/build-flag advisory mapping remain unverified."
 }
