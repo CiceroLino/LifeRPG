@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../services/local_media_import_service.dart';
 import '../../../data/models/audio_track.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../providers/tavern_provider.dart';
@@ -35,6 +36,11 @@ class _TavernScreenState extends State<TavernScreen> {
         final tracks = provider.filteredTracks;
         return Column(
           children: [
+            if (!localMediaImportSupported)
+              const Padding(
+                padding: EdgeInsets.all(12),
+                child: Text('File import is unavailable in this browser.'),
+              ),
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
               child: Row(
@@ -77,7 +83,9 @@ class _TavernScreenState extends State<TavernScreen> {
                   IconButton.filled(
                     tooltip: l10n.translate('import_audio'),
                     icon: const Icon(Icons.library_music_outlined),
-                    onPressed: () => _pickAudio(context),
+                    onPressed: localMediaImportSupported
+                        ? () => _pickAudio(context)
+                        : null,
                   ),
                 ],
               ),

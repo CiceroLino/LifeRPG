@@ -29,6 +29,29 @@ abstract class TavernPlayback {
   Future<void> stop();
 }
 
+class UnavailableTavernPlayback implements TavernPlayback {
+  @override
+  Stream<bool> get playingStream => const Stream.empty();
+  @override
+  Stream<Duration> get positionStream => const Stream.empty();
+  @override
+  Stream<Duration?> get durationStream => const Stream.empty();
+  @override
+  Stream<TavernPlaybackCommand> get commandStream => const Stream.empty();
+  @override
+  Future<Duration?> load(AudioTrack track) async =>
+      throw StateError('Audio playback is unavailable on this device.');
+  @override
+  Future<void> play() async =>
+      throw StateError('Audio playback is unavailable on this device.');
+  @override
+  Future<void> pause() async {}
+  @override
+  Future<void> seek(Duration position) async {}
+  @override
+  Future<void> stop() async {}
+}
+
 class TavernAudioService implements TavernPlayback {
   final TavernAudioHandler _handler;
 

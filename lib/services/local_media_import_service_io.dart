@@ -6,6 +6,8 @@ import 'package:path_provider/path_provider.dart';
 
 import 'local_media_import_service_base.dart';
 
+const localMediaImportSupported = true;
+
 LocalMediaImportService createLocalMediaImportService({String? basePath}) {
   return IoLocalMediaImportService(basePath: basePath);
 }

@@ -13,6 +13,8 @@ class MissionReminderService {
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
   bool _initialized = false;
+  bool _available = false;
+  bool get isAvailable => _available;
 
   Future<void> initialize() async {
     if (_initialized || kIsWeb) return;
@@ -25,20 +27,33 @@ class MissionReminderService {
       requestSoundPermission: false,
     );
 
-    await _plugin.initialize(
-      settings: const InitializationSettings(
-        android: android,
-        iOS: darwin,
-        macOS: darwin,
-        linux: linux,
-      ),
-    );
+    try {
+      _available =
+          await _plugin.initialize(
+            settings: const InitializationSettings(
+              android: android,
+              iOS: darwin,
+              macOS: darwin,
+              linux: linux,
+              windows: WindowsInitializationSettings(
+                appName: 'LifeRPG',
+                appUserModelId: 'LifeRPG.Desktop',
+                guid: 'c81a1a1e-7e55-4bad-a9a3-9d45c491d0a2',
+              ),
+            ),
+          ) ??
+          false;
+    } catch (error) {
+      debugPrint('Notifications are unavailable: $error');
+      _available = false;
+    }
     _initialized = true;
   }
 
   Future<void> requestPermissions() async {
     if (kIsWeb) return;
     await initialize();
+    if (!_available) return;
     await _plugin
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
@@ -68,6 +83,7 @@ class MissionReminderService {
     if (kIsWeb) return;
 
     await initialize();
+    if (!_available) return;
     final details = NotificationDetails(
       android: AndroidNotificationDetails(
         'mission_reminders',
@@ -95,6 +111,7 @@ class MissionReminderService {
   Future<void> cancelForMission(int missionId) async {
     if (kIsWeb) return;
     await initialize();
+    if (!_available) return;
     await _plugin.cancel(id: _notificationId(missionId));
   }
 
