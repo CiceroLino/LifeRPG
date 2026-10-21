@@ -106,10 +106,11 @@ class TavernProvider extends ChangeNotifier {
     _notify();
   }
 
-  Future<int?> importTrackFromPath(String filePath) =>
+  Future<int?> importTrackFromPath(String filePath, {String? displayTitle}) =>
       DataOperations.instance.run(() async {
         final trimmedPath = filePath.trim();
-        final title = path.basenameWithoutExtension(trimmedPath).trim();
+        final title =
+            displayTitle ?? path.basenameWithoutExtension(trimmedPath).trim();
         if (trimmedPath.isEmpty || title.isEmpty) return null;
         try {
           final id = await _repo.insertTrack(
@@ -131,7 +132,17 @@ class TavernProvider extends ChangeNotifier {
           library: LocalMediaLibrary.tavern,
           allowedExtensions: const ['mp3', 'm4a', 'aac', 'wav', 'ogg', 'flac'],
         );
-        return importTrackFromPath(imported.path);
+        int id;
+        try {
+          id = await _repo.insertTrack(
+            AudioTrack(title: imported.title, filePath: imported.path),
+          );
+        } catch (_) {
+          await _mediaImporter.discardImport(imported);
+          rethrow;
+        }
+        await loadTracks();
+        return id;
       } catch (e) {
         debugPrint('Error importing audio track: $e');
         return null;

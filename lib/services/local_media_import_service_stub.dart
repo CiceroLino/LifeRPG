@@ -29,4 +29,7 @@ class _UnavailableMediaImport implements LocalMediaImportService {
 
   @override
   Future<bool> isManagedPath(String filePath) async => false;
+
+  @override
+  Future<void> discardImport(ImportedMediaFile file) async {}
 }

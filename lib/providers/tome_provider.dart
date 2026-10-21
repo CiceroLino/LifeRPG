@@ -73,7 +73,17 @@ class TomeProvider extends ChangeNotifier {
             library: LocalMediaLibrary.tomes,
             allowedExtensions: const ['pdf'],
           );
-          return addTome(Tome(title: imported.title, filePath: imported.path));
+          int id;
+          try {
+            id = await _repo.insertTome(
+              Tome(title: imported.title, filePath: imported.path),
+            );
+          } catch (_) {
+            await _mediaImporter.discardImport(imported);
+            rethrow;
+          }
+          await loadTomes();
+          return id;
         } catch (e) {
           debugPrint('Error importing tome: $e');
           return null;

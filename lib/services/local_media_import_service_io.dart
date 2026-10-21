@@ -81,14 +81,24 @@ class IoLocalMediaImportService implements LocalMediaImportService {
         p.isWithin(normalizedRoot, normalizedPath);
   }
 
+  @override
+  Future<void> discardImport(ImportedMediaFile file) async {
+    if (!await isManagedPath(file.path)) return;
+    final parent = Directory(p.dirname(file.path));
+    if (!p.basename(parent.path).startsWith('import_')) return;
+    if (await parent.exists()) await parent.delete(recursive: true);
+  }
+
   Future<ImportedMediaFile> _copyBytes(
     List<int> bytes, {
     required String originalName,
     required LocalMediaLibrary library,
   }) async {
-    final target = await _uniqueTargetFile(library, originalName);
-    await target.writeAsBytes(bytes, flush: true);
-    return _importedFile(target, originalName, bytes.length);
+    return _copyStream(
+      Stream.value(bytes),
+      originalName: originalName,
+      library: library,
+    );
   }
 
   Future<ImportedMediaFile> _copyStream(
@@ -96,8 +106,12 @@ class IoLocalMediaImportService implements LocalMediaImportService {
     required String originalName,
     required LocalMediaLibrary library,
   }) async {
-    final target = await _uniqueTargetFile(library, originalName);
-    final sink = target.openWrite();
+    final directory = await _libraryDirectory(library);
+    // createTemp reserves a distinct directory atomically, including across processes.
+    final reservation = await directory.createTemp('import_');
+    final target = File(p.join(reservation.path, originalName));
+    final pending = File(p.join(reservation.path, '.partial'));
+    final sink = pending.openWrite();
     var size = 0;
 
     try {
@@ -105,12 +119,16 @@ class IoLocalMediaImportService implements LocalMediaImportService {
         size += chunk.length;
         sink.add(chunk);
       }
+      await sink.flush();
       await sink.close();
+      await pending.rename(target.path);
     } catch (_) {
-      await sink.close();
-      if (await target.exists()) {
-        await target.delete();
+      try {
+        await sink.close();
+      } catch (_) {
+        /* retain original copy error */
       }
+      await reservation.delete(recursive: true);
       rethrow;
     }
 
@@ -121,27 +139,9 @@ class IoLocalMediaImportService implements LocalMediaImportService {
     return ImportedMediaFile(
       path: target.path,
       originalName: originalName,
-      title: p.basenameWithoutExtension(target.path),
+      title: p.basenameWithoutExtension(originalName),
       sizeBytes: size,
     );
-  }
-
-  Future<File> _uniqueTargetFile(
-    LocalMediaLibrary library,
-    String originalName,
-  ) async {
-    final directory = await _libraryDirectory(library);
-    final extension = p.extension(originalName);
-    final baseName = p.basenameWithoutExtension(originalName).trim();
-    var target = File(p.join(directory.path, '$baseName$extension'));
-    var suffix = 2;
-
-    while (await target.exists()) {
-      target = File(p.join(directory.path, '$baseName $suffix$extension'));
-      suffix += 1;
-    }
-
-    return target;
   }
 
   Future<Directory> _libraryDirectory(LocalMediaLibrary library) async {
