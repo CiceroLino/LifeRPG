@@ -26,6 +26,7 @@ Data: 2026-10-21. Branch local: `feature/mvp-closeout`. Base auditada: `1cff6d2`
 
 ## Decisões de implementação
 
+- Manter títulos de tarefas em português exigiu acompanhamento manual onde scripts da skill esperavam `Task N`. Não alterou os critérios; custo: o registro depende da conferência manual.
 - Trabalhar no checkout já auditado preservou o estado local do usuário. A pinagem FVM 3.44.2 e compatibilidade `SizeTransition` existentes foram incorporadas; VS Code e milhares de SVGs fora do escopo permaneceram sem stage. Custo: não houve isolamento de worktree; staging e revisão foram por escopo.
 - Preservar o ID de desenvolvimento Android e exigir ID/certificado externos no release evita inventar a identidade de distribuição. Custo: o proprietário ainda precisa configurar as credenciais e preservar as de instalações existentes.
 - Manter o overflow de calendário do Dart: recorrência mensal de 31/01 continua em 03/03. Custo: não foi criada uma política de “último dia do mês”.
@@ -44,4 +45,25 @@ Data: 2026-10-21. Branch local: `feature/mvp-closeout`. Base auditada: `1cff6d2`
 
 ## Verificação final
 
-Resultados finais e revisão independente serão registrados abaixo após a conclusão dos comandos em andamento.
+Resultados finais após a rodada de revisão independente (código funcional `d62f7bd`):
+
+| Comando/cenário | Resultado |
+| --- | --- |
+| Flutter 3.44.2 / `flutter analyze --no-pub` | Sem apontamentos |
+| `flutter test --no-pub --reporter expanded` com TMPDIR isolado | 195/195 |
+| `python3 -m unittest discover -s tool -p 'test_*.py'` | 3/3 |
+| `python3 tool/security_audit.py` | 157 versões consultadas, 0 afetadas; limites nativos acima |
+| `flutter build web --release --no-pub` | Passou, incluindo dry run WASM |
+| `node tool/web_smoke.mjs` | Missões, busca e jogador padrão acessíveis pela árvore semântica; sem erros do navegador |
+| `flutter build linux --release --no-pub` | Passou |
+| Executável Linux release com XDG_DATA/CONFIG/CACHE isolados | Permaneceu executando por 8s; banco criado em `data/com.example.liferpg/databases/liferpg.db`; aviso de cursor GDK, sem erro Dart registrado |
+| Backend Linux com WAV gerado | Decodificação nativa confirmada; não é prova de saída audível |
+| Wrapper Gradle 8.14.6 sob Temurin21 | Download SHA verificado e wrapper executado; build Android pendente |
+
+A revisão independente não encontrou Critical nem Minor adicional acionável. Três Important foram reproduzidos e corrigidos numa rodada:
+
+1. Rascunho de perfil anterior sobrevivia ao reset/restore. Uma revisão monotônica de dados agora força hidratação após troca bem-sucedida; refresh normal e restore rejeitado preservam edição. Teste `replacement clears old draft, rejected restore preserves it`: RED→GREEN.
+2. `addMission → loadMissions → reconcile` apagava a recusa de permissão e tentava agendar novamente; o aviso também não chegava à UI. A reconciliação consulta o estado do SO sem prompt, agrega avisos e os formulários/lista os apresentam. Três testes de serviço e um teste de navegação/feedback: RED→GREEN.
+3. O parser Maven aceitava coordenadas seguidas de `FAILED`, inclusive `1.0 -> 1.2 FAILED`. O gate agora rejeita a resolução incompleta. Duas variantes em subtests Python: RED→GREEN.
+
+A suíte completa, análise, scan e builds foram repetidos após essas correções. O smoke Chromium também foi repetido no Web reconstruído. Nenhum achado Important confirmado da revisão ficou sem correção; as validações externas acima permanecem pendentes, sem afirmar segurança global dos componentes nativos.

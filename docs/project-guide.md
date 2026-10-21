@@ -240,7 +240,7 @@ Criação de missão:
 - Uma missão só deve ter uma missão pai, mas pode ter várias missões filhas. Missões filhas representam partes executáveis de um projeto maior.
 - Missões com duração e vencimento para hoje podem exibir aviso visual quando o total planejado excede o tempo acordado restante do player em modo auto.
 - O botão de subtarefa no card abre criação com `parentMissionId` já preenchido.
-- Lembretes usam `MissionReminderService` e respeitam a preferência `notificationsEnabled`.
+- Lembretes usam `MissionReminderService` e respeitam a preferência real `notificationsEnabled`. No primeiro uso solicitam permissão; a reconciliação consulta o estado do SO sem prompt, preserva recusas e agrega avisos que a UI exibe após salvar.
 - Localização usa mapa real com tiles OSM; o usuário pode usar GPS ou tocar no mapa.
 
 Vínculo com skills:
@@ -501,7 +501,7 @@ Padrões:
 Comportamento de reset:
 
 - `resetCharacter()` reseta nome, título/classe, descrição, avatar, XP, nível, RP, energia, modo de energia e horários de acordar/dormir do player. Missões, skills, recompensas, inventário, notebooks, tomes e tavern são preservados.
-- `factoryReset()` remove todas as tabelas de dados em ordem de dependência, incluindo notas/PDF/áudio; reinsere apenas o player padrão e limpa preferências. A UI usa `AppDataCoordinator`, nunca uma sequência parcial de reloads.
+- `factoryReset()` remove todas as tabelas de dados em ordem de dependência, incluindo notas/PDF/áudio; reinsere apenas o player padrão e limpa preferências. A UI usa `AppDataCoordinator`, nunca uma sequência parcial de reloads. Trocas bem-sucedidas incrementam a revisão de dados; o perfil descarta rascunhos da revisão anterior. Refresh comum e restore inválido preservam a edição.
 
 Estado inicial de skills:
 
