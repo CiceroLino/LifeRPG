@@ -4,6 +4,29 @@ import 'package:liferpg/data/models/player.dart';
 import 'package:liferpg/ui/widgets/player/player_stats_header.dart';
 
 void main() {
+  testWidgets('XP visibility preserves HP and player level', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PlayerStatsHeader(
+            player: Player(totalXP: 50),
+            showXpBar: false,
+          ),
+        ),
+      ),
+    );
+    expect(find.byKey(const Key('xp-bar')), findsNothing);
+    expect(find.byKey(const Key('energy-bar')), findsOneWidget);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PlayerStatsHeader(player: Player(totalXP: 50), showXpBar: true),
+        ),
+      ),
+    );
+    expect(find.byKey(const Key('xp-bar')), findsOneWidget);
+  });
+
   testWidgets('manual mode allows tapping energy bar', (tester) async {
     int? value;
     final player = Player(

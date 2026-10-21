@@ -134,7 +134,6 @@ class _MainScreenState extends State<MainScreen> {
             },
             onSearch: missionProvider.setSearchQuery,
             onEdit: _goToProfile,
-            onCalendar: _showCalendarPicker,
             onAddMission: () {
               Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const MissionFormScreen()),
@@ -174,6 +173,9 @@ class _MainScreenState extends State<MainScreen> {
                         ? PlayerStatsHeader(
                             key: const ValueKey('player-stats-header'),
                             player: playerProvider.player!,
+                            showXpBar: context
+                                .watch<SettingsProvider>()
+                                .showXpBar,
                             onManualEnergyChanged: (value) =>
                                 _setManualEnergy(value),
                             onProfileTap: _goToProfile,
@@ -265,24 +267,6 @@ class _MainScreenState extends State<MainScreen> {
       title: AppLocalizations.of(context).translate('profile'),
       message: AppLocalizations.of(context).translate('profile_ready_to_edit'),
       type: GameSnackBarType.info,
-    );
-  }
-
-  Future<void> _showCalendarPicker() async {
-    final l10n = AppLocalizations.of(context);
-    final now = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: now,
-      firstDate: now.subtract(const Duration(days: 365 * 2)),
-      lastDate: now.add(const Duration(days: 365 * 3)),
-    );
-    if (!mounted || picked == null) return;
-    GameSnackBar.show(
-      context,
-      title: l10n.translate('calendar'),
-      message:
-          '${l10n.translate('selected_date_prefix')}${picked.toIso8601String().split('T').first}',
     );
   }
 

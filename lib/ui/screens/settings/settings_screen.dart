@@ -47,13 +47,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 const Divider(height: 1),
                 _SettingsSectionHeader(l10n.translate('sounds')),
-                _SettingsCheckboxTile(
-                  title: l10n.translate('sound_effects'),
-                  subtitle: l10n.translate('play_sounds_actions'),
-                  value: settings.soundEffectsEnabled,
-                  onChanged: (value) =>
-                      settings.setSoundEffectsEnabled(value ?? false),
-                ),
+
                 _SettingsCheckboxTile(
                   title: l10n.translate('notification_sounds'),
                   subtitle: l10n.translate('play_sounds_notifications'),
@@ -65,7 +59,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _SettingsSectionHeader(l10n.translate('data_backup')),
                 _SettingsActionTile(
                   title: l10n.translate('export_database'),
-                  subtitle: l10n.translate('save_data'),
+                  subtitle:
+                      '${l10n.translate('save_data')} (metadata only; media files and preferences are not included)',
                   icon: Icons.upload_file,
                   onTap: _isExporting
                       ? null
@@ -87,7 +82,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   value: settings.notificationsEnabled,
                   onChanged: (value) async {
                     await settings.setNotificationsEnabled(value ?? true);
-                    if (!context.mounted || settings.notificationNotice == null) {
+                    if (!context.mounted ||
+                        settings.notificationNotice == null) {
                       return;
                     }
                     GameSnackBar.show(
@@ -98,13 +94,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     );
                   },
                 ),
-                _SettingsCheckboxTile(
-                  title: l10n.translate('start_week_monday'),
-                  subtitle: l10n.translate('calendar_formatting'),
-                  value: settings.startWeekOnMonday,
-                  onChanged: (value) =>
-                      settings.setStartWeekOnMonday(value ?? false),
-                ),
+
                 _SettingsCheckboxTile(
                   title: l10n.translate('use_24h_clock'),
                   subtitle: l10n.translate('use_24h_format'),
@@ -161,13 +151,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 if (player.energyMode == 'auto') ...[
                   _SettingsActionTile(
                     title: l10n.translate('wake_up_time'),
-                    subtitle: player.wakeUpTime ?? l10n.translate('not_set'),
+                    subtitle: _displayTime(
+                      context,
+                      player.wakeUpTime,
+                      settings,
+                    ),
                     icon: Icons.wb_sunny_outlined,
                     onTap: () async => _pickWakeUpTime(context, playerProvider),
                   ),
                   _SettingsActionTile(
                     title: l10n.translate('sleep_time'),
-                    subtitle: player.sleepTime ?? l10n.translate('not_set'),
+                    subtitle: _displayTime(context, player.sleepTime, settings),
                     icon: Icons.nightlight_round,
                     onTap: () async => _pickSleepTime(context, playerProvider),
                   ),
@@ -198,6 +192,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  String _displayTime(
+    BuildContext context,
+    String? value,
+    SettingsProvider settings,
+  ) {
+    final time = _parseTime(value);
+    if (time == null) return AppLocalizations.of(context).translate('not_set');
+    return MaterialLocalizations.of(
+      context,
+    ).formatTimeOfDay(time, alwaysUse24HourFormat: settings.use24HourFormat);
+  }
+
+  Widget _clockPicker(BuildContext context, Widget? child) => MediaQuery(
+    data: MediaQuery.of(context).copyWith(
+      alwaysUse24HourFormat: this.context
+          .read<SettingsProvider>()
+          .use24HourFormat,
+    ),
+    child: child!,
+  );
+
   Future<void> _pickWakeUpTime(
     BuildContext context,
     PlayerProvider playerProvider,
@@ -206,6 +221,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (player == null) return;
     final picked = await showTimePicker(
       context: context,
+      builder: _clockPicker,
       initialTime:
           _parseTime(player.wakeUpTime) ?? const TimeOfDay(hour: 8, minute: 0),
     );
@@ -227,6 +243,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (player == null) return;
     final picked = await showTimePicker(
       context: context,
+      builder: _clockPicker,
       initialTime:
           _parseTime(player.sleepTime) ?? const TimeOfDay(hour: 22, minute: 0),
     );
@@ -531,19 +548,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onPressed: () async {
               final coordinator = createAppDataCoordinator(this.context);
               final navigator = Navigator.of(context);
-              await coordinator.replaceData(settings.factoryReset);
-              navigator.pop();
-              if (!mounted) return;
-              ScaffoldMessenger.of(this.context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    AppLocalizations.of(
-                      this.context,
-                    ).translate('factory_reset_completed'),
+              try {
+                await coordinator.replaceData(settings.factoryReset);
+                navigator.pop();
+                if (!mounted) return;
+                ScaffoldMessenger.of(this.context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      AppLocalizations.of(
+                        this.context,
+                      ).translate('factory_reset_completed'),
+                    ),
+                    backgroundColor: AppTheme.accentRed,
                   ),
-                  backgroundColor: AppTheme.accentRed,
-                ),
-              );
+                );
+              } catch (error) {
+                if (mounted) {
+                  ScaffoldMessenger.of(this.context).showSnackBar(
+                    SnackBar(content: Text('Reset failed: $error')),
+                  );
+                }
+              }
             },
             child: Text(
               AppLocalizations.of(context).translate('wipe_all_data'),

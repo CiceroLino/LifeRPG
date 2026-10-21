@@ -16,6 +16,7 @@ class PlayerStatsHeader extends StatelessWidget {
   final ValueChanged<int>? onManualEnergyChanged;
   final VoidCallback? onProfileTap;
   final bool showTabs;
+  final bool showXpBar;
 
   const PlayerStatsHeader({
     super.key,
@@ -25,6 +26,7 @@ class PlayerStatsHeader extends StatelessWidget {
     this.onManualEnergyChanged,
     this.onProfileTap,
     this.showTabs = false,
+    this.showXpBar = true,
   });
 
   /// Calcula o XP atual no nível
@@ -213,16 +215,18 @@ class PlayerStatsHeader extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 // Barra de XP (Cima)
-                _buildProgressBar(
-                  progress: xpProgress,
-                  backgroundColor: const Color(0xFF424242),
-                  fillColor: const Color(0xFF2196F3), // Azul Neon
-                  height: 20,
-                  label:
-                      '${_formatNumber(currentXp)} / ${_formatNumber(nextLevelXp)}',
-                  labelAlignment: Alignment.centerLeft,
-                  labelPadding: const EdgeInsets.only(left: 8),
-                ),
+                if (showXpBar)
+                  _buildProgressBar(
+                    key: const Key('xp-bar'),
+                    progress: xpProgress,
+                    backgroundColor: const Color(0xFF424242),
+                    fillColor: const Color(0xFF2196F3), // Azul Neon
+                    height: 20,
+                    label:
+                        '${_formatNumber(currentXp)} / ${_formatNumber(nextLevelXp)}',
+                    labelAlignment: Alignment.centerLeft,
+                    labelPadding: const EdgeInsets.only(left: 8),
+                  ),
 
                 // Barra de HP (Baixo) - sem espaçamento
                 _buildProgressBar(
