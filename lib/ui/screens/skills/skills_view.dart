@@ -1,3 +1,4 @@
+import '../../../core/utils/xp_calculator.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -229,7 +230,10 @@ class SkillSpiderChart extends StatelessWidget {
 
   double _maxProgress() {
     final values = skills.map((skill) {
-      final total = ((skill.level - 1) * 100 + skill.currentXP).toDouble();
+      final total = XPCalculator.accumulatedXP(
+        level: skill.level,
+        currentXP: skill.currentXP,
+      ).toDouble();
       return total > 0 ? total : 0.0;
     }).toList();
 
@@ -326,7 +330,11 @@ class _SkillSpiderPainter extends CustomPainter {
     for (var i = 0; i < skills.length; i++) {
       final skill = skills[i];
       final value =
-          (((skill.level - 1) * 100 + skill.currentXP).toDouble() / skillMax)
+          (XPCalculator.accumulatedXP(
+                    level: skill.level,
+                    currentXP: skill.currentXP,
+                  ).toDouble() /
+                  skillMax)
               .clamp(0.05, 1.0);
       final angle = i * stepAngle - (math.pi / 2);
       final r = radius * value;

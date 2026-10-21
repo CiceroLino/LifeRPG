@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/constants/icon_registry.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/reward.dart';
 import '../../../providers/inventory_provider.dart';
@@ -138,6 +139,53 @@ class _ShopRewardTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final inStock = reward.isUnlimitedStock || (reward.stockRemaining ?? 0) > 0;
+    final icon = CircleAvatar(
+      backgroundColor: AppTheme.accentAmber.withValues(alpha: 0.18),
+      foregroundColor: AppTheme.accentAmber,
+      child: Icon(LifeRPGIcons.rewardIconFor(reward.icon)),
+    );
+    final details = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          reward.name,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: AppTheme.textPrimary,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        if (reward.description.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Text(
+            reward.description,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+          ),
+        ],
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 6,
+          children: [
+            _MetaChip(label: '${reward.priceRp} RP'),
+            _MetaChip(
+              label: reward.isUnlimitedStock
+                  ? 'Estoque ilimitado'
+                  : 'Estoque: ${reward.stockRemaining ?? 0}',
+            ),
+          ],
+        ),
+      ],
+    );
+    final buyButton = FilledButton.icon(
+      onPressed: inStock ? onPurchase : null,
+      icon: const Icon(Icons.shopping_bag_outlined, size: 18),
+      label: const Text('Comprar'),
+    );
+
     return Container(
       decoration: BoxDecoration(
         color: AppTheme.surface,
@@ -145,59 +193,37 @@ class _ShopRewardTile extends StatelessWidget {
         border: Border.all(color: AppTheme.border),
       ),
       padding: const EdgeInsets.all(12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          CircleAvatar(
-            backgroundColor: AppTheme.accentAmber.withValues(alpha: 0.18),
-            foregroundColor: AppTheme.accentAmber,
-            child: Icon(_iconFor(reward.icon)),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth < 420) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  reward.name,
-                  style: const TextStyle(
-                    color: AppTheme.textPrimary,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                if (reward.description.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    reward.description,
-                    style: const TextStyle(
-                      color: AppTheme.textSecondary,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 6,
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _MetaChip(label: '${reward.priceRp} RP'),
-                    _MetaChip(
-                      label: reward.isUnlimitedStock
-                          ? 'Estoque ilimitado'
-                          : 'Estoque: ${reward.stockRemaining ?? 0}',
-                    ),
+                    icon,
+                    const SizedBox(width: 12),
+                    Expanded(child: details),
                   ],
                 ),
+                const SizedBox(height: 12),
+                buyButton,
               ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          FilledButton.icon(
-            onPressed: inStock ? onPurchase : null,
-            icon: const Icon(Icons.shopping_bag_outlined, size: 18),
-            label: const Text('Comprar'),
-          ),
-        ],
+            );
+          }
+
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              icon,
+              const SizedBox(width: 12),
+              Expanded(child: details),
+              const SizedBox(width: 8),
+              buyButton,
+            ],
+          );
+        },
       ),
     );
   }
@@ -222,14 +248,4 @@ class _MetaChip extends StatelessWidget {
       ),
     );
   }
-}
-
-IconData _iconFor(String? icon) {
-  return switch (icon) {
-    'movie' => Icons.movie_outlined,
-    'local_cafe' => Icons.local_cafe_outlined,
-    'sports_esports' => Icons.sports_esports_outlined,
-    'menu_book' => Icons.menu_book_outlined,
-    _ => Icons.card_giftcard_outlined,
-  };
 }

@@ -1,3 +1,4 @@
+import '../support/test_database.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
@@ -19,28 +20,31 @@ void main() {
   });
 
   setUp(() async {
-    await DatabaseHelper().resetForTesting();
+    await resetTestDatabase();
     service = FocusSessionService();
     sessions = FocusSessionRepository();
     players = PlayerRepository();
   });
 
-  test('completed focus session grants one XP per minute and records history', () async {
-    final result = await service.completeSession(
-      plannedMinutes: 25,
-      completedMinutes: 25,
-    );
+  test(
+    'completed focus session grants one XP per minute and records history',
+    () async {
+      final result = await service.completeSession(
+        plannedMinutes: 25,
+        completedMinutes: 25,
+      );
 
-    expect(result.xpGranted, 25);
-    expect((await players.get()).totalXP, 25);
+      expect(result.xpGranted, 25);
+      expect((await players.get()).totalXP, 25);
 
-    final history = await sessions.getRecent();
-    expect(history, hasLength(1));
-    expect(history.single.plannedMinutes, 25);
-    expect(history.single.completedMinutes, 25);
-    expect(history.single.xpGranted, 25);
-    expect(history.single.status, 'completed');
-  });
+      final history = await sessions.getRecent();
+      expect(history, hasLength(1));
+      expect(history.single.plannedMinutes, 25);
+      expect(history.single.completedMinutes, 25);
+      expect(history.single.xpGranted, 25);
+      expect(history.single.status, 'completed');
+    },
+  );
 
   test('focus sessions cannot exceed four hours', () async {
     expect(
@@ -53,7 +57,7 @@ void main() {
     await service.completeSession(plannedMinutes: 45, completedMinutes: 45);
 
     final backup = await DatabaseHelper().getAllDataForBackup();
-    await DatabaseHelper().resetForTesting();
+    await resetTestDatabase();
     expect(await sessions.getRecent(), isEmpty);
 
     await DatabaseHelper().restoreData(backup);
@@ -63,5 +67,36 @@ void main() {
     expect(restored.single.plannedMinutes, 45);
     expect(restored.single.xpGranted, 45);
     expect((await players.get()).totalXP, 45);
+  });
+
+  test('history failure rolls back the XP grant', () async {
+    final db = await DatabaseHelper().database;
+    await db.execute(
+      "CREATE TRIGGER reject_focus BEFORE INSERT ON focus_sessions BEGIN SELECT RAISE(ABORT, 'unavailable'); END",
+    );
+    await expectLater(
+      service.completeSession(plannedMinutes: 25, completedMinutes: 25),
+      throwsA(anything),
+    );
+    expect((await players.get()).totalXP, 0);
+    expect(await sessions.getRecent(), isEmpty);
+  });
+
+  test('retrying one session identity rewards it only once', () async {
+    final results = await Future.wait([
+      service.completeSession(
+        plannedMinutes: 25,
+        completedMinutes: 25,
+        sessionKey: 'same-session',
+      ),
+      service.completeSession(
+        plannedMinutes: 25,
+        completedMinutes: 25,
+        sessionKey: 'same-session',
+      ),
+    ]);
+    expect((await players.get()).totalXP, 25);
+    expect(await sessions.getRecent(), hasLength(1));
+    expect(results.map((r) => r.xpGranted).reduce((a, b) => a + b), 25);
   });
 }

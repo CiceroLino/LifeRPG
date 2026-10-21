@@ -16,6 +16,7 @@ class PlayerStatsHeader extends StatelessWidget {
   final ValueChanged<int>? onManualEnergyChanged;
   final VoidCallback? onProfileTap;
   final bool showTabs;
+  final bool showXpBar;
 
   const PlayerStatsHeader({
     super.key,
@@ -25,6 +26,7 @@ class PlayerStatsHeader extends StatelessWidget {
     this.onManualEnergyChanged,
     this.onProfileTap,
     this.showTabs = false,
+    this.showXpBar = true,
   });
 
   /// Calcula o XP atual no nível
@@ -140,6 +142,8 @@ class PlayerStatsHeader extends StatelessWidget {
                       children: [
                         Text(
                           player.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -149,6 +153,8 @@ class PlayerStatsHeader extends StatelessWidget {
                         const SizedBox(height: 2),
                         Text(
                           player.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             fontSize: 14,
                             color: AppTheme.textSecondary,
@@ -192,7 +198,7 @@ class PlayerStatsHeader extends StatelessWidget {
                           fontWeight: FontWeight.w900,
                           color: Color(0xFFFFD700), // Gold/Amber
                           height: 1.0,
-                          letterSpacing: -2,
+                          letterSpacing: 0,
                         ),
                       ),
                     ],
@@ -209,16 +215,18 @@ class PlayerStatsHeader extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 // Barra de XP (Cima)
-                _buildProgressBar(
-                  progress: xpProgress,
-                  backgroundColor: const Color(0xFF424242),
-                  fillColor: const Color(0xFF2196F3), // Azul Neon
-                  height: 20,
-                  label:
-                      '${_formatNumber(currentXp)} / ${_formatNumber(nextLevelXp)}',
-                  labelAlignment: Alignment.centerLeft,
-                  labelPadding: const EdgeInsets.only(left: 8),
-                ),
+                if (showXpBar)
+                  _buildProgressBar(
+                    key: const Key('xp-bar'),
+                    progress: xpProgress,
+                    backgroundColor: const Color(0xFF424242),
+                    fillColor: const Color(0xFF2196F3), // Azul Neon
+                    height: 20,
+                    label:
+                        '${_formatNumber(currentXp)} / ${_formatNumber(nextLevelXp)}',
+                    labelAlignment: Alignment.centerLeft,
+                    labelPadding: const EdgeInsets.only(left: 8),
+                  ),
 
                 // Barra de HP (Baixo) - sem espaçamento
                 _buildProgressBar(
@@ -253,6 +261,8 @@ class PlayerStatsHeader extends StatelessWidget {
             Container(
               color: AppTheme.surface,
               child: TabBar(
+                isScrollable: true,
+                tabAlignment: TabAlignment.start,
                 onTap: (index) => onTabChanged?.call(index),
                 indicatorColor: AppTheme.primary,
                 indicatorWeight: 3,
@@ -261,12 +271,12 @@ class PlayerStatsHeader extends StatelessWidget {
                 labelStyle: const TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  letterSpacing: 0.5,
+                  letterSpacing: 0,
                 ),
                 unselectedLabelStyle: const TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
-                  letterSpacing: 0.5,
+                  letterSpacing: 0,
                 ),
                 tabs: [
                   Tab(text: l10n.translate('plan')),

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../services/local_media_import_service.dart';
 import '../../../data/models/audio_track.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../providers/tavern_provider.dart';
@@ -35,6 +36,19 @@ class _TavernScreenState extends State<TavernScreen> {
         final tracks = provider.filteredTracks;
         return Column(
           children: [
+            if (provider.error != null)
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Text(
+                  provider.error!,
+                  style: const TextStyle(color: AppTheme.accentRed),
+                ),
+              ),
+            if (!localMediaImportSupported)
+              const Padding(
+                padding: EdgeInsets.all(12),
+                child: Text('File import is unavailable in this browser.'),
+              ),
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
               child: Row(
@@ -77,7 +91,9 @@ class _TavernScreenState extends State<TavernScreen> {
                   IconButton.filled(
                     tooltip: l10n.translate('import_audio'),
                     icon: const Icon(Icons.library_music_outlined),
-                    onPressed: () => _pickAudio(context),
+                    onPressed: localMediaImportSupported
+                        ? () => _pickAudio(context)
+                        : null,
                   ),
                 ],
               ),
@@ -353,53 +369,79 @@ class _MiniPlayer extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 4),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      track.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppTheme.textPrimary,
-                        fontWeight: FontWeight.w700,
-                      ),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final controls = [
+                    IconButton(
+                      tooltip: shuffleEnabled
+                          ? l10n.translate('shuffle_on')
+                          : l10n.translate('shuffle_off'),
+                      icon: const Icon(Icons.shuffle),
+                      color: shuffleEnabled ? AppTheme.primary : null,
+                      onPressed: onToggleShuffle,
                     ),
-                  ),
-                  IconButton(
-                    tooltip: shuffleEnabled
-                        ? l10n.translate('shuffle_on')
-                        : l10n.translate('shuffle_off'),
-                    icon: const Icon(Icons.shuffle),
-                    color: shuffleEnabled ? AppTheme.primary : null,
-                    onPressed: onToggleShuffle,
-                  ),
-                  IconButton(
-                    tooltip: l10n.translate('previous_track'),
-                    icon: const Icon(Icons.skip_previous),
-                    onPressed: onPrevious,
-                  ),
-                  IconButton(
-                    tooltip: isPlaying
-                        ? l10n.translate('pause')
-                        : l10n.translate('start'),
-                    icon: Icon(isPlaying ? Icons.pause : Icons.play_arrow),
-                    onPressed: onTogglePlayPause,
-                  ),
-                  IconButton(
-                    tooltip: l10n.translate('next_track'),
-                    icon: const Icon(Icons.skip_next),
-                    onPressed: onNext,
-                  ),
-                  IconButton(
-                    tooltip: repeatTooltip,
-                    icon: Icon(repeatIcon),
-                    color: repeatMode == TavernRepeatMode.off
-                        ? null
-                        : AppTheme.primary,
-                    onPressed: onCycleRepeat,
-                  ),
-                ],
+                    IconButton(
+                      tooltip: l10n.translate('previous_track'),
+                      icon: const Icon(Icons.skip_previous),
+                      onPressed: onPrevious,
+                    ),
+                    IconButton(
+                      tooltip: isPlaying
+                          ? l10n.translate('pause')
+                          : l10n.translate('start'),
+                      icon: Icon(isPlaying ? Icons.pause : Icons.play_arrow),
+                      onPressed: onTogglePlayPause,
+                    ),
+                    IconButton(
+                      tooltip: l10n.translate('next_track'),
+                      icon: const Icon(Icons.skip_next),
+                      onPressed: onNext,
+                    ),
+                    IconButton(
+                      tooltip: repeatTooltip,
+                      icon: Icon(repeatIcon),
+                      color: repeatMode == TavernRepeatMode.off
+                          ? null
+                          : AppTheme.primary,
+                      onPressed: onCycleRepeat,
+                    ),
+                  ];
+                  final title = Text(
+                    track.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppTheme.textPrimary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  );
+
+                  if (constraints.maxWidth < 420) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        title,
+                        const SizedBox(height: 4),
+                        Align(
+                          alignment: Alignment.center,
+                          child: Wrap(
+                            alignment: WrapAlignment.center,
+                            spacing: 2,
+                            runSpacing: 2,
+                            children: controls,
+                          ),
+                        ),
+                      ],
+                    );
+                  }
+
+                  return Row(
+                    children: [
+                      Expanded(child: title),
+                      ...controls,
+                    ],
+                  );
+                },
               ),
               ClipRRect(
                 borderRadius: BorderRadius.circular(4),

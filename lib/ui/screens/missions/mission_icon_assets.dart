@@ -1,37 +1,41 @@
-const missionIconOptions = [
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/archery-target.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/delapouite/crosshair.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/overdrive.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/delapouite/present.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/treasure-map.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/delapouite/shopping-bag.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/delapouite/shop.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/delapouite/chest.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/skoll/open-treasure-chest.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/locked-chest.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/darkzaitzev/hooded-figure.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/angel-wings.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/aura.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/delapouite/skills.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/delapouite/weight-lifting-up.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/brain.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/feathered-wing.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/light-bulb.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/gear-hammer.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/compass.svg',
-  'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/bookmark.svg',
-];
+import '../../../core/constants/icon_registry.dart';
+
+final missionIconOptions = LifeRPGIcons.missionAssetPaths;
 
 String normalizeMissionIconAsset(String asset) {
   return switch (asset) {
     'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/crosshair.svg' =>
-      'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/delapouite/crosshair.svg',
+      '${LifeRPGIcons.assetRoot}/missions/target.svg',
+    'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/delapouite/crosshair.svg' =>
+      '${LifeRPGIcons.assetRoot}/missions/target.svg',
     'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/overkill.svg' =>
-      'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/overdrive.svg',
+      '${LifeRPGIcons.assetRoot}/missions/effort.svg',
+    'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/overdrive.svg' =>
+      '${LifeRPGIcons.assetRoot}/missions/effort.svg',
     'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/delapouite/treasure-map.svg' =>
-      'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/treasure-map.svg',
+      '${LifeRPGIcons.assetRoot}/missions/treasure-map.svg',
+    'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/treasure-map.svg' =>
+      '${LifeRPGIcons.assetRoot}/missions/treasure-map.svg',
     'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/delapouite/barbell.svg' =>
-      'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/delapouite/weight-lifting-up.svg',
+      '${LifeRPGIcons.assetRoot}/missions/strength.svg',
+    'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/archery-target.svg' =>
+      '${LifeRPGIcons.assetRoot}/missions/quest.svg',
+    'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/delapouite/skills.svg' =>
+      '${LifeRPGIcons.assetRoot}/missions/skills.svg',
+    'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/delapouite/weight-lifting-up.svg' =>
+      '${LifeRPGIcons.assetRoot}/missions/strength.svg',
+    'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/brain.svg' =>
+      '${LifeRPGIcons.assetRoot}/missions/brain.svg',
+    'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/feathered-wing.svg' =>
+      '${LifeRPGIcons.assetRoot}/missions/mobility.svg',
+    'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/light-bulb.svg' =>
+      '${LifeRPGIcons.assetRoot}/missions/idea.svg',
+    'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/gear-hammer.svg' =>
+      '${LifeRPGIcons.assetRoot}/missions/work.svg',
+    'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/compass.svg' =>
+      '${LifeRPGIcons.assetRoot}/missions/compass.svg',
+    'assets/game-icons.net.svg/icons/ffffff/transparent/1x1/lorc/bookmark.svg' =>
+      '${LifeRPGIcons.assetRoot}/missions/bookmark.svg',
     _ => asset,
   };
 }

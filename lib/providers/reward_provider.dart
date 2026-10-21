@@ -1,3 +1,4 @@
+import '../data/database/data_operations.dart';
 import 'package:flutter/foundation.dart';
 
 import '../data/models/reward.dart';
@@ -14,11 +15,10 @@ class RewardProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  Future<void> loadRewards() async {
+  Future<void> loadRewards() => DataOperations.instance.run(() async {
     _isLoading = true;
     _error = null;
     notifyListeners();
-
     try {
       _rewards = await _rewardRepo.getActive();
     } catch (e) {
@@ -27,7 +27,7 @@ class RewardProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
-  }
+  }, readOnly: true);
 
   Future<void> _reloadRewardsKeepingError() async {
     try {
@@ -39,29 +39,31 @@ class RewardProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> addReward(Reward reward) async {
-    try {
-      _error = null;
-      await _rewardRepo.insert(reward);
-      await loadRewards();
-    } catch (e) {
-      _error = 'Erro ao salvar recompensa: $e';
-      notifyListeners();
-    }
-  }
+  Future<void> addReward(Reward reward) =>
+      DataOperations.instance.run(() async {
+        try {
+          _error = null;
+          await _rewardRepo.insert(reward);
+          await loadRewards();
+        } catch (e) {
+          _error = 'Erro ao salvar recompensa: $e';
+          notifyListeners();
+        }
+      }, readOnly: false);
 
-  Future<void> updateReward(Reward reward) async {
-    try {
-      _error = null;
-      await _rewardRepo.update(reward);
-      await loadRewards();
-    } catch (e) {
-      _error = 'Erro ao atualizar recompensa: $e';
-      notifyListeners();
-    }
-  }
+  Future<void> updateReward(Reward reward) =>
+      DataOperations.instance.run(() async {
+        try {
+          _error = null;
+          await _rewardRepo.update(reward);
+          await loadRewards();
+        } catch (e) {
+          _error = 'Erro ao atualizar recompensa: $e';
+          notifyListeners();
+        }
+      }, readOnly: false);
 
-  Future<void> archiveReward(int id) async {
+  Future<void> archiveReward(int id) => DataOperations.instance.run(() async {
     try {
       _error = null;
       await _rewardRepo.archive(id);
@@ -70,9 +72,9 @@ class RewardProvider extends ChangeNotifier {
       _error = 'Erro ao arquivar recompensa: $e';
       notifyListeners();
     }
-  }
+  }, readOnly: false);
 
-  Future<bool> purchaseReward(int id) async {
+  Future<bool> purchaseReward(int id) => DataOperations.instance.run(() async {
     try {
       _error = null;
       await _rewardRepo.purchaseReward(id);
@@ -95,5 +97,5 @@ class RewardProvider extends ChangeNotifier {
       await _reloadRewardsKeepingError();
       return false;
     }
-  }
+  }, readOnly: false);
 }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../services/local_media_import_service.dart';
 import '../../../data/models/tome.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../providers/tome_provider.dart';
@@ -44,6 +45,11 @@ class _TomesScreenState extends State<TomesScreen> {
         final tomes = provider.filteredTomes;
         return Column(
           children: [
+            if (!localMediaImportSupported)
+              const Padding(
+                padding: EdgeInsets.all(12),
+                child: Text('File import is unavailable in this browser.'),
+              ),
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
               child: Row(
@@ -86,7 +92,9 @@ class _TomesScreenState extends State<TomesScreen> {
                   IconButton.filled(
                     tooltip: l10n.translate('import_tome'),
                     icon: const Icon(Icons.upload_file),
-                    onPressed: () => _pickTome(context),
+                    onPressed: localMediaImportSupported
+                        ? () => _pickTome(context)
+                        : null,
                   ),
                 ],
               ),

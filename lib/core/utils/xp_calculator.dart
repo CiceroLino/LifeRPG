@@ -45,24 +45,28 @@ class XPCalculator {
   }
 
   static int calculateLevel(int totalXP) {
-    int level = 1;
-    int xpNeeded = xpForNextLevel(level);
-
-    while (totalXP >= xpNeeded) {
-      level++;
-      xpNeeded += xpForNextLevel(level);
+    if (totalXP <= 0) return 1;
+    // Level < 2^29 for every signed 64-bit XP total. Avoid linear work on imports.
+    var low = 1;
+    var high = 1 << 29;
+    while (low < high) {
+      final middle = (low + high + 1) ~/ 2;
+      // Divide first to avoid overflowing the triangular product on native Dart.
+      final fits = middle - 1 <= (totalXP ~/ 50) ~/ middle;
+      if (fits) {
+        low = middle;
+      } else {
+        high = middle - 1;
+      }
     }
-
-    return level;
+    return low;
   }
 
-  static int xpInCurrentLevel(int totalXP, int level) {
-    int xpForPreviousLevels = 0;
-    for (int i = 1; i < level; i++) {
-      xpForPreviousLevels += xpForNextLevel(i);
-    }
-    return totalXP - xpForPreviousLevels;
-  }
+  static int accumulatedXP({required int level, required int currentXP}) =>
+      50 * level * (level - 1) + currentXP;
+
+  static int xpInCurrentLevel(int totalXP, int level) =>
+      totalXP - accumulatedXP(level: level, currentXP: 0);
 
   static int calculateMissionXP({
     required int difficulty,

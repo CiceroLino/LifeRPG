@@ -18,6 +18,7 @@ import 'package:liferpg/providers/tome_provider.dart';
 import 'package:liferpg/services/tavern_audio_service.dart';
 import 'package:liferpg/ui/screens/main_screen.dart';
 import 'package:liferpg/ui/widgets/common/liferpg_app_bar.dart';
+import 'package:liferpg/ui/widgets/player/player_stats_header.dart';
 
 class FakeMissionProvider extends MissionProvider {
   MissionSortMode? lastSortMode;
@@ -235,7 +236,36 @@ void main() {
     expect(missionProvider.lastFilterMode, MissionFilterMode.tomorrow);
   });
 
-  testWidgets('navigation dropdown exposes Tavern and Pomodoro options', (
+  testWidgets(
+    'status header toggle works after navigating away from missions',
+    (tester) async {
+      final missionProvider = FakeMissionProvider();
+      await pumpMain(tester, missionProvider);
+
+      expect(find.byType(PlayerStatsHeader), findsOneWidget);
+
+      await tester.tap(find.text('LifeRPG'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(find.text('Tavern').last);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.byType(PlayerStatsHeader), findsOneWidget);
+
+      await tester.tap(find.byTooltip('Hide status'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.byType(PlayerStatsHeader), findsNothing);
+
+      await tester.tap(find.byTooltip('Show status'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.byType(PlayerStatsHeader), findsOneWidget);
+    },
+  );
+
+  testWidgets('navigation dropdown exposes Tavern and Focus Quest options', (
     tester,
   ) async {
     final missionProvider = FakeMissionProvider();
@@ -246,6 +276,6 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(find.text('Tavern'), findsOneWidget);
-    expect(find.text('Pomodoro'), findsOneWidget);
+    expect(find.text('Focus Quest'), findsOneWidget);
   });
 }

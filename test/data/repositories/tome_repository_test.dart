@@ -1,3 +1,4 @@
+import '../../support/test_database.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
@@ -16,7 +17,7 @@ void main() {
   });
 
   setUp(() async {
-    await DatabaseHelper().resetForTesting();
+    await resetTestDatabase();
     tomes = TomeRepository();
   });
 

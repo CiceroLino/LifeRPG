@@ -1,7 +1,7 @@
+import '../support/test_database.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-import 'package:liferpg/data/database/database_helper.dart';
 import 'package:liferpg/data/models/reward.dart';
 import 'package:liferpg/data/repositories/inventory_repository.dart';
 import 'package:liferpg/data/repositories/player_repository.dart';
@@ -18,7 +18,7 @@ void main() {
   });
 
   setUp(() async {
-    await DatabaseHelper().resetForTesting();
+    await resetTestDatabase();
   });
 
   test(

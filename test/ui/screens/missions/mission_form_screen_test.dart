@@ -1,3 +1,4 @@
+import 'package:liferpg/ui/screens/missions/mission_editor_screen.dart';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -54,8 +55,24 @@ class FakeMissionProvider extends MissionProvider {
     List<MissionRewardDrop> rewardDrops = const [],
   }) async {
     addedMission = mission;
-    return mission.id;
+    return mission.id ?? 1;
   }
+}
+
+class FailingMissionProvider extends FakeMissionProvider {
+  @override
+  String? get error => 'Disk unavailable';
+  @override
+  Future<int?> addMission(
+    Mission mission, {
+    bool notificationsEnabled = true,
+    List<MissionRewardDrop> rewardDrops = const [],
+  }) async => null;
+}
+
+class ReminderWarningProvider extends FakeMissionProvider {
+  @override
+  String? get warning => 'Mission saved; reminder unavailable';
 }
 
 class FakeRewardProvider extends RewardProvider {
@@ -81,6 +98,70 @@ Future<void> _setLargeSurface(WidgetTester tester) async {
 }
 
 void main() {
+  for (final editor in [false, true]) {
+    testWidgets(
+      'mission ${editor ? 'editor' : 'form'} retains input after failed save',
+      (tester) async {
+        await _setLargeSurface(tester);
+        await tester.pumpWidget(
+          MultiProvider(
+            providers: _providers(
+              skillProvider: FakeSkillProvider(),
+              missionProvider: FailingMissionProvider(),
+            ),
+            child: MaterialApp(
+              home: editor
+                  ? const MissionEditorScreen()
+                  : const MissionFormScreen(),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        await tester.enterText(find.byType(TextFormField).first, 'Keep quest');
+        final save = editor
+            ? find.text('Salvar')
+            : find.byType(FloatingActionButton);
+        await tester.tap(save.first);
+        await tester.pumpAndSettle();
+        expect(find.text('Keep quest'), findsOneWidget);
+        expect(find.textContaining('Disk unavailable'), findsOneWidget);
+      },
+    );
+  }
+
+  testWidgets('saved mission exposes reminder warning after returning', (
+    tester,
+  ) async {
+    await _setLargeSurface(tester);
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: _providers(
+          skillProvider: FakeSkillProvider(),
+          missionProvider: ReminderWarningProvider(),
+        ),
+        child: MaterialApp(
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: TextButton(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const MissionFormScreen()),
+                ),
+                child: const Text('New mission'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('New mission'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField).first, 'Reminder quest');
+    await tester.tap(find.byType(FloatingActionButton));
+    await tester.pumpAndSettle();
+    expect(find.byType(MissionFormScreen), findsNothing);
+    expect(find.text('Mission saved; reminder unavailable'), findsOneWidget);
+  });
+
   testWidgets('creates and auto-selects new skill from mission form', (
     tester,
   ) async {
@@ -224,5 +305,41 @@ void main() {
     expect(missionProvider.addedMission!.urgency, 50);
     expect(missionProvider.addedMission!.fear, 30);
     expect(missionProvider.addedMission!.xpReward, 3250);
+  });
+
+  testWidgets('mission template fills and saves preset values', (tester) async {
+    await _setLargeSurface(tester);
+    final skillProvider = FakeSkillProvider();
+    final missionProvider = FakeMissionProvider();
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: _providers(
+          skillProvider: skillProvider,
+          missionProvider: missionProvider,
+        ),
+        child: const MaterialApp(home: MissionFormScreen()),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ActionChip, 'Deep work'));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('save-mission-button')),
+      400,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.byKey(const Key('save-mission-button')).last);
+    await tester.pumpAndSettle();
+
+    expect(missionProvider.addedMission, isNotNull);
+    expect(missionProvider.addedMission!.title, 'Deep work block');
+    expect(missionProvider.addedMission!.difficulty, 70);
+    expect(missionProvider.addedMission!.urgency, 55);
+    expect(missionProvider.addedMission!.fear, 35);
+    expect(missionProvider.addedMission!.estimatedDuration, 60);
+    expect(missionProvider.addedMission!.notes, contains('Session 1'));
   });
 }

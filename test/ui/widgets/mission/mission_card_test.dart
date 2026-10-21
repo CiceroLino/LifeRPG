@@ -13,6 +13,15 @@ Mission _mission() => Mission(
 );
 
 void main() {
+  void setViewport(WidgetTester tester, Size size) {
+    tester.view.physicalSize = size;
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+  }
+
   testWidgets('shows expanded controls when expanded', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -49,5 +58,41 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(changedTo, 'completed');
+  });
+
+  testWidgets('expanded card fits a small mobile viewport', (tester) async {
+    setViewport(tester, const Size(360, 740));
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ListView(
+            children: [
+              MissionCard(
+                mission: _mission().copyWith(
+                  title:
+                      'Study Flutter layout constraints before the guild raid',
+                  description:
+                      'Read docs, inspect widgets, and avoid clipped quest actions.',
+                  notes:
+                      'A long quest note should wrap without forcing actions off screen.',
+                  reminderNote: 'Bring the responsive layout checklist.',
+                ),
+                isExpanded: true,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.byKey(const Key('mission-status-select')), findsOneWidget);
+    expect(
+      find.byKey(const Key('mission-quick-action-button')),
+      findsOneWidget,
+    );
   });
 }

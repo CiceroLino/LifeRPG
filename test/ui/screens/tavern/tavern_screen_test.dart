@@ -173,6 +173,15 @@ class FakeFilePicker extends FilePicker {
 void main() {
   late FilePicker filePickerBaseline;
 
+  void setViewport(WidgetTester tester, Size size) {
+    tester.view.physicalSize = size;
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+  }
+
   setUpAll(() {
     try {
       filePickerBaseline = FilePicker.platform;
@@ -310,6 +319,36 @@ void main() {
 
     expect(provider.importedPaths, isEmpty);
     expect(find.text('Selected audio file is unavailable.'), findsOneWidget);
+  });
+
+  testWidgets('mini player controls fit a small mobile viewport', (
+    tester,
+  ) async {
+    setViewport(tester, const Size(360, 740));
+    final active = AudioTrack(
+      id: 1,
+      title: 'Long tavern soundtrack title for a narrow heroic panel',
+      filePath: '/tmp/tavern.mp3',
+      artist: 'Bard',
+    );
+
+    await pumpTavern(
+      tester,
+      FakeTavernProvider(
+        fakeTracks: [active],
+        fakeActiveTrack: active,
+        fakeIsPlaying: true,
+        fakeDuration: const Duration(minutes: 5),
+        fakePosition: const Duration(minutes: 1),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('Now playing'), findsOneWidget);
+    expect(find.byTooltip('Pause'), findsOneWidget);
+    expect(find.byTooltip('Next track'), findsOneWidget);
   });
 
   tearDownAll(() {

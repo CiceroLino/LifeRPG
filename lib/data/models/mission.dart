@@ -1,4 +1,5 @@
 class Mission {
+  static const _unset = Object();
   final int? id;
   final String title;
   final String description;
@@ -165,7 +166,7 @@ class Mission {
   }
 
   Mission copyWith({
-    int? id,
+    Object? id = _unset,
     String? title,
     String? description,
     String? notes,
@@ -177,29 +178,29 @@ class Mission {
     int? xpReward,
     int? rewardPoints,
     String? status,
-    DateTime? dueDate,
-    int? estimatedDuration,
+    Object? dueDate = _unset,
+    Object? estimatedDuration = _unset,
     bool? isRecurring,
-    String? recurrenceType,
-    int? recurrenceInterval,
-    DateTime? lastCompletedAt,
+    Object? recurrenceType = _unset,
+    Object? recurrenceInterval = _unset,
+    Object? lastCompletedAt = _unset,
     int? streak,
-    int? parentMissionId,
+    Object? parentMissionId = _unset,
     int? orderIndex,
-    String? icon,
-    String? emoji,
-    String? locationName,
-    double? latitude,
-    double? longitude,
-    DateTime? reminderAt,
+    Object? icon = _unset,
+    Object? emoji = _unset,
+    Object? locationName = _unset,
+    Object? latitude = _unset,
+    Object? longitude = _unset,
+    Object? reminderAt = _unset,
     List<int>? recurrenceDays,
     DateTime? createdAt,
     DateTime? updatedAt,
-    DateTime? completedAt,
+    Object? completedAt = _unset,
     List<int>? skillIds,
   }) {
     return Mission(
-      id: id ?? this.id,
+      id: identical(id, _unset) ? this.id : id as int?,
       title: title ?? this.title,
       description: description ?? this.description,
       notes: notes ?? this.notes,
@@ -211,25 +212,45 @@ class Mission {
       xpReward: xpReward ?? this.xpReward,
       rewardPoints: rewardPoints ?? this.rewardPoints,
       status: status ?? this.status,
-      dueDate: dueDate ?? this.dueDate,
-      estimatedDuration: estimatedDuration ?? this.estimatedDuration,
+      dueDate: identical(dueDate, _unset) ? this.dueDate : dueDate as DateTime?,
+      estimatedDuration: identical(estimatedDuration, _unset)
+          ? this.estimatedDuration
+          : estimatedDuration as int?,
       isRecurring: isRecurring ?? this.isRecurring,
-      recurrenceType: recurrenceType ?? this.recurrenceType,
-      recurrenceInterval: recurrenceInterval ?? this.recurrenceInterval,
-      lastCompletedAt: lastCompletedAt ?? this.lastCompletedAt,
+      recurrenceType: identical(recurrenceType, _unset)
+          ? this.recurrenceType
+          : recurrenceType as String?,
+      recurrenceInterval: identical(recurrenceInterval, _unset)
+          ? this.recurrenceInterval
+          : recurrenceInterval as int?,
+      lastCompletedAt: identical(lastCompletedAt, _unset)
+          ? this.lastCompletedAt
+          : lastCompletedAt as DateTime?,
       streak: streak ?? this.streak,
-      parentMissionId: parentMissionId ?? this.parentMissionId,
+      parentMissionId: identical(parentMissionId, _unset)
+          ? this.parentMissionId
+          : parentMissionId as int?,
       orderIndex: orderIndex ?? this.orderIndex,
-      icon: icon ?? this.icon,
-      emoji: emoji ?? this.emoji,
-      locationName: locationName ?? this.locationName,
-      latitude: latitude ?? this.latitude,
-      longitude: longitude ?? this.longitude,
-      reminderAt: reminderAt ?? this.reminderAt,
+      icon: identical(icon, _unset) ? this.icon : icon as String?,
+      emoji: identical(emoji, _unset) ? this.emoji : emoji as String?,
+      locationName: identical(locationName, _unset)
+          ? this.locationName
+          : locationName as String?,
+      latitude: identical(latitude, _unset)
+          ? this.latitude
+          : latitude as double?,
+      longitude: identical(longitude, _unset)
+          ? this.longitude
+          : longitude as double?,
+      reminderAt: identical(reminderAt, _unset)
+          ? this.reminderAt
+          : reminderAt as DateTime?,
       recurrenceDays: recurrenceDays ?? this.recurrenceDays,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
-      completedAt: completedAt ?? this.completedAt,
+      completedAt: identical(completedAt, _unset)
+          ? this.completedAt
+          : completedAt as DateTime?,
       skillIds: skillIds ?? this.skillIds,
     );
   }

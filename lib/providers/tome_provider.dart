@@ -1,3 +1,4 @@
+import '../data/database/data_operations.dart';
 import 'package:flutter/foundation.dart';
 import 'package:file_picker/file_picker.dart';
 
@@ -34,10 +35,9 @@ class TomeProvider extends ChangeNotifier {
         .toList();
   }
 
-  Future<void> loadTomes() async {
+  Future<void> loadTomes() => DataOperations.instance.run(() async {
     _isLoading = true;
     notifyListeners();
-
     try {
       _tomes = await _repo.getActiveTomes();
     } catch (e) {
@@ -46,7 +46,7 @@ class TomeProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
-  }
+  }, readOnly: true);
 
   void setSearchQuery(String value) {
     if (_searchQuery == value) return;
@@ -54,7 +54,7 @@ class TomeProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<int?> addTome(Tome tome) async {
+  Future<int?> addTome(Tome tome) => DataOperations.instance.run(() async {
     try {
       final id = await _repo.insertTome(tome);
       await loadTomes();
@@ -63,71 +63,74 @@ class TomeProvider extends ChangeNotifier {
       debugPrint('Error adding tome: $e');
       return null;
     }
-  }
+  }, readOnly: false);
 
-  Future<int?> importTome(PlatformFile file) async {
-    try {
-      final imported = await _mediaImporter.importPlatformFile(
-        file,
-        library: LocalMediaLibrary.tomes,
-        allowedExtensions: const ['pdf'],
-      );
-      return addTome(Tome(title: imported.title, filePath: imported.path));
-    } catch (e) {
-      debugPrint('Error importing tome: $e');
-      return null;
-    }
-  }
+  Future<int?> importTome(PlatformFile file) =>
+      DataOperations.instance.run(() async {
+        try {
+          final imported = await _mediaImporter.importPlatformFile(
+            file,
+            library: LocalMediaLibrary.tomes,
+            allowedExtensions: const ['pdf'],
+          );
+          int id;
+          try {
+            id = await _repo.insertTome(
+              Tome(title: imported.title, filePath: imported.path),
+            );
+          } catch (_) {
+            await _mediaImporter.discardImport(imported);
+            rethrow;
+          }
+          await loadTomes();
+          return id;
+        } catch (e) {
+          debugPrint('Error importing tome: $e');
+          return null;
+        }
+      }, readOnly: false);
 
-  Future<void> updateTome(Tome tome) async {
+  Future<void> updateTome(Tome tome) => DataOperations.instance.run(() async {
     try {
       await _repo.updateTome(tome);
       await loadTomes();
     } catch (e) {
       debugPrint('Error updating tome: $e');
     }
-  }
+  }, readOnly: false);
 
-  Future<void> archiveTome(int id) async {
+  Future<void> archiveTome(int id) => DataOperations.instance.run(() async {
     try {
       await _repo.archiveTome(id);
       await loadTomes();
     } catch (e) {
       debugPrint('Error archiving tome: $e');
     }
-  }
+  }, readOnly: false);
 
-  Future<void> markOpened(int id) async {
+  Future<void> markOpened(int id) => DataOperations.instance.run(() async {
     try {
       await _repo.markOpened(id);
       await loadTomes();
     } catch (e) {
       debugPrint('Error marking tome opened: $e');
     }
-  }
+  }, readOnly: false);
 
   Future<void> updateReadingProgress(
     int id, {
     required int currentPage,
     int? totalPages,
-  }) async {
+  }) => DataOperations.instance.run(() async {
     try {
-      final tome = await _repo.getTomeById(id);
-      if (tome == null) return;
-      final safeCurrentPage = currentPage < 0 ? 0 : currentPage;
-      final safeTotalPages = totalPages != null && totalPages > 0
-          ? totalPages
-          : tome.totalPages;
-      await _repo.updateTome(
-        tome.copyWith(
-          currentPage: safeCurrentPage,
-          totalPages: safeTotalPages,
-          clearTotalPages: safeTotalPages == null,
-        ),
+      await _repo.updateReadingProgress(
+        id,
+        currentPage: currentPage,
+        totalPages: totalPages,
       );
       await loadTomes();
     } catch (e) {
       debugPrint('Error updating tome reading progress: $e');
     }
-  }
+  }, readOnly: false);
 }

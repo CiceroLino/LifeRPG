@@ -47,4 +47,7 @@ abstract class LocalMediaImportService {
   });
 
   Future<bool> isManagedPath(String filePath);
+
+  /// Only for a fresh import whose database insert failed.
+  Future<void> discardImport(ImportedMediaFile file);
 }

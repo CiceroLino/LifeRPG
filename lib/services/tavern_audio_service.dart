@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:audio_service/audio_service.dart';
 import 'package:just_audio/just_audio.dart' as just_audio;
+import 'package:just_audio_media_kit/just_audio_media_kit.dart';
 
 import '../data/models/audio_track.dart';
 
@@ -10,10 +11,11 @@ export '../data/models/audio_track.dart';
 enum TavernPlaybackCommandType { pause, stop, seek, previous, next, completed }
 
 class TavernPlaybackCommand {
-  const TavernPlaybackCommand(this.type, {this.position});
+  const TavernPlaybackCommand(this.type, {this.position, this.filePath});
 
   final TavernPlaybackCommandType type;
   final Duration? position;
+  final String? filePath;
 }
 
 abstract class TavernPlayback {
@@ -29,10 +31,35 @@ abstract class TavernPlayback {
   Future<void> stop();
 }
 
+class UnavailableTavernPlayback implements TavernPlayback {
+  @override
+  Stream<bool> get playingStream => const Stream.empty();
+  @override
+  Stream<Duration> get positionStream => const Stream.empty();
+  @override
+  Stream<Duration?> get durationStream => const Stream.empty();
+  @override
+  Stream<TavernPlaybackCommand> get commandStream => const Stream.empty();
+  @override
+  Future<Duration?> load(AudioTrack track) async =>
+      throw StateError('Audio playback is unavailable on this device.');
+  @override
+  Future<void> play() async =>
+      throw StateError('Audio playback is unavailable on this device.');
+  @override
+  Future<void> pause() async {}
+  @override
+  Future<void> seek(Duration position) async {}
+  @override
+  Future<void> stop() async {}
+}
+
 class TavernAudioService implements TavernPlayback {
   final TavernAudioHandler _handler;
 
   TavernAudioService(this._handler);
+
+  Future<void> dispose() => _handler.dispose();
 
   @override
   Stream<bool> get playingStream => _handler.playingStream;
@@ -69,9 +96,18 @@ class TavernAudioHandler extends BaseAudioHandler with SeekHandler {
   late final Stream<Duration?> _durationStream = _player.durationStream
       .asBroadcastStream();
   just_audio.ProcessingState? _lastProcessingState;
+  late final StreamSubscription<just_audio.PlaybackEvent> _eventSubscription;
 
   TavernAudioHandler() {
-    _player.playbackEventStream.listen(_broadcastPlaybackState);
+    _eventSubscription = _player.playbackEventStream.listen(
+      _broadcastPlaybackState,
+    );
+  }
+
+  Future<void> dispose() async {
+    await _eventSubscription.cancel();
+    await _player.dispose();
+    await _commandController.close();
   }
 
   Stream<bool> get playingStream => _player.playingStream;
@@ -148,7 +184,10 @@ class TavernAudioHandler extends BaseAudioHandler with SeekHandler {
     _lastProcessingState = event.processingState;
     if (completed) {
       _commandController.add(
-        const TavernPlaybackCommand(TavernPlaybackCommandType.completed),
+        TavernPlaybackCommand(
+          TavernPlaybackCommandType.completed,
+          filePath: mediaItem.value?.id,
+        ),
       );
     }
 
@@ -187,6 +226,8 @@ class TavernAudioHandler extends BaseAudioHandler with SeekHandler {
 }
 
 Future<TavernAudioService> initTavernAudioService() async {
+  JustAudioMediaKit.ensureInitialized(windows: false);
+  JustAudioMediaKit.title = 'LifeRPG';
   final handler = await AudioService.init<TavernAudioHandler>(
     builder: TavernAudioHandler.new,
     config: const AudioServiceConfig(

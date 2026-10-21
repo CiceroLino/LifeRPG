@@ -1,3 +1,4 @@
+import '../../data/database/data_operations.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:provider/provider.dart';
@@ -24,6 +25,7 @@ import '../widgets/common/game_snack_bar.dart';
 import '../widgets/common/liferpg_app_bar.dart';
 import '../widgets/player/player_stats_header.dart';
 import '../../core/theme/app_theme.dart';
+import '../../data/repositories/mission_completion_history_repository.dart';
 import '../../providers/mission_provider.dart';
 import '../../providers/inventory_provider.dart';
 import '../../providers/player_provider.dart';
@@ -46,6 +48,8 @@ class _MainScreenState extends State<MainScreen> {
   bool _showCompleted = false;
   Timer? _energyAutoRefreshTimer;
   bool _isExporting = false;
+  final MissionCompletionHistoryRepository _historyRepository =
+      MissionCompletionHistoryRepository();
 
   @override
   void initState() {
@@ -85,17 +89,30 @@ class _MainScreenState extends State<MainScreen> {
     HelpScreen(),
   ];
 
-  // Índices que NÃO devem mostrar o header (Notebooks, Tomes, Tavern, Skills, Settings e Help)
-  bool get _shouldShowHeader =>
-      _currentIndex != 1 &&
-      _currentIndex != 2 &&
-      _currentIndex != 3 &&
-      _currentIndex != 7 &&
-      _currentIndex != 12 &&
-      _currentIndex != 13;
-
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: DataOperations.instance,
+    builder: (context, _) => PopScope(
+      canPop: !DataOperations.instance.isReplacing,
+      child: Stack(
+        children: [
+          AbsorbPointer(
+            absorbing: DataOperations.instance.isReplacing,
+            child: _buildScaffold(context),
+          ),
+          if (DataOperations.instance.isReplacing)
+            const Positioned.fill(
+              child: ColoredBox(
+                color: Color(0x99000000),
+                child: Center(child: CircularProgressIndicator()),
+              ),
+            ),
+        ],
+      ),
+    ),
+  );
+
+  Widget _buildScaffold(BuildContext context) {
     return Consumer<MissionProvider>(
       builder: (context, missionProvider, _) {
         return Scaffold(
@@ -117,7 +134,6 @@ class _MainScreenState extends State<MainScreen> {
             },
             onSearch: missionProvider.setSearchQuery,
             onEdit: _goToProfile,
-            onCalendar: _showCalendarPicker,
             onAddMission: () {
               Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const MissionFormScreen()),
@@ -136,9 +152,7 @@ class _MainScreenState extends State<MainScreen> {
             builder: (context, playerProvider, _) {
               _syncEnergyAutoRefreshTimer();
               final shouldShowHeader =
-                  _shouldShowHeader &&
-                  _isStatsExpanded &&
-                  playerProvider.player != null;
+                  _isStatsExpanded && playerProvider.player != null;
               return Column(
                 children: [
                   AnimatedSwitcher(
@@ -150,7 +164,7 @@ class _MainScreenState extends State<MainScreen> {
                         opacity: animation,
                         child: SizeTransition(
                           sizeFactor: animation,
-                          axisAlignment: -1,
+                          alignment: const AlignmentDirectional(-1.0, -1.0),
                           child: child,
                         ),
                       );
@@ -159,6 +173,9 @@ class _MainScreenState extends State<MainScreen> {
                         ? PlayerStatsHeader(
                             key: const ValueKey('player-stats-header'),
                             player: playerProvider.player!,
+                            showXpBar: context
+                                .watch<SettingsProvider>()
+                                .showXpBar,
                             onManualEnergyChanged: (value) =>
                                 _setManualEnergy(value),
                             onProfileTap: _goToProfile,
@@ -238,26 +255,18 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   void _goToProfile() {
-    setState(() {
-      _currentIndex = 9;
-    });
-  }
+    if (_currentIndex != 9) {
+      setState(() {
+        _currentIndex = 9;
+      });
+      return;
+    }
 
-  Future<void> _showCalendarPicker() async {
-    final l10n = AppLocalizations.of(context);
-    final now = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: now,
-      firstDate: now.subtract(const Duration(days: 365 * 2)),
-      lastDate: now.add(const Duration(days: 365 * 3)),
-    );
-    if (!mounted || picked == null) return;
     GameSnackBar.show(
       context,
-      title: l10n.translate('calendar'),
-      message:
-          '${l10n.translate('selected_date_prefix')}${picked.toIso8601String().split('T').first}',
+      title: AppLocalizations.of(context).translate('profile'),
+      message: AppLocalizations.of(context).translate('profile_ready_to_edit'),
+      type: GameSnackBarType.info,
     );
   }
 
@@ -280,9 +289,43 @@ class _MainScreenState extends State<MainScreen> {
     final l10n = AppLocalizations.of(context);
     final player = context.read<PlayerProvider>().player;
     if (player == null) return;
-    final text =
-        'LifeRPG ${l10n.translate('profile')}\\nName: ${player.name}\\nTitle: ${player.title}\\nLevel: ${player.level}\\nXP: ${player.totalXP}\\nCoins: ${player.rewardPoints}';
+
+    final events = await _historyRepository.getAll();
+    if (!mounted) return;
+    final recentSessions = events.take(10).toList();
+
+    final sessionLines = recentSessions.isEmpty
+        ? ['Sem sessões registradas ainda.']
+        : List.generate(
+            recentSessions.length,
+            (index) =>
+                '${index + 1}. ${_formatDateTime(recentSessions[index].completedAt)} '
+                '- ${recentSessions[index].missionTitleSnapshot} '
+                '(XP: ${recentSessions[index].xpGranted} | RP: ${recentSessions[index].rewardPointsGranted})',
+          );
+
+    final text = [
+      'LifeRPG ${l10n.translate('profile')}',
+      'Nome: ${player.name}',
+      'Título/Classe: ${player.title}',
+      'Nível: ${player.level}',
+      'XP total: ${player.totalXP}',
+      'Moedas (RP): ${player.rewardPoints}',
+      'Compartilhado em: ${_formatDateTime(DateTime.now())}',
+      '',
+      'Últimas sessões:',
+      ...sessionLines,
+    ].join('\n');
     await Share.share(text, subject: 'LifeRPG ${l10n.translate('profile')}');
+  }
+
+  String _formatDateTime(DateTime value) {
+    final day = value.day.toString().padLeft(2, '0');
+    final month = value.month.toString().padLeft(2, '0');
+    final year = value.year;
+    final hour = value.hour.toString().padLeft(2, '0');
+    final minute = value.minute.toString().padLeft(2, '0');
+    return '$day/$month/$year $hour:$minute';
   }
 
   Future<void> _exportData() async {

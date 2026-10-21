@@ -1,3 +1,4 @@
+import 'core/third_party_licenses.dart';
 import 'package:flutter/material.dart';
 
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -17,15 +18,44 @@ import 'providers/tome_provider.dart';
 import 'providers/settings_provider.dart';
 import 'services/mission_reminder_service.dart';
 import 'services/tavern_audio_service.dart';
+import 'services/app_bootstrap.dart';
+import 'data/database/database_helper.dart';
 import 'l10n/app_localizations.dart';
 import 'ui/screens/main_screen.dart';
 
 void main() async {
+  registerThirdPartyLicenses();
   WidgetsFlutterBinding.ensureInitialized();
 
-  await configureDatabasePlatform();
-  await MissionReminderService.instance.initialize();
-  final tavernAudioService = await initTavernAudioService();
+  try {
+    await configureDatabasePlatform();
+    await DatabaseHelper().database;
+  } catch (error) {
+    runApp(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Unable to open local data. Existing files have been retained.',
+                ),
+                TextButton(onPressed: main, child: const Text('Retry')),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    return;
+  }
+  try {
+    await MissionReminderService.instance.initialize();
+  } catch (error) {
+    debugPrint('Notifications are unavailable: $error');
+  }
+  final tavernAudioService = await initializeTavernPlayback();
 
   runApp(MyApp(tavernAudioService: tavernAudioService));
 }
@@ -40,7 +70,11 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => PlayerProvider()..loadPlayer()),
-        ChangeNotifierProvider(create: (_) => PomodoroProvider()),
+        ChangeNotifierProvider(
+          create: (context) => PomodoroProvider(
+            onCompleted: context.read<PlayerProvider>().loadPlayer,
+          ),
+        ),
         ChangeNotifierProvider(create: (_) => RewardProvider()..loadRewards()),
         ChangeNotifierProvider(create: (_) => InventoryProvider()..loadItems()),
         ChangeNotifierProvider(

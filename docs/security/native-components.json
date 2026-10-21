@@ -1,0 +1,40 @@
+{
+  "reviewDate": "2026-10-21",
+  "sqlite": {
+    "dartPackage": "3.5.2",
+    "engine": "3.53.4",
+    "wasmSource": "https://github.com/simolus3/sqlite3.dart/releases/download/sqlite3-3.5.2/sqlite3.wasm",
+    "fixedFloorForCve202611822And11824": "3.53.2"
+  },
+  "pdfium": {
+    "pdfrx": "2.4.8",
+    "pdfrxEngine": "0.4.7",
+    "pdfiumDart": "0.2.5",
+    "pdfiumFlutter": "0.2.3",
+    "revision": "chromium/7811",
+    "nativeCveReachability": "pending upstream revision and build-flag mapping; no exploit demonstrated"
+  },
+  "webAssetSha256": {
+    "web/sqlite3.wasm": "13d3f11d05b39ba0618a7115fb41640a5d48b6300f5d3f325f554b42bd6688a4",
+    "web/sqflite_sw.js": "33435ae3a11a61b78f12fb57104720a628f8c5914daf9ee8dd16de641528969b"
+  },
+  "validationLimits": [
+    "Android SDK is absent locally.",
+    "Apple and Windows builds/runtime require their respective runners.",
+    "Pub OSV result does not cover native parsers/system libraries."
+  ],
+  "desktopAudio": {
+    "packages": {
+      "just_audio_media_kit": "2.1.0",
+      "media_kit": "1.2.6",
+      "media_kit_libs_linux": "1.2.1",
+      "just_audio_windows": "0.2.3"
+    },
+    "validation": "Linux real WAV decoded using system libmpv 0.41.0-6 and FFmpeg 9.0.1-4. Windows uses OS WinRT MediaPlayer; removed bundled 2023 libmpv archive. Native Windows runtime pending."
+  },
+  "linuxArtifactSha256": {
+    "libpdfium.so": "d106072a29b3689a5d6739948f98a97fe3ec82f5a1c309dc44e86f6c549fb44e",
+    "libsqlite3.so": "b17729184e5a2818055ecbddd5ed6642521bfe6e56aafa472330e483c0e2e0d2"
+  },
+  "nativeArtifactLimits": "Hashes identify the locally built Linux files, not a proof of security. Other OS artifacts and PDFium revision/build-flag advisory mapping remain unverified."
+}

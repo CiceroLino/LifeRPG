@@ -1,6 +1,8 @@
+import '../data/database/data_operations.dart';
 import '../data/models/focus_session.dart';
 import '../data/repositories/focus_session_repository.dart';
 import '../data/repositories/player_repository.dart';
+import '../data/database/database_helper.dart';
 
 class FocusSessionLimitException implements Exception {
   final String message;
@@ -35,28 +37,49 @@ class FocusSessionService {
     required int completedMinutes,
     DateTime? startedAt,
     DateTime? completedAt,
-  }) async {
+    String? sessionKey,
+  }) => DataOperations.instance.run(() async {
     final safePlanned = _validateMinutes(plannedMinutes);
     final safeCompleted = _validateMinutes(completedMinutes);
     final xpGranted = safeCompleted;
     final finishedAt = completedAt ?? DateTime.now();
     final started =
         startedAt ?? finishedAt.subtract(Duration(minutes: safeCompleted));
-
-    await _players.addXP(xpGranted);
-    final sessionId = await _sessions.insert(
-      FocusSession(
-        plannedMinutes: safePlanned,
-        completedMinutes: safeCompleted,
-        xpGranted: xpGranted,
-        status: 'completed',
-        startedAt: started,
-        completedAt: finishedAt,
-      ),
-    );
-
-    return FocusSessionResult(sessionId: sessionId, xpGranted: xpGranted);
-  }
+    if (sessionKey != null && sessionKey.trim().isEmpty) {
+      throw ArgumentError.value(sessionKey, 'sessionKey');
+    }
+    final db = await DatabaseHelper().database;
+    return db.transaction((txn) async {
+      if (sessionKey != null) {
+        final existing = await txn.query(
+          'focus_sessions',
+          where: 'session_key = ?',
+          whereArgs: [sessionKey],
+          limit: 1,
+        );
+        if (existing.isNotEmpty) {
+          return FocusSessionResult(
+            sessionId: existing.single['id'] as int,
+            xpGranted: 0,
+          );
+        }
+      }
+      await _players.addXP(xpGranted, executor: txn);
+      final sessionId = await _sessions.insert(
+        FocusSession(
+          plannedMinutes: safePlanned,
+          completedMinutes: safeCompleted,
+          xpGranted: xpGranted,
+          status: 'completed',
+          startedAt: started,
+          completedAt: finishedAt,
+        ),
+        executor: txn,
+        sessionKey: sessionKey,
+      );
+      return FocusSessionResult(sessionId: sessionId, xpGranted: xpGranted);
+    });
+  }, readOnly: false);
 
   int _validateMinutes(int minutes) {
     if (minutes < 1) {

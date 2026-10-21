@@ -1,3 +1,10 @@
+import 'package:liferpg/providers/inventory_provider.dart';
+import 'package:liferpg/providers/notebook_provider.dart';
+import 'package:liferpg/providers/pomodoro_provider.dart';
+import 'package:liferpg/providers/reward_provider.dart';
+import 'package:liferpg/providers/tavern_provider.dart';
+import 'package:liferpg/providers/tome_provider.dart';
+import 'package:liferpg/services/tavern_audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -49,6 +56,7 @@ class FakePlayerProvider extends PlayerProvider {
 
 class FakeSettingsProvider extends SettingsProvider {
   int factoryResetCalls = 0;
+  int resetCharacterCalls = 0;
   String _language = 'en';
 
   @override
@@ -70,6 +78,37 @@ class FakeSettingsProvider extends SettingsProvider {
   Future<void> factoryReset() async {
     factoryResetCalls++;
   }
+
+  @override
+  Future<void> resetCharacter() async {
+    resetCharacterCalls++;
+  }
+}
+
+class IdleInventoryProvider extends InventoryProvider {
+  @override
+  Future<void> loadItems() async {}
+}
+
+class IdleNotebookProvider extends NotebookProvider {
+  @override
+  Future<void> loadNotebooks() async {}
+}
+
+class IdleRewardProvider extends RewardProvider {
+  @override
+  Future<void> loadRewards() async {}
+}
+
+class IdleTomeProvider extends TomeProvider {
+  @override
+  Future<void> loadTomes() async {}
+}
+
+class IdleTavernProvider extends TavernProvider {
+  IdleTavernProvider() : super(playback: UnavailableTavernPlayback());
+  @override
+  Future<void> loadTracks() async {}
 }
 
 Widget _settingsHarness({
@@ -80,6 +119,20 @@ Widget _settingsHarness({
 }) {
   return MultiProvider(
     providers: [
+      ChangeNotifierProvider<InventoryProvider>(
+        create: (_) => IdleInventoryProvider(),
+      ),
+      ChangeNotifierProvider<NotebookProvider>(
+        create: (_) => IdleNotebookProvider(),
+      ),
+      ChangeNotifierProvider<RewardProvider>(
+        create: (_) => IdleRewardProvider(),
+      ),
+      ChangeNotifierProvider<TomeProvider>(create: (_) => IdleTomeProvider()),
+      ChangeNotifierProvider<TavernProvider>(
+        create: (_) => IdleTavernProvider(),
+      ),
+      ChangeNotifierProvider(create: (_) => PomodoroProvider()),
       ChangeNotifierProvider<SettingsProvider>.value(value: settings),
       ChangeNotifierProvider<MissionProvider>.value(value: mission),
       ChangeNotifierProvider<SkillProvider>.value(value: skill),
@@ -102,6 +155,45 @@ Widget _settingsHarness({
 }
 
 void main() {
+  testWidgets(
+    'character profile reset reloads player data after confirmation',
+    (tester) async {
+      final settings = FakeSettingsProvider();
+      final player = FakePlayerProvider();
+
+      await tester.pumpWidget(
+        _settingsHarness(
+          settings: settings,
+          mission: FakeMissionProvider(),
+          skill: FakeSkillProvider(),
+          player: player,
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      await tester.scrollUntilVisible(
+        find.text('Reset Character Profile'),
+        300,
+        scrollable: find.byType(Scrollable),
+      );
+      await tester.ensureVisible(
+        find.widgetWithText(ListTile, 'Reset Character Profile'),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.widgetWithText(ListTile, 'Reset Character Profile'),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.widgetWithText(TextButton, 'RESET'));
+      await tester.pumpAndSettle();
+
+      expect(settings.resetCharacterCalls, 1);
+      expect(player.loadPlayerCalls, 1);
+    },
+  );
+
   testWidgets('factory reset recarrega providers de dados', (tester) async {
     final settings = FakeSettingsProvider();
     final mission = FakeMissionProvider();

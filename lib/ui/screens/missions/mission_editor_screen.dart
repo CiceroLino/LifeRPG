@@ -1,3 +1,4 @@
+import '../../widgets/common/mission_warning.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
@@ -9,6 +10,7 @@ import '../../../data/models/mission.dart';
 import '../../../data/models/mission_reward_drop.dart';
 import '../../../data/models/reward.dart';
 import '../../../data/models/skill.dart';
+import '../../../data/repositories/mission_completion_history_repository.dart';
 import '../../../data/repositories/mission_reward_drop_repository.dart';
 import '../../../providers/mission_provider.dart';
 import '../../../providers/reward_provider.dart';
@@ -33,6 +35,7 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
   late TextEditingController _reminderNoteController;
   late TextEditingController _durationController;
 
+  bool _isSaving = false;
   double _difficulty = 50;
   double _urgency = 50;
   double _fear = 30;
@@ -47,6 +50,9 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
   List<MissionRewardDrop> _rewardDrops = [];
   final MissionRewardDropRepository _dropRepository =
       MissionRewardDropRepository();
+  final MissionCompletionHistoryRepository _historyRepository =
+      MissionCompletionHistoryRepository();
+  List<RewardPointHistorySample> _historicalRewardSamples = const [];
 
   @override
   void initState() {
@@ -84,6 +90,7 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
       context.read<MissionProvider>().loadMissions();
       context.read<RewardProvider>().loadRewards();
       _loadRewardDrops();
+      _loadRewardHistorySamples();
     });
   }
 
@@ -123,7 +130,7 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: _save,
+            onPressed: _isSaving ? null : _save,
             child: const Text(
               'Salvar',
               style: TextStyle(
@@ -186,7 +193,7 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
                 AttributeSliderRow(
                   label: 'Dificuldade',
                   attribute: MissionAttribute.difficulty,
-                  icon: FontAwesomeIcons.personHiking,
+                  icon: FontAwesomeIcons.personHiking.data,
                   value: _difficulty,
                   activeColor: const Color(0xFF00BCD4),
                   onChanged: (v) => setState(() => _difficulty = v),
@@ -194,7 +201,7 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
                 AttributeSliderRow(
                   label: 'Urgência',
                   attribute: MissionAttribute.urgency,
-                  icon: FontAwesomeIcons.personRunning,
+                  icon: FontAwesomeIcons.personRunning.data,
                   value: _urgency,
                   activeColor: const Color(0xFF2196F3),
                   onChanged: (v) => setState(() => _urgency = v),
@@ -202,7 +209,7 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
                 AttributeSliderRow(
                   label: 'Medo',
                   attribute: MissionAttribute.fear,
-                  icon: FontAwesomeIcons.mask,
+                  icon: FontAwesomeIcons.mask.data,
                   value: _fear,
                   activeColor: const Color(0xFF673AB7),
                   onChanged: (v) => setState(() => _fear = v),
@@ -380,7 +387,27 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
         xpReward: _xpPreview,
         isChildMission: _parentMissionId != null,
         recurrenceType: _recurrence == 'once' ? null : _recurrence,
+        historicalSamples: _historicalRewardSamples,
       );
+
+  Future<void> _loadRewardHistorySamples() async {
+    try {
+      final events = await _historyRepository.getAll();
+      if (!mounted) return;
+      setState(() {
+        _historicalRewardSamples = events
+            .map(
+              (event) => RewardPointHistorySample(
+                xpReward: event.xpGranted,
+                rewardPoints: event.rewardPointsGranted,
+              ),
+            )
+            .toList();
+      });
+    } catch (_) {
+      // Keep non-blocking behavior when historical lookups fail.
+    }
+  }
 
   Future<void> _pickDate() async {
     final now = DateTime.now();
@@ -631,9 +658,10 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
   }
 
   Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (_isSaving || !_formKey.currentState!.validate()) return;
     final base = widget.initial;
-    final estimatedDuration = int.tryParse(_durationController.text.trim()) ?? 30;
+    final estimatedDuration =
+        int.tryParse(_durationController.text.trim()) ?? 30;
     final mission = Mission(
       id: base?.id,
       title: _titleController.text.trim(),
@@ -668,18 +696,33 @@ class _MissionEditorScreenState extends State<MissionEditorScreen> {
       skillIds: _selectedSkillIds.toList(),
     );
 
-    if (mission.id != null) {
-      await _dropRepository.replaceForMission(
-        mission.id!,
-        _rewardDrops
-            .map((drop) => drop.copyWith(missionId: mission.id!))
-            .toList(),
-      );
+    final provider = context.read<MissionProvider>();
+    setState(() => _isSaving = true);
+    try {
+      if (mission.id == null) {
+        final id = await provider.addMission(
+          mission,
+          rewardDrops: _rewardDrops,
+        );
+        if (id == null) throw StateError(provider.error ?? 'Save failed');
+      } else {
+        await provider.updateMission(mission, rewardDrops: _rewardDrops);
+        if (provider.error != null) throw StateError(provider.error!);
+      }
+      widget.onSave?.call(mission);
+      if (mounted) {
+        showMissionWarning(context, provider.warning);
+        Navigator.pop(context, mission);
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao salvar missão: $error')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
-
-    widget.onSave?.call(mission);
-    if (!mounted) return;
-    Navigator.pop(context, mission);
   }
 }
 

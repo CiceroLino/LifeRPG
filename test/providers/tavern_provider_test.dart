@@ -1,3 +1,4 @@
+import '../support/test_database.dart';
 import 'dart:async';
 import 'dart:io';
 
@@ -5,7 +6,6 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-import 'package:liferpg/data/database/database_helper.dart';
 import 'package:liferpg/data/repositories/audio_track_repository.dart';
 import 'package:liferpg/providers/tavern_provider.dart';
 import 'package:liferpg/services/local_media_import_service.dart';
@@ -28,6 +28,7 @@ class FakeTavernPlayback implements TavernPlayback {
   int stopCount = 0;
   Object? loadError;
   Object? playError;
+  Completer<void>? playingUntilStopped;
 
   @override
   Stream<bool> get playingStream => _playingController.stream;
@@ -63,6 +64,7 @@ class FakeTavernPlayback implements TavernPlayback {
     if (error != null) throw error;
     playCount += 1;
     emitPlaying(true);
+    await playingUntilStopped?.future;
   }
 
   @override
@@ -115,7 +117,7 @@ void main() {
   });
 
   setUp(() async {
-    await DatabaseHelper().resetForTesting();
+    await resetTestDatabase();
     tempDir = await Directory.systemTemp.createTemp('liferpg_tavern_provider_');
     playback = FakeTavernPlayback();
     provider = TavernProvider(
@@ -131,6 +133,65 @@ void main() {
     if (await tempDir.exists()) {
       await tempDir.delete(recursive: true);
     }
+  });
+
+  test('start persists metadata without waiting for playback end', () async {
+    await provider.importTrackFromPath('/long.mp3');
+    playback.playingUntilStopped = Completer<void>();
+    var returned = false;
+    final start = provider
+        .playTrack(provider.tracks.single)
+        .then((_) => returned = true);
+    await Future.any([
+      start,
+      Future<void>.delayed(const Duration(milliseconds: 100)),
+    ]);
+    final startedBeforeEnd = returned;
+    final saved = await tracks.getTrackById(provider.tracks.single.id!);
+    playback.playingUntilStopped!.complete();
+    await start;
+    expect(startedBeforeEnd, isTrue);
+    expect(saved!.lastPlayedAt, isNotNull);
+  });
+
+  test('single track repeat all restarts from zero after completion', () async {
+    await provider.importTrackFromPath('/loop.mp3');
+    await provider.playTrack(provider.tracks.single);
+    provider.cycleRepeatMode();
+    await provider.playNextTrack(fromCompletion: true);
+    expect(playback.seekPosition, Duration.zero);
+    expect(playback.playCount, 2);
+  });
+
+  test(
+    'late completion of previous source does not advance new selection',
+    () async {
+      await provider.importTrackFromPath('/a.mp3');
+      await provider.importTrackFromPath('/b.mp3');
+      final a = provider.tracks.firstWhere((t) => t.filePath == '/a.mp3');
+      final b = provider.tracks.firstWhere((t) => t.filePath == '/b.mp3');
+      await provider.playTrack(a);
+      await provider.playTrack(b);
+      provider.cycleRepeatMode();
+      playback.emitCommand(
+        const TavernPlaybackCommand(
+          TavernPlaybackCommandType.completed,
+          filePath: '/a.mp3',
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(provider.activeTrack!.filePath, '/b.mp3');
+      expect(playback.loadCount, 2);
+    },
+  );
+
+  test('late playback errors are captured for the selected track', () async {
+    await provider.importTrackFromPath('/error.mp3');
+    playback.playError = StateError('Device removed');
+    await provider.playTrack(provider.tracks.single);
+    await Future<void>.delayed(Duration.zero);
+    expect(provider.error, contains('Device removed'));
+    expect(provider.isPlaying, isFalse);
   });
 
   test('imports local audio metadata and filters tracks', () async {

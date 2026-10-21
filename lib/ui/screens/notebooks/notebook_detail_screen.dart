@@ -49,9 +49,12 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> {
       body: Consumer<NotebookProvider>(
         builder: (context, provider, _) {
           final query = _query.trim().toLowerCase();
+          final ownNotes = provider.notes
+              .where((note) => note.notebookId == widget.notebook.id)
+              .toList();
           final notes = query.isEmpty
-              ? provider.notes
-              : provider.notes
+              ? ownNotes
+              : ownNotes
                     .where(
                       (note) =>
                           note.title.toLowerCase().contains(query) ||

@@ -1,3 +1,5 @@
+const Object _copyWithUnset = Object();
+
 class Player {
   final int id;
   final String name;
@@ -86,11 +88,11 @@ class Player {
     int? totalXP,
     int? level,
     int? rewardPoints,
-    String? avatarPath,
+    Object? avatarPath = _copyWithUnset,
     int? currentEnergy,
     String? energyMode,
-    String? wakeUpTime,
-    String? sleepTime,
+    Object? wakeUpTime = _copyWithUnset,
+    Object? sleepTime = _copyWithUnset,
     String? themeMode,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -103,11 +105,17 @@ class Player {
       totalXP: totalXP ?? this.totalXP,
       level: level ?? this.level,
       rewardPoints: rewardPoints ?? this.rewardPoints,
-      avatarPath: avatarPath ?? this.avatarPath,
+      avatarPath: identical(avatarPath, _copyWithUnset)
+          ? this.avatarPath
+          : avatarPath as String?,
       currentEnergy: currentEnergy ?? this.currentEnergy,
       energyMode: energyMode ?? this.energyMode,
-      wakeUpTime: wakeUpTime ?? this.wakeUpTime,
-      sleepTime: sleepTime ?? this.sleepTime,
+      wakeUpTime: identical(wakeUpTime, _copyWithUnset)
+          ? this.wakeUpTime
+          : wakeUpTime as String?,
+      sleepTime: identical(sleepTime, _copyWithUnset)
+          ? this.sleepTime
+          : sleepTime as String?,
       themeMode: themeMode ?? this.themeMode,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

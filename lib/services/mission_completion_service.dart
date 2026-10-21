@@ -1,3 +1,4 @@
+import '../data/database/data_operations.dart';
 import 'package:sqflite/sqflite.dart';
 import 'dart:math';
 
@@ -53,76 +54,73 @@ class MissionSkillRewardResult {
 class MissionCompletionService {
   final DatabaseHelper _dbHelper = DatabaseHelper();
   final Random _random;
+  final DateTime Function() _clock;
 
-  MissionCompletionService({Random? random}) : _random = random ?? Random();
+  MissionCompletionService({Random? random, DateTime Function()? clock})
+    : _random = random ?? Random(),
+      _clock = clock ?? DateTime.now;
 
-  Future<MissionCompletionResult> completeMission(int missionId) async {
-    final db = await _dbHelper.database;
-    return db.transaction((txn) async {
-      final mission = await _getMission(txn, missionId);
-      final skillIds = await _getMissionSkillIds(txn, missionId);
-      final missionWithSkills = mission.copyWith(skillIds: skillIds);
-      final now = DateTime.now();
-
-      if (_isDuplicateCompletion(missionWithSkills, now)) {
-        return MissionCompletionResult(
-          mission: missionWithSkills,
-          status: MissionCompletionStatus.duplicateBlocked,
-          xpGranted: 0,
-          rewardPointsGranted: 0,
-        );
-      }
-
-      final resultingStreak = mission.isRecurring ? mission.streak + 1 : 0;
-      final eventId = await txn.insert('mission_completion_events', {
-        'mission_id': missionId,
-        'mission_title_snapshot': mission.title,
-        'xp_granted': mission.xpReward,
-        'reward_points_granted': mission.rewardPoints,
-        'completed_at': now.toIso8601String(),
-        'recurrence_type': mission.recurrenceType,
-        'resulting_streak': resultingStreak,
-      });
-
-      final skillRewards = await _rewardSkills(
-        txn,
-        eventId: eventId,
-        skillIds: skillIds,
-        xpReward: mission.xpReward,
-        now: now,
-      );
-
-      await _rewardPlayer(
-        txn,
-        xpReward: mission.xpReward,
-        rewardPoints: mission.rewardPoints,
-        now: now,
-      );
-
-      final rewardDrops = await _rollRewardDrops(
-        txn,
-        eventId: eventId,
-        missionId: missionId,
-        now: now,
-      );
-
-      final updatedMission = await _updateMissionAfterCompletion(
-        txn,
-        mission,
-        now,
-        resultingStreak,
-      );
-
-      return MissionCompletionResult(
-        mission: updatedMission.copyWith(skillIds: skillIds),
-        status: _statusFor(updatedMission),
-        xpGranted: mission.xpReward,
-        rewardPointsGranted: mission.rewardPoints,
-        skillRewards: skillRewards,
-        rewardDrops: rewardDrops,
-      );
-    });
-  }
+  Future<MissionCompletionResult> completeMission(int missionId) =>
+      DataOperations.instance.run(() async {
+        final db = await _dbHelper.database;
+        return db.transaction((txn) async {
+          final mission = await _getMission(txn, missionId);
+          final skillIds = await _getMissionSkillIds(txn, missionId);
+          final missionWithSkills = mission.copyWith(skillIds: skillIds);
+          final now = _clock();
+          if (_isDuplicateCompletion(missionWithSkills, now)) {
+            return MissionCompletionResult(
+              mission: missionWithSkills,
+              status: MissionCompletionStatus.duplicateBlocked,
+              xpGranted: 0,
+              rewardPointsGranted: 0,
+            );
+          }
+          final resultingStreak = mission.isRecurring ? mission.streak + 1 : 0;
+          final eventId = await txn.insert('mission_completion_events', {
+            'mission_id': missionId,
+            'mission_title_snapshot': mission.title,
+            'xp_granted': mission.xpReward,
+            'reward_points_granted': mission.rewardPoints,
+            'completed_at': now.toIso8601String(),
+            'recurrence_type': mission.recurrenceType,
+            'resulting_streak': resultingStreak,
+          });
+          final skillRewards = await _rewardSkills(
+            txn,
+            eventId: eventId,
+            skillIds: skillIds,
+            xpReward: mission.xpReward,
+            now: now,
+          );
+          await _rewardPlayer(
+            txn,
+            xpReward: mission.xpReward,
+            rewardPoints: mission.rewardPoints,
+            now: now,
+          );
+          final rewardDrops = await _rollRewardDrops(
+            txn,
+            eventId: eventId,
+            missionId: missionId,
+            now: now,
+          );
+          final updatedMission = await _updateMissionAfterCompletion(
+            txn,
+            mission,
+            now,
+            resultingStreak,
+          );
+          return MissionCompletionResult(
+            mission: updatedMission.copyWith(skillIds: skillIds),
+            status: _statusFor(updatedMission),
+            xpGranted: mission.xpReward,
+            rewardPointsGranted: mission.rewardPoints,
+            skillRewards: skillRewards,
+            rewardDrops: rewardDrops,
+          );
+        });
+      }, readOnly: false);
 
   bool _isDuplicateCompletion(Mission mission, DateTime now) {
     if (!mission.isRecurring) {
@@ -362,6 +360,12 @@ class MissionCompletionService {
     }
 
     final nextDueDate = _nextDueDate(mission, now);
+    final oldDue = mission.dueDate;
+    final oldReminder = mission.reminderAt;
+    final nextReminder =
+        oldDue != null && oldReminder != null && nextDueDate != null
+        ? nextDueDate.add(oldReminder.difference(oldDue))
+        : oldReminder;
     await db.update(
       'missions',
       {
@@ -369,6 +373,7 @@ class MissionCompletionService {
         'last_completed_at': now.toIso8601String(),
         'streak': resultingStreak,
         'due_date': nextDueDate?.toIso8601String(),
+        'reminder_at': nextReminder?.toIso8601String(),
         'updated_at': now.toIso8601String(),
         'completed_at': null,
       },
@@ -379,78 +384,87 @@ class MissionCompletionService {
     return mission.copyWith(
       status: 'active',
       dueDate: nextDueDate,
+      reminderAt: nextReminder,
       lastCompletedAt: now,
       streak: resultingStreak,
       updatedAt: now,
     );
   }
 
-  DateTime? _nextDueDate(Mission mission, DateTime now) {
-    if (mission.recurrenceType == 'continuous') {
-      return mission.dueDate;
-    }
-
-    DateTime? dueDate = mission.dueDate ?? now;
-    var guard = 0;
-    while (!dueDate!.isAfter(now) && guard < 1000) {
-      dueDate = _addRecurrenceInterval(
-        dueDate,
-        mission.recurrenceType,
-        mission.recurrenceInterval,
-        mission.recurrenceDays,
-      );
-      guard++;
-    }
-    return dueDate;
+  DateTime _calendarOffset(
+    DateTime date, {
+    int days = 0,
+    int months = 0,
+    int years = 0,
+  }) {
+    final create = date.isUtc ? DateTime.utc : DateTime.new;
+    return create(
+      date.year + years,
+      date.month + months,
+      date.day + days,
+      date.hour,
+      date.minute,
+      date.second,
+      date.millisecond,
+      date.microsecond,
+    );
   }
 
-  DateTime _addRecurrenceInterval(
-    DateTime date,
-    String? recurrenceType,
-    int? recurrenceInterval,
-    List<int> recurrenceDays,
-  ) {
-    final interval = recurrenceInterval == null || recurrenceInterval < 1
-        ? 1
-        : recurrenceInterval;
-    switch (recurrenceType) {
-      case 'weekly':
-        if (recurrenceDays.isNotEmpty) {
-          var next = date.add(const Duration(days: 1));
-          var guard = 0;
-          while (!recurrenceDays.contains(next.weekday) && guard < 14) {
-            next = next.add(const Duration(days: 1));
-            guard++;
+  DateTime _civilDay(DateTime date) =>
+      DateTime.utc(date.year, date.month, date.day);
+
+  DateTime? _nextDueDate(Mission mission, DateTime now) {
+    if (mission.recurrenceType == 'continuous') return mission.dueDate;
+    final reference = mission.dueDate ?? now;
+    final alignedNow = reference.isUtc ? now.toUtc() : now.toLocal();
+    final interval = max(1, mission.recurrenceInterval ?? 1);
+    final type = mission.recurrenceType;
+    final days =
+        mission.recurrenceDays.where((d) => d >= 1 && d <= 7).toSet().toList()
+          ..sort();
+    if (type == 'weekly' && days.isNotEmpty) {
+      final monday = _calendarOffset(reference, days: 1 - reference.weekday);
+      final weeks = max(
+        0,
+        _civilDay(alignedNow).difference(_civilDay(monday)).inDays ~/ 7,
+      );
+      var eligibleWeek = (weeks ~/ interval) * interval;
+      for (var pass = 0; pass < 2; pass++) {
+        for (final day in days) {
+          final candidate = _calendarOffset(
+            monday,
+            days: eligibleWeek * 7 + day - 1,
+          );
+          if (candidate.isAfter(now) && candidate.isAfter(reference)) {
+            return candidate;
           }
-          return next;
         }
-        return date.add(Duration(days: 7 * interval));
-      case 'monthly':
-        return DateTime(
-          date.year,
-          date.month + interval,
-          date.day,
-          date.hour,
-          date.minute,
-          date.second,
-          date.millisecond,
-          date.microsecond,
-        );
-      case 'yearly':
-        return DateTime(
-          date.year + interval,
-          date.month,
-          date.day,
-          date.hour,
-          date.minute,
-          date.second,
-          date.millisecond,
-          date.microsecond,
-        );
-      case 'daily':
-      default:
-        return date.add(Duration(days: interval));
+        eligibleWeek += interval;
+      }
+      throw StateError('Unable to advance weekly recurrence.');
     }
+    if (type != 'monthly' && type != 'yearly') {
+      final period = type == 'weekly' ? 7 * interval : interval;
+      final gap = max(
+        0,
+        _civilDay(alignedNow).difference(_civilDay(reference)).inDays,
+      );
+      final cycles = gap ~/ period;
+      var next = _calendarOffset(reference, days: cycles * period);
+      if (!next.isAfter(now)) next = _calendarOffset(next, days: period);
+      return next;
+    }
+    var next = reference;
+    while (!next.isAfter(now)) {
+      final candidate = type == 'monthly'
+          ? _calendarOffset(next, months: interval)
+          : _calendarOffset(next, years: interval);
+      if (!candidate.isAfter(next)) {
+        throw StateError('Recurrence must advance.');
+      }
+      next = candidate;
+    }
+    return next;
   }
 
   MissionCompletionStatus _statusFor(Mission mission) {

@@ -65,7 +65,11 @@ Providers principais:
 
 Arquivo do banco: `liferpg.db`.
 
-Versão atual do schema: `13`.
+No desktop, o banco fica em `Application Support/databases`, independente do diretório de execução. Na primeira abertura com essa configuração, um banco antigo do caminho FFI (`<cwd>/.dart_tool/sqflite_common_ffi/databases/liferpg.db`) é copiado por snapshot SQLite validado quando o destino ainda não existe. O original é preservado; um destino existente nunca é sobrescrito. Se o banco antigo estiver em outro diretório de execução, recupere-o por backup/importação em vez de apagar o destino.
+
+Testes usam `test/flutter_test_config.dart` para criar diretório temporário exclusivo por suíte. Resets de teste vivem em `test/support/test_database.dart` e exigem o marcador do sandbox; o helper de produção não oferece reset destrutivo para testes.
+
+Versão atual do schema: `14`.
 
 Tabelas principais:
 
@@ -97,13 +101,16 @@ Notas de migração:
 - A versão 11 adiciona `notebooks` e `notes`.
 - A versão 12 adiciona `tomes`.
 - A versão 13 adiciona `audio_tracks`.
+- A versão 14 adiciona `focus_sessions.session_key` anulável e índice único para idempotência.
 - Foreign keys são habilitadas em `onConfigure`.
 
 Backup/restore:
 
-- `DatabaseHelper.getAllDataForBackup()` exporta todas as tabelas principais com `version` e `timestamp`.
-- `DatabaseHelper.restoreData()` limpa os dados existentes e insere o payload de backup dentro de uma transação.
-- Restore assume que as linhas do backup são compatíveis com o schema atual.
+- `getAllDataForBackup()` lê todas as tabelas numa única transação: snapshot consistente, formato 2 e `schemaVersion` explícito.
+- `BackupDocument` valida tipos, campos, limites, referências e ciclos antes de apagar qualquer linha. Hierarquias são ordenadas por dependência; restore insere numa transação e verifica foreign keys.
+- Backups legados 1.0 são aceitos quando a escala é identificável. Schema anterior a 5 converte atributos 1–5 para 0–100; payload antigo ambíguo sem versão é rejeitado para evitar reinterpretar percentuais baixos.
+- JSON contém metadados; arquivos PDF/áudio, avatares externos e preferências não são empacotados. Restaurar em outro dispositivo não transporta os arquivos dos caminhos locais.
+- `AppDataCoordinator` pausa foco/áudio, bloqueia novas edições, aguarda operações antigas, substitui dados e recarrega todos os providers antes de liberar a interface. Restore inválido preserva o banco. Reset/restore preservam mídia gerenciada para não quebrar backups locais anteriores.
 
 ## Regras do Player
 
@@ -233,14 +240,14 @@ Criação de missão:
 - Uma missão só deve ter uma missão pai, mas pode ter várias missões filhas. Missões filhas representam partes executáveis de um projeto maior.
 - Missões com duração e vencimento para hoje podem exibir aviso visual quando o total planejado excede o tempo acordado restante do player em modo auto.
 - O botão de subtarefa no card abre criação com `parentMissionId` já preenchido.
-- Lembretes usam `MissionReminderService` e respeitam a preferência `notificationsEnabled`.
+- Lembretes usam `MissionReminderService` e respeitam a preferência real `notificationsEnabled`. No primeiro uso solicitam permissão; a reconciliação consulta o estado do SO sem prompt, preserva recusas e agrega avisos que a UI exibe após salvar.
 - Localização usa mapa real com tiles OSM; o usuário pode usar GPS ou tocar no mapa.
 
 Vínculo com skills:
 
 - Use `MissionRepository.linkSkills`.
 - Atualizar vínculos apaga as linhas existentes da missão e insere a lista recebida.
-- Cuidado ao atualizar uma missão com `skillIds` vazio: `MissionProvider.updateMission` atualmente só relinka quando a lista não está vazia, então limpar todos os vínculos pode exigir tratamento no repository.
+- Uma lista vazia remove todos os vínculos, inclusive ao editar a missão.
 
 ## Regras de Conclusão de Missão
 
@@ -493,8 +500,8 @@ Padrões:
 
 Comportamento de reset:
 
-- `resetCharacter()` reseta XP, nível, RP, energia, modo de energia e horários de acordar/dormir do player.
-- `factoryReset()` deleta dados de recompensas, inventário, histórico de conclusão, missões, skills e player; reinsere apenas o player padrão; limpa preferências e recarrega padrões.
+- `resetCharacter()` reseta nome, título/classe, descrição, avatar, XP, nível, RP, energia, modo de energia e horários de acordar/dormir do player. Missões, skills, recompensas, inventário, notebooks, tomes e tavern são preservados.
+- `factoryReset()` remove todas as tabelas de dados em ordem de dependência, incluindo notas/PDF/áudio; reinsere apenas o player padrão e limpa preferências. A UI usa `AppDataCoordinator`, nunca uma sequência parcial de reloads. Trocas bem-sucedidas incrementam a revisão de dados; o perfil descarta rascunhos da revisão anterior. Refresh comum e restore inválido preservam a edição.
 
 Estado inicial de skills:
 
@@ -512,13 +519,17 @@ Ordem do drawer:
 3. Rewards
 4. Inventory
 5. Skills
-6. Statistics
-7. Profile
-8. Shop
-9. Settings
-10. Help
+6. Notebooks
+7. Tomes
+8. Tavern
+9. Statistics
+10. Profile
+11. Shop
+12. Pomodoro
+13. Settings
+14. Help
 
-`PlayerStatsHeader` fica oculto em Skills, Settings e Help. Ele mostra tabs somente em Missions.
+O header pode ser recolhido e mostra tabs somente em Missions. A preferência `show_xp_bar` oculta a barra XP, mantendo HP e nível.
 
 Tabs de missões mapeiam para filtros:
 
@@ -533,7 +544,7 @@ Ações da app bar são contextuais:
 
 - Missions: alternar stats, busca, adicionar missão, mostrar concluídas, ordenar, filtro por skill.
 - Profile: alternar stats, editar, resetar avatar, compartilhar perfil.
-- Statistics: alternar stats, calendário, exportar dados, limpar histórico.
+- Statistics: alternar stats, exportar dados, limpar histórico. Calendário sem aplicação de filtro foi retirado.
 
 O título `LifeRPG` da app bar abre navegação alternativa entre telas. Ele não deve abrir workspace nem sugerir partição persistida de dados.
 
@@ -581,6 +592,7 @@ Padrões comuns de UI:
 - Use `GameSnackBar` para eventos de feedback principais, principalmente conclusão de missão, compra, drop, backup e erros relevantes.
 - Use assets SVG de `assets/game-icons.net.svg/...` para ícones com tema RPG.
 - Use `normalizeMissionIconAsset` ao renderizar ícones salvos de missão.
+- Use `DefaultContentTemplates` para classes de perfil, templates de missão, presets de recompensa e cadernos sugeridos. Esses presets devem ser selecionáveis pelo usuário e não devem popular o banco automaticamente.
 - Mantenha textos curtos e escaneáveis. Muitas strings atuais estão em inglês mesmo em áreas do app em português; preserve o estilo local salvo quando a tarefa for localizar intencionalmente.
 
 Regras visuais do card de missão:
@@ -673,7 +685,7 @@ Arquivos de teste focados existentes:
 - `energyRequired` existe, mas conclusão de missão não consome energia.
 - `themeMode` existe em `Player`, mas `MaterialApp` atualmente força dark theme.
 - `RewardRepository.purchaseReward` assume que a linha do player existe.
-- Restore de backup insere linhas cruas e assume schema compatível.
+- Restore valida formato/schema e semântica antes da transação; anexos continuam fora do JSON.
 
 ## Como Estender com Segurança
 
@@ -699,3 +711,29 @@ Ao adicionar uma nova dependência ou usar API de biblioteca:
 1. Use `ctx7` primeiro para documentação atual.
 2. Prefira dependências existentes antes de adicionar pacotes novos.
 3. Atualize `pubspec.yaml`, rode `flutter pub get` e inclua mudanças de `pubspec.lock`.
+
+## Configurações e capacidades verificadas (2026-10-21)
+
+As chaves legadas de efeitos sonoros e início da semana permanecem compatíveis, mas seus controles sem efeito foram retirados. Sons de notificações atingem o adaptador de agendamento. Formato 24h é aplicado aos horários e pickers de energia. Nenhuma nova regra de calendário foi inventada.
+
+| Destino | Storage/mídia | Áudio | Lembretes | Evidência local |
+| --- | --- | --- | --- | --- |
+| Linux | Application Support, importação local | libmpv do sistema via media_kit; instalar libmpv/mpv atualizado | Agendamento indisponível, aviso sem perder missão | Build release, decode WAV nativo |
+| Windows | Application Support, importação local | WinRT MediaPlayer (`just_audio_windows`), codecs do sistema | Adaptador Windows configurado | CI configurado; execução pendente |
+| Android | SQLite e arquivos internos | just_audio/audio_service, background | Permissão + schedule/boot receivers; inexato | SDK local ausente; job CI preparado |
+| iOS/macOS | Storage local; macOS user-selected entitlement | Backend nativo just_audio | Permissão e som por preferência | Build/runtime Apple pendentes |
+| Web | SQLite WASM/IndexedDB, backup JSON | Backend Web, limitado aos arquivos/URLs acessíveis | Agendamento indisponível | Chromium release smoke; importação local desabilitada |
+
+Falha de áudio/notificações não impede a inicialização. Falha de storage essencial mostra erro e opção de tentar novamente. Linux precisa de libmpv instalada e atualizada pelo gerenciador do sistema; não há DLL FFmpeg de 2023 no destino Windows.
+
+## Desenvolvimento, release e segurança
+
+SDK fixado por `.fvmrc`: Flutter 3.44.2. Instale/resolva com `flutter pub get --enforce-lockfile`; rode `flutter analyze`, `flutter test`, `python3 -m unittest discover -s tool -p 'test_*.py'`, `python3 tool/security_audit.py`, `flutter build web --release` e `node tool/web_smoke.mjs`. O teste nativo Linux requer libmpv; CI Linux instala o pacote. Web smoke requer Node 24 e Chromium (`CHROME_BIN` opcional).
+
+No ambiente desta auditoria, use `TMPDIR` num diretório com quota disponível. Testes nunca devem usar o banco do usuário.
+
+Release Android exige `LIFERPG_APPLICATION_ID`, `LIFERPG_KEYSTORE_PATH`, `LIFERPG_KEYSTORE_PASSWORD`, `LIFERPG_KEY_ALIAS` e `LIFERPG_KEY_PASSWORD`. A compilação de release falha sem identidade/certificado; não usa chave debug. Preserve o ID/certificado de instalações já distribuídas. Nunca versionar keystore/senhas.
+
+CI fixa SDK/actions, lockfile, análise/testes, scan Pub/Gradle/Maven, builds desktop/mobile e smoke Web. Configurar um job não é evidência de sua execução. Outros SOs, assinatura, permissões negadas, reboot e entrega nativa de notificações exigem runners/dispositivos correspondentes.
+
+Inventário nativo e seus limites: `docs/security/native-components.json`. Atribuição dos 39 SVGs distribuídos: `docs/security/icon-attribution.json` e `THIRD_PARTY_NOTICES.md`, disponível também no menu de licenças. Os milhares de SVGs locais não incluídos no manifest não fazem parte desta mudança.

@@ -430,11 +430,12 @@ class _LifeRPGAppBarState extends State<LifeRPGAppBar> {
     final l10n = AppLocalizations.of(context);
     return [
       _buildStatusToggleButton(l10n),
-      IconButton(
-        icon: const Icon(Icons.calendar_today, color: AppTheme.textPrimary),
-        onPressed: widget.onCalendar,
-        tooltip: l10n.translate('calendar'),
-      ),
+      if (widget.onCalendar != null)
+        IconButton(
+          icon: const Icon(Icons.calendar_today, color: AppTheme.textPrimary),
+          onPressed: widget.onCalendar,
+          tooltip: l10n.translate('calendar'),
+        ),
       PopupMenuButton<String>(
         icon: const Icon(Icons.more_vert, color: AppTheme.textPrimary),
         tooltip: l10n.translate('more_options'),
@@ -610,7 +611,7 @@ class _LifeRPGAppBarState extends State<LifeRPGAppBar> {
       case 'shop':
         return l10n.translate('shop');
       case 'pomodoro':
-        return l10n.translate('pomodoro');
+        return l10n.translate('focus_quest');
       case 'settings':
         return l10n.translate('settings');
       case 'help':
@@ -700,7 +701,7 @@ class _LifeRPGAppBarState extends State<LifeRPGAppBar> {
     ),
     _AppBarDestination(
       index: 11,
-      label: l10n.translate('pomodoro'),
+      label: l10n.translate('focus_quest'),
       icon: Icons.hourglass_bottom_outlined,
     ),
     _AppBarDestination(

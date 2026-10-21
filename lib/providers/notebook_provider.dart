@@ -1,3 +1,4 @@
+import '../data/database/data_operations.dart';
 import 'package:flutter/foundation.dart';
 
 import '../data/models/note.dart';
@@ -5,7 +6,9 @@ import '../data/models/notebook.dart';
 import '../data/repositories/notebook_repository.dart';
 
 class NotebookProvider extends ChangeNotifier {
-  final NotebookRepository _repo = NotebookRepository();
+  NotebookProvider({NotebookRepository? repo})
+    : _repo = repo ?? NotebookRepository();
+  final NotebookRepository _repo;
 
   List<Notebook> _notebooks = [];
   List<Note> _notes = [];
@@ -13,6 +16,7 @@ class NotebookProvider extends ChangeNotifier {
   bool _isLoading = false;
   String _searchQuery = '';
   int? _selectedNotebookId;
+  int _notesRequest = 0;
 
   List<Notebook> get notebooks => _notebooks;
   List<Note> get notes => _notes;
@@ -20,6 +24,13 @@ class NotebookProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String get searchQuery => _searchQuery;
   int? get selectedNotebookId => _selectedNotebookId;
+
+  void clearSelection() {
+    _notesRequest++;
+    _selectedNotebookId = null;
+    _notes = [];
+    notifyListeners();
+  }
 
   List<Notebook> get filteredNotebooks {
     final query = _searchQuery.trim().toLowerCase();
@@ -33,10 +44,9 @@ class NotebookProvider extends ChangeNotifier {
         .toList();
   }
 
-  Future<void> loadNotebooks() async {
+  Future<void> loadNotebooks() => DataOperations.instance.run(() async {
     _isLoading = true;
     notifyListeners();
-
     try {
       _notebooks = await _repo.getActiveNotebooks();
       _noteCountsByNotebook = await _repo.getNoteCountsByNotebook();
@@ -46,7 +56,7 @@ class NotebookProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
-  }
+  }, readOnly: true);
 
   void setSearchQuery(String value) {
     if (_searchQuery == value) return;
@@ -54,42 +64,50 @@ class NotebookProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<int?> addNotebook(Notebook notebook) async {
-    try {
-      final id = await _repo.insertNotebook(notebook);
-      await loadNotebooks();
-      return id;
-    } catch (e) {
-      debugPrint('Error adding notebook: $e');
-      return null;
-    }
-  }
+  Future<int?> addNotebook(Notebook notebook) =>
+      DataOperations.instance.run(() async {
+        try {
+          final id = await _repo.insertNotebook(notebook);
+          await loadNotebooks();
+          return id;
+        } catch (e) {
+          debugPrint('Error adding notebook: $e');
+          return null;
+        }
+      }, readOnly: false);
 
-  Future<void> updateNotebook(Notebook notebook) async {
-    try {
-      await _repo.updateNotebook(notebook);
-      await loadNotebooks();
-    } catch (e) {
-      debugPrint('Error updating notebook: $e');
-    }
-  }
+  Future<void> updateNotebook(Notebook notebook) =>
+      DataOperations.instance.run(() async {
+        try {
+          await _repo.updateNotebook(notebook);
+          await loadNotebooks();
+        } catch (e) {
+          debugPrint('Error updating notebook: $e');
+        }
+      }, readOnly: false);
 
-  Future<void> archiveNotebook(int id) async {
+  Future<void> archiveNotebook(int id) => DataOperations.instance.run(() async {
     try {
       await _repo.archiveNotebook(id);
       await loadNotebooks();
     } catch (e) {
       debugPrint('Error archiving notebook: $e');
     }
-  }
+  }, readOnly: false);
 
-  Future<void> loadNotes(int notebookId) async {
-    _selectedNotebookId = notebookId;
-    _notes = await _repo.getNotesForNotebook(notebookId);
-    notifyListeners();
-  }
+  Future<void> loadNotes(int notebookId) =>
+      DataOperations.instance.run(() async {
+        final request = ++_notesRequest;
+        _selectedNotebookId = notebookId;
+        _notes = [];
+        notifyListeners();
+        final notes = await _repo.getNotesForNotebook(notebookId);
+        if (request != _notesRequest) return;
+        _notes = notes;
+        notifyListeners();
+      }, readOnly: true);
 
-  Future<int?> addNote(Note note) async {
+  Future<int?> addNote(Note note) => DataOperations.instance.run(() async {
     try {
       final id = await _repo.insertNote(note);
       await loadNotes(note.notebookId);
@@ -99,9 +117,9 @@ class NotebookProvider extends ChangeNotifier {
       debugPrint('Error adding note: $e');
       return null;
     }
-  }
+  }, readOnly: false);
 
-  Future<void> updateNote(Note note) async {
+  Future<void> updateNote(Note note) => DataOperations.instance.run(() async {
     try {
       await _repo.updateNote(note);
       await loadNotes(note.notebookId);
@@ -109,9 +127,9 @@ class NotebookProvider extends ChangeNotifier {
     } catch (e) {
       debugPrint('Error updating note: $e');
     }
-  }
+  }, readOnly: false);
 
-  Future<void> deleteNote(int id) async {
+  Future<void> deleteNote(int id) => DataOperations.instance.run(() async {
     try {
       await _repo.deleteNote(id);
       final notebookId = _selectedNotebookId;
@@ -122,5 +140,5 @@ class NotebookProvider extends ChangeNotifier {
     } catch (e) {
       debugPrint('Error deleting note: $e');
     }
-  }
+  }, readOnly: false);
 }

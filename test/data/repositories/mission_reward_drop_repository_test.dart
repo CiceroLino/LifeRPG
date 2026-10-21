@@ -1,7 +1,7 @@
+import '../../support/test_database.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-import 'package:liferpg/data/database/database_helper.dart';
 import 'package:liferpg/data/models/mission.dart';
 import 'package:liferpg/data/models/mission_reward_drop.dart';
 import 'package:liferpg/data/models/reward.dart';
@@ -22,7 +22,7 @@ void main() {
   });
 
   setUp(() async {
-    await DatabaseHelper().resetForTesting();
+    await resetTestDatabase();
     missions = MissionRepository();
     rewards = RewardRepository();
     drops = MissionRewardDropRepository();
