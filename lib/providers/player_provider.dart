@@ -38,10 +38,11 @@ class PlayerProvider extends ChangeNotifier {
 
   Future<void> updatePlayer(Player player) async {
     try {
-      await _playerRepo.update(player);
+      await _playerRepo.updateProfile(player);
       await loadPlayer();
     } catch (e) {
       debugPrint('Erro ao atualizar player: $e');
+      rethrow;
     }
   }
 
@@ -49,24 +50,28 @@ class PlayerProvider extends ChangeNotifier {
     if (mode != 'manual' && mode != 'auto') return;
     final current = _player;
     if (current == null) return;
-    await updatePlayer(current.copyWith(energyMode: mode));
+    await _playerRepo.updateEnergy(mode: mode);
+    await loadPlayer();
   }
 
   Future<void> setWakeUpTime(String wakeUpTime) async {
     final current = _player;
     if (current == null) return;
-    await updatePlayer(current.copyWith(wakeUpTime: wakeUpTime));
+    await _playerRepo.updateEnergy(wakeUpTime: wakeUpTime);
+    await loadPlayer();
   }
 
   Future<void> setSleepTime(String sleepTime) async {
     final current = _player;
     if (current == null) return;
-    await updatePlayer(current.copyWith(sleepTime: sleepTime));
+    await _playerRepo.updateEnergy(sleepTime: sleepTime);
+    await loadPlayer();
   }
 
   Future<void> setManualEnergy(int value) async {
     final current = _player;
     if (current == null) return;
-    await updatePlayer(current.copyWith(currentEnergy: value.clamp(0, 100)));
+    await _playerRepo.updateEnergy(value: value);
+    await loadPlayer();
   }
 }
