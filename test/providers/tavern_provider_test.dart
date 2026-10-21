@@ -1,3 +1,4 @@
+import '../support/test_database.dart';
 import 'dart:async';
 import 'dart:io';
 
@@ -115,7 +116,7 @@ void main() {
   });
 
   setUp(() async {
-    await DatabaseHelper().resetForTesting();
+    await resetTestDatabase();
     tempDir = await Directory.systemTemp.createTemp('liferpg_tavern_provider_');
     playback = FakeTavernPlayback();
     provider = TavernProvider(

@@ -1,3 +1,4 @@
+import '../support/test_database.dart';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
@@ -21,7 +22,7 @@ void main() {
   });
 
   setUp(() async {
-    await DatabaseHelper().resetForTesting();
+    await resetTestDatabase();
     tempDir = await Directory.systemTemp.createTemp('liferpg_tome_provider_');
     provider = TomeProvider(
       mediaImporter: createLocalMediaImportService(basePath: tempDir.path),

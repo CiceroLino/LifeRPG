@@ -1,3 +1,4 @@
+import '../support/test_database.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
@@ -19,7 +20,7 @@ void main() {
   });
 
   setUp(() async {
-    await DatabaseHelper().resetForTesting();
+    await resetTestDatabase();
     service = FocusSessionService();
     sessions = FocusSessionRepository();
     players = PlayerRepository();
@@ -53,7 +54,7 @@ void main() {
     await service.completeSession(plannedMinutes: 45, completedMinutes: 45);
 
     final backup = await DatabaseHelper().getAllDataForBackup();
-    await DatabaseHelper().resetForTesting();
+    await resetTestDatabase();
     expect(await sessions.getRecent(), isEmpty);
 
     await DatabaseHelper().restoreData(backup);

@@ -65,6 +65,10 @@ Providers principais:
 
 Arquivo do banco: `liferpg.db`.
 
+No desktop, o banco fica em `Application Support/databases`, independente do diretório de execução. Na primeira abertura com essa configuração, um banco antigo do caminho FFI (`<cwd>/.dart_tool/sqflite_common_ffi/databases/liferpg.db`) é copiado por snapshot SQLite validado quando o destino ainda não existe. O original é preservado; um destino existente nunca é sobrescrito. Se o banco antigo estiver em outro diretório de execução, recupere-o por backup/importação em vez de apagar o destino.
+
+Testes usam `test/flutter_test_config.dart` para criar diretório temporário exclusivo por suíte. Resets de teste vivem em `test/support/test_database.dart` e exigem o marcador do sandbox; o helper de produção não oferece reset destrutivo para testes.
+
 Versão atual do schema: `13`.
 
 Tabelas principais:

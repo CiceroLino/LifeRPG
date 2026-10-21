@@ -847,20 +847,10 @@ class DatabaseHelper {
   }
 
   Future<void> close() async {
-    final db = await database;
-    await db.close();
-    _database = null;
-  }
-
-  Future<void> resetForTesting() async {
     if (_database != null) {
       await _database!.close();
       _database = null;
     }
-    final databasesPath = await getDatabasesPath();
-    final path = join(databasesPath, 'liferpg.db');
-    await deleteDatabase(path);
-    _database = await _initDatabase();
   }
 
   Future<void> _insertDefaultPlayer(DatabaseExecutor db) async {

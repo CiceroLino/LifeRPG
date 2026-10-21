@@ -4,6 +4,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'package:liferpg/data/database/database_helper.dart';
 import 'package:liferpg/data/repositories/mission_repository.dart';
+import '../../support/test_database.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -14,9 +15,7 @@ void main() {
   });
 
   setUp(() async {
-    await DatabaseHelper().close();
-    final path = join(await getDatabasesPath(), 'liferpg.db');
-    await deleteDatabase(path);
+    await clearTestDatabase();
   });
 
   test('upgrades stored 1-5 mission attributes to 0-100 percentages', () async {
