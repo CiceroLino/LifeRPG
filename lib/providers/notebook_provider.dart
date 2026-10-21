@@ -6,7 +6,9 @@ import '../data/models/notebook.dart';
 import '../data/repositories/notebook_repository.dart';
 
 class NotebookProvider extends ChangeNotifier {
-  final NotebookRepository _repo = NotebookRepository();
+  NotebookProvider({NotebookRepository? repo})
+    : _repo = repo ?? NotebookRepository();
+  final NotebookRepository _repo;
 
   List<Notebook> _notebooks = [];
   List<Note> _notes = [];
@@ -14,6 +16,7 @@ class NotebookProvider extends ChangeNotifier {
   bool _isLoading = false;
   String _searchQuery = '';
   int? _selectedNotebookId;
+  int _notesRequest = 0;
 
   List<Notebook> get notebooks => _notebooks;
   List<Note> get notes => _notes;
@@ -23,6 +26,7 @@ class NotebookProvider extends ChangeNotifier {
   int? get selectedNotebookId => _selectedNotebookId;
 
   void clearSelection() {
+    _notesRequest++;
     _selectedNotebookId = null;
     _notes = [];
     notifyListeners();
@@ -93,8 +97,13 @@ class NotebookProvider extends ChangeNotifier {
 
   Future<void> loadNotes(int notebookId) =>
       DataOperations.instance.run(() async {
+        final request = ++_notesRequest;
         _selectedNotebookId = notebookId;
-        _notes = await _repo.getNotesForNotebook(notebookId);
+        _notes = [];
+        notifyListeners();
+        final notes = await _repo.getNotesForNotebook(notebookId);
+        if (request != _notesRequest) return;
+        _notes = notes;
         notifyListeners();
       }, readOnly: true);
 

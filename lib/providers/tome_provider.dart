@@ -123,18 +123,10 @@ class TomeProvider extends ChangeNotifier {
     int? totalPages,
   }) => DataOperations.instance.run(() async {
     try {
-      final tome = await _repo.getTomeById(id);
-      if (tome == null) return;
-      final safeCurrentPage = currentPage < 0 ? 0 : currentPage;
-      final safeTotalPages = totalPages != null && totalPages > 0
-          ? totalPages
-          : tome.totalPages;
-      await _repo.updateTome(
-        tome.copyWith(
-          currentPage: safeCurrentPage,
-          totalPages: safeTotalPages,
-          clearTotalPages: safeTotalPages == null,
-        ),
+      await _repo.updateReadingProgress(
+        id,
+        currentPage: currentPage,
+        totalPages: totalPages,
       );
       await loadTomes();
     } catch (e) {

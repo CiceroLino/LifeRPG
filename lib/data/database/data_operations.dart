@@ -53,6 +53,8 @@ class DataOperations extends ChangeNotifier {
       while (_pending.isNotEmpty) {
         await Future.wait(_pending.toList(growable: false));
       }
+      // An old asynchronous load may have started playback while draining.
+      await runZoned(quiesce, zoneValues: {_zoneKey: token});
       return await runZoned(change, zoneValues: {_zoneKey: token});
     } finally {
       token.active = false;

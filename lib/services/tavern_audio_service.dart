@@ -11,10 +11,11 @@ export '../data/models/audio_track.dart';
 enum TavernPlaybackCommandType { pause, stop, seek, previous, next, completed }
 
 class TavernPlaybackCommand {
-  const TavernPlaybackCommand(this.type, {this.position});
+  const TavernPlaybackCommand(this.type, {this.position, this.filePath});
 
   final TavernPlaybackCommandType type;
   final Duration? position;
+  final String? filePath;
 }
 
 abstract class TavernPlayback {
@@ -183,7 +184,10 @@ class TavernAudioHandler extends BaseAudioHandler with SeekHandler {
     _lastProcessingState = event.processingState;
     if (completed) {
       _commandController.add(
-        const TavernPlaybackCommand(TavernPlaybackCommandType.completed),
+        TavernPlaybackCommand(
+          TavernPlaybackCommandType.completed,
+          filePath: mediaItem.value?.id,
+        ),
       );
     }
 

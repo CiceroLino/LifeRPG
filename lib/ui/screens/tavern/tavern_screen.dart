@@ -36,6 +36,14 @@ class _TavernScreenState extends State<TavernScreen> {
         final tracks = provider.filteredTracks;
         return Column(
           children: [
+            if (provider.error != null)
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Text(
+                  provider.error!,
+                  style: const TextStyle(color: AppTheme.accentRed),
+                ),
+              ),
             if (!localMediaImportSupported)
               const Padding(
                 padding: EdgeInsets.all(12),

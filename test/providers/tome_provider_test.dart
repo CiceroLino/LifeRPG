@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'package:liferpg/data/repositories/tome_repository.dart';
 import '../support/test_database.dart';
 import 'dart:io';
 
@@ -8,6 +10,22 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:liferpg/data/models/tome.dart';
 import 'package:liferpg/providers/tome_provider.dart';
 import 'package:liferpg/services/local_media_import_service.dart';
+
+class DelayedTomeReadRepository extends TomeRepository {
+  final started = Completer<void>();
+  final release = Completer<void>();
+  bool first = true;
+  @override
+  Future<Tome?> getTomeById(int id) async {
+    final snapshot = await super.getTomeById(id);
+    if (first) {
+      first = false;
+      started.complete();
+      await release.future;
+    }
+    return snapshot;
+  }
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -60,6 +78,28 @@ void main() {
 
     await provider.archiveTome(id!);
     expect(provider.tomes, isEmpty);
+  });
+
+  test('latest PDF progress preserves concurrent opened timestamp', () async {
+    final repo = DelayedTomeReadRepository();
+    final subject = TomeProvider(repo: repo);
+    final id = await subject.addTome(
+      Tome(title: 'Race', filePath: '/race.pdf'),
+    );
+    final first = subject.updateReadingProgress(
+      id!,
+      currentPage: 1,
+      totalPages: 20,
+    );
+    await Future.any([repo.started.future, first]);
+    await subject.updateReadingProgress(id, currentPage: 9, totalPages: 20);
+    await subject.markOpened(id);
+    repo.release.complete();
+    await first;
+    final result = await TomeRepository().getTomeById(id);
+    expect(result!.currentPage, 9);
+    expect(result.lastOpenedAt, isNotNull);
+    subject.dispose();
   });
 
   test('updates reading progress from embedded reader', () async {

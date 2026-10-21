@@ -47,6 +47,24 @@ class TomeRepository {
     );
   }, readOnly: false);
 
+  Future<int> updateReadingProgress(
+    int id, {
+    required int currentPage,
+    int? totalPages,
+  }) => DataOperations.instance.run(() async {
+    final db = await _dbHelper.database;
+    return db.update(
+      'tomes',
+      {
+        'current_page': currentPage < 0 ? 0 : currentPage,
+        if (totalPages != null && totalPages > 0) 'total_pages': totalPages,
+        'updated_at': DateTime.now().toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  });
+
   Future<int> markOpened(int id) => DataOperations.instance.run(() async {
     final db = await _dbHelper.database;
     final now = DateTime.now().toIso8601String();

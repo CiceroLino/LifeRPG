@@ -31,6 +31,10 @@ class TavernProvider extends ChangeNotifier {
   bool _shuffleEnabled = false;
   TavernRepeatMode _repeatMode = TavernRepeatMode.off;
   bool _disposed = false;
+  String? _error;
+  int _playRequest = 0;
+  int _loadRequest = 0;
+  String? get error => _error;
   final Random _random = Random();
 
   TavernProvider({
@@ -156,7 +160,7 @@ class TavernProvider extends ChangeNotifier {
         if (_isSameTrack(track)) {
           if (!_isPlaying) {
             try {
-              await _playback.play();
+              _requestPlay();
             } catch (e) {
               debugPrint('Error resuming audio track: $e');
               rethrow;
@@ -164,6 +168,7 @@ class TavernProvider extends ChangeNotifier {
           }
           return;
         }
+        final request = ++_loadRequest;
         final previousTrack = _activeTrack;
         final previousPosition = _position;
         final previousDuration = _duration;
@@ -176,8 +181,10 @@ class TavernProvider extends ChangeNotifier {
         _duration = track.duration;
         _notify();
         try {
-          _duration = await _playback.load(track);
-          await _playback.play();
+          final loadedDuration = await _playback.load(track);
+          if (request != _loadRequest) return;
+          _duration = loadedDuration;
+          _requestPlay();
           final id = track.id;
           if (id != null) {
             await _repo.markPlayed(id);
@@ -189,6 +196,7 @@ class TavernProvider extends ChangeNotifier {
           }
           await loadTracks();
         } catch (e) {
+          if (request != _loadRequest) return;
           _activeTrack = previousTrack;
           _position = previousTrack == null ? Duration.zero : previousPosition;
           _duration = previousTrack == null ? null : previousDuration;
@@ -208,7 +216,7 @@ class TavernProvider extends ChangeNotifier {
         await _persistActiveProgress();
         await _playback.pause();
       } else {
-        await _playback.play();
+        _requestPlay();
       }
     } catch (e) {
       debugPrint('Error toggling tavern playback: $e');
@@ -245,7 +253,11 @@ class TavernProvider extends ChangeNotifier {
           }
           return;
         }
-        await playTrack(nextTrack);
+        if (_isSameTrack(nextTrack)) {
+          await _restartActiveTrack();
+        } else {
+          await playTrack(nextTrack);
+        }
       }, readOnly: false);
 
   Future<void> playPreviousTrack() => DataOperations.instance.run(() async {
@@ -306,12 +318,27 @@ class TavernProvider extends ChangeNotifier {
 
   Future<void> prepareForDataReplacement() async {
     await _persistActiveProgress();
+    _playRequest++;
+    _loadRequest++;
     await _playback.stop();
     _activeTrack = null;
     _isPlaying = false;
     _position = Duration.zero;
     _duration = null;
     _notify();
+  }
+
+  void _requestPlay() {
+    final request = ++_playRequest;
+    _error = null;
+    unawaited(
+      Future<void>.sync(_playback.play).catchError((Object error) {
+        if (_disposed || request != _playRequest) return;
+        _error = 'Unable to play audio: $error';
+        _isPlaying = false;
+        _notify();
+      }),
+    );
   }
 
   Future<void> _restartActiveTrack() async {
@@ -322,9 +349,7 @@ class TavernProvider extends ChangeNotifier {
     _notify();
     await _playback.seek(Duration.zero);
     await _persistActiveProgress();
-    if (!_isPlaying) {
-      await _playback.play();
-    }
+    _requestPlay();
   }
 
   AudioTrack? _selectNextTrack(AudioTrack activeTrack, bool fromCompletion) {
@@ -401,6 +426,8 @@ class TavernProvider extends ChangeNotifier {
   }
 
   Future<void> _handlePlaybackCommand(TavernPlaybackCommand command) async {
+    if (command.filePath != null && command.filePath != _activeTrack?.filePath)
+      return;
     switch (command.type) {
       case TavernPlaybackCommandType.pause:
         await _persistActiveProgress();
