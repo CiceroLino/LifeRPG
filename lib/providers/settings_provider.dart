@@ -4,8 +4,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../data/database/database_helper.dart';
 import '../l10n/app_localizations.dart';
 import '../services/backup_service.dart';
+import '../services/mission_reminder_service.dart';
+import '../data/repositories/mission_repository.dart';
 
 class SettingsProvider extends ChangeNotifier {
+  SettingsProvider({MissionReminderService? reminders})
+    : _reminders = reminders ?? MissionReminderService.instance;
+  final MissionReminderService _reminders;
+  String? notificationNotice;
+
   static const String _keyLanguage = 'language';
   static const String _keySoundEffects = 'sound_effects_enabled';
   static const String _keyNotificationSounds = 'notification_sounds_enabled';
@@ -89,13 +96,22 @@ class SettingsProvider extends ChangeNotifier {
     if (_notificationSoundsEnabled == value) return;
     _notificationSoundsEnabled = value;
     await _prefs?.setBool(_keyNotificationSounds, value);
+    await _reminders.reconcile(await MissionRepository().getAll());
     notifyListeners();
   }
 
   Future<void> setNotificationsEnabled(bool value) async {
     if (_notificationsEnabled == value) return;
-    _notificationsEnabled = value;
-    await _prefs?.setBool(_keyNotifications, value);
+    _notificationsEnabled = value && await _reminders.requestPermissions();
+    notificationNotice = value && !_notificationsEnabled
+        ? _reminders.lastWarning
+        : null;
+    await _prefs?.setBool(_keyNotifications, _notificationsEnabled);
+    if (_notificationsEnabled) {
+      await _reminders.reconcile(await MissionRepository().getAll());
+    } else {
+      await _reminders.cancelAll();
+    }
     notifyListeners();
   }
 
@@ -149,6 +165,7 @@ class SettingsProvider extends ChangeNotifier {
   }
 
   Future<void> factoryReset() async {
+    await _reminders.cancelAll();
     await _dbHelper.factoryReset();
 
     if (_prefs != null) {

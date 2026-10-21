@@ -7,6 +7,7 @@ import '../../../providers/mission_provider.dart';
 import '../../../providers/player_provider.dart';
 import '../../../providers/settings_provider.dart';
 import '../../../providers/skill_provider.dart';
+import '../../widgets/common/game_snack_bar.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -85,8 +86,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   title: l10n.translate('enable_notifications'),
                   subtitle: l10n.translate('receive_reminders'),
                   value: settings.notificationsEnabled,
-                  onChanged: (value) =>
-                      settings.setNotificationsEnabled(value ?? true),
+                  onChanged: (value) async {
+                    await settings.setNotificationsEnabled(value ?? true);
+                    if (!context.mounted || settings.notificationNotice == null)
+                      return;
+                    GameSnackBar.show(
+                      context,
+                      title: 'Notifications',
+                      message: settings.notificationNotice!,
+                      type: GameSnackBarType.error,
+                    );
+                  },
                 ),
                 _SettingsCheckboxTile(
                   title: l10n.translate('start_week_monday'),

@@ -17,10 +17,22 @@ enum MissionSortMode {
 enum MissionFilterMode { plan, all, next, overdue, today, tomorrow }
 
 class MissionProvider extends ChangeNotifier {
-  final MissionRepository _missionRepo = MissionRepository();
-  final MissionRewardDropRepository _dropRepo = MissionRewardDropRepository();
-  final MissionCompletionService _completionService =
-      MissionCompletionService();
+  final MissionRepository _missionRepo;
+  final MissionRewardDropRepository _dropRepo;
+  final MissionCompletionService _completionService;
+  final MissionReminderService _reminders;
+  String? _warning;
+  String? get warning => _warning;
+
+  MissionProvider({
+    MissionRepository? repository,
+    MissionRewardDropRepository? drops,
+    MissionCompletionService? completionService,
+    MissionReminderService? reminders,
+  }) : _missionRepo = repository ?? MissionRepository(),
+       _dropRepo = drops ?? MissionRewardDropRepository(),
+       _completionService = completionService ?? MissionCompletionService(),
+       _reminders = reminders ?? MissionReminderService.instance;
 
   List<Mission> _missions = [];
   bool _isLoading = false;
@@ -234,11 +246,12 @@ class MissionProvider extends ChangeNotifier {
         );
       }
 
-      await MissionReminderService.instance.scheduleForMission(
+      await _reminders.scheduleForMission(
         mission.copyWith(id: id),
         notificationsEnabled: notificationsEnabled,
       );
 
+      _warning = _reminders.lastWarning;
       await loadMissions();
       return id;
     } catch (e) {
@@ -253,13 +266,14 @@ class MissionProvider extends ChangeNotifier {
       _lastCompletionResult = await _completionService.completeMission(id);
       final mission = _lastCompletionResult?.mission;
       if (mission != null && mission.status == 'completed') {
-        await MissionReminderService.instance.cancelForMission(id);
+        await _reminders.cancelForMission(id);
       } else if (mission != null) {
-        await MissionReminderService.instance.scheduleForMission(
+        await _reminders.scheduleForMission(
           mission,
           notificationsEnabled: true,
         );
       }
+      _warning = _reminders.lastWarning;
       await loadMissions();
     } catch (e) {
       _error = 'Erro ao completar missão: $e';
@@ -284,6 +298,8 @@ class MissionProvider extends ChangeNotifier {
         completedAt: status == 'completed' ? DateTime.now() : null,
       );
       await _missionRepo.update(updated);
+      await _reminders.scheduleForMission(updated);
+      _warning = _reminders.lastWarning;
       await loadMissions();
     } catch (e) {
       _error = 'Erro ao atualizar status da missão: $e';
@@ -310,11 +326,12 @@ class MissionProvider extends ChangeNotifier {
         );
       }
 
-      await MissionReminderService.instance.scheduleForMission(
+      await _reminders.scheduleForMission(
         mission,
         notificationsEnabled: notificationsEnabled,
       );
 
+      _warning = _reminders.lastWarning;
       await loadMissions();
     } catch (e) {
       _error = 'Erro ao atualizar missão: $e';
@@ -325,7 +342,8 @@ class MissionProvider extends ChangeNotifier {
   Future<void> deleteMission(int id) async {
     try {
       await _missionRepo.delete(id);
-      await MissionReminderService.instance.cancelForMission(id);
+      await _reminders.reconcile(await _missionRepo.getAll());
+      _warning = _reminders.lastWarning;
       await loadMissions();
     } catch (e) {
       _error = 'Erro ao deletar missão: $e';
@@ -341,6 +359,7 @@ class MissionProvider extends ChangeNotifier {
           await _missionRepo.delete(mission.id!);
         }
       }
+      _warning = _reminders.lastWarning;
       await loadMissions();
     } catch (e) {
       _error = 'Erro ao limpar histórico: $e';
